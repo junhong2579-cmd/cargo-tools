@@ -52,13 +52,20 @@ export async function middleware(request) {
   }
 
   // 2. 로그인된 사용자 -> profiles 승인 상태 조회
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_approved')
-    .eq('id', user.id)
-    .single();
+  const isManager = user.email && user.email.toLowerCase() === 'junhong2579@gmail.com';
+  let isApproved = isManager;
 
-  const isApproved = profile && profile.is_approved === true;
+  if (!isApproved) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_approved')
+      .eq('id', user.id)
+      .single();
+
+    if (profile && profile.is_approved === true) {
+      isApproved = true;
+    }
+  }
 
   // 3. 미승인 유저 -> /login?status=pending 으로 리다이렉트
   if (!isApproved) {
