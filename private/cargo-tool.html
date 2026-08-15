@@ -7182,7 +7182,41 @@
       }
     }
 
+    const SERVER_INJECTED_EMAIL = '__USER_EMAIL__';
+
     async function checkApprovalStatus(isManualClick = false) {
+      // 1. Next.js 서버에서 이미 승인 검증 후 내려온 경우 -> 즉시 메인 도구 활성화!
+      if (SERVER_INJECTED_EMAIL !== '__USER_EMAIL__' && SERVER_INJECTED_EMAIL.includes('@')) {
+        document.getElementById('authOverlay').style.display = 'none';
+        document.getElementById('mainAppWrapper').style.display = 'block';
+        document.getElementById('headerUserEmail').textContent = SERVER_INJECTED_EMAIL;
+
+        const isUserAdmin = SERVER_INJECTED_EMAIL.toLowerCase() === 'junhong2579@gmail.com';
+        const roleEl = document.getElementById('headerUserRole');
+        const syncBtn = document.getElementById('syncToCloudBtn');
+        const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
+
+        if (isUserAdmin) {
+          if (roleEl) {
+            roleEl.textContent = '👑 최고 관리자';
+            roleEl.className = 'user-role-badge role-admin';
+          }
+          if (syncBtn) syncBtn.style.display = 'inline-flex';
+          if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
+        } else {
+          if (roleEl) {
+            roleEl.textContent = '👤 일반 사용자';
+            roleEl.className = 'user-role-badge role-user';
+          }
+          if (syncBtn) syncBtn.style.display = 'none';
+          if (syncFreightBtn) syncFreightBtn.style.display = 'none';
+        }
+
+        initLoadContainerData(false);
+        initLoadFreightData(false);
+        return;
+      }
+
       if (!supabaseClient) return;
 
       try {
