@@ -35,13 +35,22 @@ export async function getServerSideProps(context) {
   }
 
   // 2. 승인 여부 확인
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_approved')
-    .eq('id', user.id)
-    .single();
+  const isManager = user.email && user.email.toLowerCase() === 'junhong2579@gmail.com';
+  let isApproved = isManager;
 
-  if (!profile || profile.is_approved !== true) {
+  if (!isApproved) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_approved')
+      .eq('id', user.id)
+      .single();
+
+    if (profile && profile.is_approved === true) {
+      isApproved = true;
+    }
+  }
+
+  if (!isApproved) {
     return {
       redirect: {
         destination: '/login?status=pending',
