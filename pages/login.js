@@ -167,7 +167,7 @@ export default function LoginPage() {
         {!isPending ? (
           <div className="auth-card">
             <div className="auth-header">
-              <h1>🚢 화물 업무 도구</h1>
+              <h1>화물 업무 도구</h1>
               <p>팀원 전용 보안 포털</p>
             </div>
 
@@ -248,7 +248,7 @@ export default function LoginPage() {
         ) : (
           <div className="auth-card">
             <div className="auth-header">
-              <h1>⏳ 가입 승인 대기</h1>
+              <h1>가입 승인 대기</h1>
               <p>관리자 승인 후 시스템 이용이 가능합니다.</p>
             </div>
             <div className="pending-box">
