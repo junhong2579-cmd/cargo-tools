@@ -108,7 +108,12 @@ export default function LoginPage() {
           .single();
 
         if (profile && profile.is_approved === true) {
-          window.location.href = '/';
+          setMessage({ text: '로그인 성공! 메인 도구로 이동 중...', type: 'info' });
+          // 쿠키가 브라우저에 안전하게 저장될 수 있도록 250ms 대기 후 이동
+          setTimeout(() => {
+            window.location.replace('/');
+          }, 250);
+          return;
         } else {
           setIsPending(true);
         }
@@ -137,7 +142,7 @@ export default function LoginPage() {
 
     setLoading(false);
     if (profile && profile.is_approved === true) {
-      window.location.href = '/';
+      window.location.replace('/');
     } else {
       alert('아직 관리자 승인 대기 중입니다.\n관리자 승인 후 다시 확인해 주세요.');
     }
