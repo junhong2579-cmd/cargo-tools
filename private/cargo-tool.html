@@ -2510,8 +2510,11 @@
     <div class="card">
       <div class="header-group" style="margin-bottom: 0;">
         <h2>📝 오늘 할 일</h2>
-        <button id="todoResetBtn" class="reset-btn" style="position: static; margin-left: auto; border-radius: 8px;">전체
-          초기화</button>
+        <button id="todoResetBtn" class="reset-btn icon-btn" title="전체 초기화" style="position: static; margin-left: auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+          </svg>
+        </button>
       </div>
       <div class="form-group row" style="margin-top: 15px;">
         <input type="text" id="todoInput" placeholder="업무를 입력하고 Enter" style="flex-grow: 1; max-width: none;" />
@@ -3621,11 +3624,11 @@
           freeTimeList = parsedData.freeTimeList || [];
 
           const formattedTime = formatTimestamp(parsedData.timestamp);
-          FILE_STATUS_EL.textContent = `최근 로컬 저장 (${formattedTime})`;
+          FILE_STATUS_EL.textContent = `☁️ 클라우드 데이터 (${formattedTime})`;
           FILE_STATUS_EL.classList.remove('error');
 
           const totalItems = containerList.length + socList.length + nonsocList.length;
-          RESULT_EL.textContent = `✅ 저장된 데이터 로드 완료! (${totalItems.toLocaleString()}개 항목) 검색을 시작하세요.`;
+          RESULT_EL.textContent = `✅ 클라우드 데이터 로드 완료! (${totalItems.toLocaleString()}개 항목) 검색을 시작하세요.`;
           RESULT_EL.className = "found";
 
           return true;
@@ -3805,7 +3808,7 @@
         const totalItems = containerList.length + socList.length + nonsocList.length;
         RESULT_EL.textContent = `✅ [수동 로드] ${file.name} 데이터 적용 완료! (${totalItems.toLocaleString()}개 항목)`;
         RESULT_EL.className = "found";
-        FILE_STATUS_EL.textContent = `💻 수동 파일 로드됨 (${file.name})`;
+        FILE_STATUS_EL.textContent = `수동 파일 로드됨 (${file.name})`;
         FILE_STATUS_EL.classList.remove('error');
 
         // 클라우드 동기화 버튼 표시
@@ -5886,7 +5889,7 @@
 
         const selectedFilterText = document.getElementById("freightSearchFilter") ? document.getElementById("freightSearchFilter").options[document.getElementById("freightSearchFilter").selectedIndex].text : "Consignee";
         freightEmptyMessage.textContent = `✅ [수동 로드] ${file.name} 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
-        freightFileStatus.textContent = `💻 수동 파일 로드됨 (${file.name})`;
+        freightFileStatus.textContent = `수동 파일 로드됨 (${file.name})`;
         freightFileStatus.classList.remove('error');
 
         // 테이블 머리글 초기화 및 필터/정렬 상태 초기화 적용
@@ -5929,11 +5932,11 @@
         if (parsed.freightDataList?.length > 0) {
           freightDataList = parsed.freightDataList;
           const formattedTime = formatTimestamp(parsed.timestamp);
-          freightFileStatus.textContent = `최근 로컬 저장 (${formattedTime})`;
+          freightFileStatus.textContent = `☁️ 클라우드 데이터 (${formattedTime})`;
           freightFileStatus.classList.remove('error');
 
           const selectedFilterText = document.getElementById("freightSearchFilter") ? document.getElementById("freightSearchFilter").options[document.getElementById("freightSearchFilter").selectedIndex].text : "Consignee";
-          freightEmptyMessage.textContent = `✅ 저장된 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
+          freightEmptyMessage.textContent = `✅ 클라우드 운임 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
           initFreightHeaders();
           resetAllFreightFiltersAndSort();
           return true;
