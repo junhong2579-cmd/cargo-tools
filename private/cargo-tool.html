@@ -1,0 +1,2866 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>화물 업무 도구</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <meta name="robots" content="noindex, nofollow">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+
+    /* ========== 인증 관련 스타일 (Auth Modal & Header) ========== */
+    #authOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .auth-card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 420px;
+      padding: 36px 32px;
+      box-sizing: border-box;
+      animation: authFadeIn 0.3s ease-out;
+    }
+
+    @keyframes authFadeIn {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .auth-header h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      color: #1e293b;
+      font-weight: 700;
+    }
+
+    .auth-header p {
+      margin: 0;
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      transition: all 0.2s;
+    }
+
+    .auth-tab.active {
+      background: #ffffff;
+      color: #3949ab;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .auth-form-group {
+      margin-bottom: 16px;
+    }
+
+    .auth-form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 6px;
+    }
+
+    .auth-form-group input {
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 12px 14px !important;
+      border: 1.5px solid #cbd5e1 !important;
+      border-radius: 8px !important;
+      font-size: 14px !important;
+      box-sizing: border-box !important;
+      transition: border-color 0.2s, box-shadow 0.2s !important;
+    }
+
+    .auth-form-group input:focus {
+      border-color: #3949ab !important;
+      box-shadow: 0 0 0 3px rgba(57, 73, 171, 0.15) !important;
+      outline: none !important;
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 13px;
+      background-color: #3949ab !important;
+      color: #ffffff !important;
+      border: none !important;
+      border-radius: 8px !important;
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+
+    .auth-btn:hover {
+      background-color: #303f9f !important;
+    }
+
+    .auth-btn:active {
+      transform: scale(0.99);
+    }
+
+    .auth-msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .auth-msg.error {
+      display: block;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+    }
+
+    .auth-msg.success {
+      display: block;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #16a34a;
+    }
+
+    .auth-msg.info {
+      display: block;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #2563eb;
+    }
+
+    /* 승인 대기 전용 카드 */
+    .pending-box {
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .pending-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: pulseIcon 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseIcon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .pending-email {
+      font-weight: 600;
+      color: #3949ab;
+      background: #eef2ff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-block;
+      margin: 8px 0 16px 0;
+      font-size: 14px;
+    }
+
+    /* 상단 로그인 정보 & 로그아웃 바 */
+    #authHeaderBar {
+      display: none;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 8px 16px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      font-size: 13px;
+      color: #475569;
+    }
+
+    .dark-mode #authHeaderBar {
+      background: #1e1e1e;
+      color: #cbd5e1;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .auth-user-badge {
+      font-weight: 600;
+      color: #3949ab;
+    }
+
+    .dark-mode .auth-user-badge {
+      color: #81c784;
+    }
+
+    .auth-logout-btn {
+      padding: 5px 12px !important;
+      font-size: 12px !important;
+      border-radius: 6px !important;
+      border: 1px solid #cbd5e1 !important;
+      background: #f8fafc !important;
+      color: #475569 !important;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-logout-btn:hover {
+      background: #fee2e2 !important;
+      color: #dc2626 !important;
+      border-color: #fca5a5 !important;
+    }
+
+    .dark-mode .auth-logout-btn {
+      background: #2a2a2a !important;
+      border-color: #475569 !important;
+      color: #e2e8f0 !important;
+    }
+
+    .dark-mode .auth-logout-btn:hover {
+      background: #7f1d1d !important;
+      color: #fecaca !important;
+      border-color: #991b1b !important;
+    }
+
+    /* ========== 기존 스타일 유지 ========== */
+    body {
+      font-family: 'Pretendard', sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+      padding: 30px;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    p {
+      font-weight: 500;
+    }
+
+    h2,
+    h3 {
+      color: #3949ab;
+      margin: 4px 0px 18px 0px;
+    }
+
+    h3 {
+      font-size: 21px;
+    }
+
+    .card {
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+      padding: 24px;
+      margin-bottom: 28px;
+      max-width: 660px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      transition: border 0.3s ease, box-shadow 0.3s ease;
+      max-width: 300px;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    input[type="time"]:focus {
+      border-color: #26c6da;
+      box-shadow: 0 0 4px rgba(38, 198, 218, 0.5);
+      outline: none;
+    }
+
+    .freight-select {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      outline: none;
+      background-color: #fff;
+      cursor: pointer;
+      color: #333;
+      transition: border 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .freight-select:focus {
+      border-color: #26c6da;
+      box-shadow: 0 0 4px rgba(38, 198, 218, 0.5);
+    }
+
+    /* ⭐ 수정: 파일 input 그룹 스타일 ⭐ */
+    .file-input-group {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      /* ⭐ 이전 수정 유지: 5px ⭐ */
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .file-input-group input[type="file"] {
+      margin-bottom: 0px;
+      flex-shrink: 0;
+      width: 170px;
+      /* ⭐ 이전 수정 유지: width 170px 적용 ⭐ */
+    }
+
+    .file-status-text {
+      font-size: 13px;
+      font-weight: 500;
+      color: #4CAF50;
+      /* Green for success */
+      flex-shrink: 1;
+      min-width: 0;
+    }
+
+    .file-status-text.error {
+      color: #E53935;
+      /* Red for error */
+    }
+
+    .dark-mode .file-status-text {
+      color: #81C784;
+    }
+
+    .dark-mode .file-status-text.error {
+      color: #E57373;
+    }
+
+
+    .header-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .header-group h3 {
+      margin-bottom: 0px !important;
+    }
+
+    .header-group input[type="text"],
+    .header-group input[type="number"] {
+      min-width: 0px;
+      max-width: 60px;
+    }
+
+    /* ⭐ 요청에 따라 BUTTON 기본 배경색 수정: #a6a6a629 ⭐ */
+    button {
+      background-color: #a6a6a629;
+      color: #333333;
+      border: 1px solid #a8a8a8;
+      border-radius: 8px;
+      /* 캘린더 버튼 외에는 유지 */
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      /* 옅은 그림자 유지 */
+      transition: all 0.3s ease;
+      margin-right: 0px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* ⭐ 요청에 따라 BUTTON 호버 배경색 수정: #d7d7d7 ⭐ */
+    button:hover {
+      background-color: #d7d7d7;
+      border-color: #949494;
+      transform: scale(1.03);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    button:active {
+      background-color: #e0e0e0;
+      /* 클릭 시 더 진한 회색 (기존 유지) */
+      border-color: #949494;
+      transform: scale(0.98);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 캘린더 nav 버튼 스타일 */
+    .calendar-nav button {
+      /* 수정됨: border-radius: 8px로 변경 */
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 18px;
+      box-shadow: none;
+    }
+
+    .calendar-nav button:hover {
+      transform: none;
+    }
+
+    /* 메인 탭 복사 버튼 패딩 수정 */
+    #tab-content-main .sentence-block button {
+      padding: 6px 12px;
+    }
+
+
+    .sentence-block {
+      display: flex;
+      align-items: flex-start;
+      gap: 0px;
+      margin-bottom: 2px;
+    }
+
+    .sentence-block p {
+      margin: 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+    }
+
+    .sentence-block p.effect {
+      background-color: #e0f7fa;
+      box-shadow: 0 0 6px rgba(38, 198, 218, 0.3);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .readonly-box {
+      background-color: #f1f1f1;
+      border: 1px solid #ccc;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .label {
+      width: 90px;
+      font-weight: bold;
+    }
+
+    /* 다크 모드 */
+    .dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+
+    .dark-mode h2,
+    .dark-mode h3 {
+      color: #e0e0e0;
+    }
+
+    .dark-mode .card {
+      background-color: #1e1e1e;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .dark-mode input[type="text"],
+    .dark-mode input[type="number"],
+    .dark-mode input[type="date"],
+    .dark-mode input[type="time"] {
+      background-color: #2a2a2a;
+      color: #f1f1f1;
+      border: 1px solid #444;
+    }
+
+    .dark-mode input::placeholder {
+      color: #999;
+    }
+
+    .dark-mode .freight-select {
+      background-color: #2a2a2a;
+      color: #f1f1f1;
+      border: 1px solid #444;
+    }
+
+    .dark-mode .readonly-box {
+      background-color: #1e1e1e;
+      color: #aaa;
+      border: 1px solid #555;
+    }
+
+    /* ⭐ 다크 모드 버튼 배경색 및 호버색 수정 ⭐ */
+    .dark-mode button {
+      background: #a6a6a629;
+      /* 기본색 적용 */
+      color: #e0e0e0;
+      border: 1px solid #444;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(255, 255, 255, 0.05);
+    }
+
+    /* 캘린더 nav 버튼 다크모드 스타일 수정 */
+    .dark-mode .calendar-nav button {
+      border-radius: 8px;
+    }
+
+    .dark-mode button:hover {
+      background: #d7d7d7;
+      /* 호버색 적용 */
+      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+      transform: scale(1.03);
+    }
+
+    .dark-mode button:active {
+      background: #333333;
+      /* 클릭 시 더 진한 회색 (기존 유지) */
+      transform: scale(0.98);
+      box-shadow: 0 2px 4px rgba(255, 255, 255, 0.04);
+    }
+
+    .dark-mode .sentence-block p.effect {
+      background-color: #353636;
+      box-shadow: 0 0 6px rgba(92, 92, 92, 0.3);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    /* 탭 스타일 */
+    .tab-list {
+      display: flex;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 20px;
+      margin-top: 0px;
+      list-style: none;
+      padding: 0;
+      position: relative;
+      max-width: 708px;
+      /* 카드섹션 우측과 정렬하기 위함 */
+    }
+
+    /* ⭐ SVG 다크모드 토글 버튼 스타일 ⭐ */
+    .theme-switch-wrapper {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      padding-right: 5px;
+      margin-bottom: 5px;
+    }
+
+    .toggle-checkbox {
+      display: none !important;
+    }
+
+    .toggle-label {
+      position: relative;
+      display: block;
+      width: 66px;
+      height: 32px;
+      border-radius: 32px;
+      background-color: #72cce380;
+      /* 하늘색 */
+      cursor: pointer;
+      transition: background-color 0.4s ease;
+      overflow: hidden;
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.15);
+      margin: 0;
+    }
+
+    .toggle-checkbox:checked+.toggle-label {
+      background-color: #1e223d;
+      /* 밤하늘색 */
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .toggle-sky .clouds {
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toggle-checkbox:checked+.toggle-label .toggle-sky .clouds {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+
+    .toggle-sky .stars {
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+
+    .toggle-checkbox:checked+.toggle-label .toggle-sky .stars {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toggle-circle {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background-color: #ffeda4;
+      box-shadow: 0 0 10px rgb(255 228 113 / 70%);
+      transition: transform 0.4s cubic-bezier(0.5, 0.0, 0.2, 1), background-color 0.4s, box-shadow 0.4s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    .toggle-checkbox:checked+.toggle-label .toggle-circle {
+      transform: translateX(34px);
+      background-color: #ddeafb;
+      box-shadow: 0 0 10px rgba(221, 234, 251, 0.6), inset -2px -1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .toggle-sun-icon,
+    .toggle-moon-icon {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      transition: transform 0.4s, opacity 0.4s;
+    }
+
+    .toggle-sun-icon {
+      opacity: 1;
+      transform: rotate(0deg);
+    }
+
+    .toggle-moon-icon {
+      opacity: 0;
+      transform: rotate(-90deg);
+    }
+
+    .toggle-checkbox:checked+.toggle-label .toggle-sun-icon {
+      opacity: 0;
+      transform: rotate(90deg);
+    }
+
+    .toggle-checkbox:checked+.toggle-label .toggle-moon-icon {
+      opacity: 1;
+      transform: rotate(0deg);
+    }
+
+    .tab-item {
+      padding: 10px 20px;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.2s;
+      position: relative;
+      /* ⭐ To Do Dot 위치 기준 ⭐ */
+    }
+
+    .tab-item.active {
+      border-bottom: 3px solid #3949ab;
+      color: #3949ab;
+      font-weight: bold;
+    }
+
+    @keyframes fadeInSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeInSlideUp 0.4s ease-out forwards;
+    }
+
+    .dark-mode .tab-list {
+      border-color: #444;
+    }
+
+    .dark-mode .tab-item.active {
+      color: #ffffff;
+      border-color: #b6b6b6;
+    }
+
+    /* ⭐ To Do 미완료 알림 점 스타일 ⭐ */
+    .todo-notification-dot {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      /* 탭 이름 시작점보다 약간 왼쪽에 위치 */
+      width: 8px;
+      height: 8px;
+      background-color: #e53935;
+      /* 빨간색 */
+      border-radius: 50%;
+      display: none;
+      /* 기본 숨김 */
+      box-shadow: 0 0 4px rgba(229, 57, 53, 0.8);
+    }
+
+    /* 드롭다운 스타일 (기타 탭) */
+    .tab-item.dropdown-tab {
+      position: relative;
+      /* 드롭다운 콘텐츠 위치 기준 */
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: #fff;
+      min-width: 160px;
+      box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+      border-radius: 0 0 8px 8px;
+      padding: 5px 0;
+      border-top: 2px solid #3949ab;
+      top: 100%;
+      /* 부모 탭 아래에 위치 */
+      left: 0;
+    }
+
+    .dark-mode .dropdown-content {
+      background-color: #1e1e1e;
+      border-top: 2px solid #1e88e5;
+      box-shadow: 0px 8px 16px 0px rgba(255, 255, 255, 0.1);
+    }
+
+    .dropdown-item {
+      color: #333;
+      padding: 10px 16px;
+      text-decoration: none;
+      display: block;
+      cursor: pointer;
+      font-weight: normal;
+    }
+
+    .dark-mode .dropdown-item {
+      color: #e0e0e0;
+    }
+
+    .dropdown-item:hover {
+      background-color: #f1f1f1;
+    }
+
+    .dark-mode .dropdown-item:hover {
+      background-color: #2a2a2a;
+    }
+
+    /* 체크리스트 & 프로그레스 */
+    .progress-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 8px;
+      background-color: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(135deg, #6c63ff, #42a5f5);
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      width: 50px;
+      text-align: right;
+      font-size: 14px;
+      margin-left: 8px;
+    }
+
+    #checklist-pre {
+      display: flex;
+      gap: 6px;
+      flex-direction: column;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .check-item span,
+    .check-item input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    .dark-mode .progress-bar {
+      background-color: #2a2a2a;
+    }
+
+    .dark-mode .progress-fill {
+      background: linear-gradient(135deg, #3a4a5a, #5a6b7c);
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+
+    .reset-btn {
+      position: absolute;
+      top: 28px;
+      right: 24px;
+      padding: 5px 11px;
+      font-size: 0.875rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .dark-mode .reset-btn {
+      border: 1px solid #444;
+    }
+
+    .reset-btn:hover {
+      background-color: #e0e0e0;
+    }
+
+    /* 체크박스 커스텀 */
+    input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1.8px solid;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    input[type="checkbox"]::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 0px;
+      width: 5px;
+      height: 10px;
+      border: solid transparent;
+      border-width: 0 2.5px 2.5px 0;
+      transform: rotate(45deg);
+      transition: border-color 0.3s ease;
+    }
+
+    body:not(.dark-mode) input[type="checkbox"] {
+      background-color: white;
+      border-color: #888;
+    }
+
+    body:not(.dark-mode) input[type="checkbox"]:checked {
+      background-color: #3b82f6;
+      border-color: #3b82f6;
+    }
+
+    body:not(.dark-mode) input[type="checkbox"]:checked::after {
+      border-color: white;
+    }
+
+    body.dark-mode input[type="checkbox"] {
+      background-color: #2a2a2a;
+      border-color: #5a6b7c;
+    }
+
+    body.dark-mode input[type="checkbox"]:checked {
+      background-color: #5a6b7c;
+      border-color: #5a6b7c;
+    }
+
+    body.dark-mode input[type="checkbox"]:checked::after {
+      border-color: white;
+    }
+
+    /* 메모장 & To Do */
+    .card textarea {
+      font-family: 'Pretendard', sans-serif;
+      width: 100%;
+      min-height: 320px;
+      height: 40vh;
+      max-height: 80vh;
+      font-size: 16px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      resize: vertical;
+      box-sizing: border-box;
+      background-color: #fbfbfb;
+      color: #333;
+    }
+
+    .card textarea:focus {
+      outline: none;
+      border-color: #999;
+    }
+
+    .dark-mode .card textarea {
+      background-color: #2a2a2a;
+      color: #f0f0f0;
+      border: 1px solid #444;
+    }
+
+    .dark-mode .card textarea:focus {
+      border-color: #888;
+    }
+
+    /* 기본 운임표 다크모드 스타일 */
+    .dark-mode #basicFreightResultTable,
+    .dark-mode #glovisFreightTable,
+    .dark-mode #blFreightResultTable {
+      background-color: #1e1e1e !important;
+      color: #e0e0e0 !important;
+      border-color: #444 !important;
+      box-shadow: 0 1px 3px rgba(255, 255, 255, 0.05) !important;
+    }
+
+    .dark-mode #basicFreightResultTable tr,
+    .dark-mode #glovisFreightTable tr,
+    .dark-mode #blFreightResultTable tr {
+      background-color: #1e1e1e !important;
+    }
+
+    .dark-mode #basicFreightResultTable th,
+    .dark-mode #glovisFreightTable th,
+    .dark-mode #blFreightResultTable th {
+      background-color: #1a365d !important;
+      border-color: #2b4c7e !important;
+      color: #ffffff !important;
+    }
+
+    .dark-mode #basicFreightResultTable td,
+    .dark-mode #glovisFreightTable td,
+    .dark-mode #blFreightResultTable td {
+      border-color: #444 !important;
+    }
+
+    .dark-mode #basicFreightResultTable td:first-child,
+    .dark-mode #glovisFreightTable td:first-child,
+    .dark-mode #blFreightResultTable td:first-child {
+      background-color: #2a2a2a !important;
+      color: #e0e0e0 !important;
+    }
+
+    .dark-mode .rate-unit-text {
+      color: #aaa !important;
+    }
+
+    #todo-list {
+      display: flex;
+      gap: 6px;
+      flex-direction: column;
+      margin-top: 15px;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .todo-item-text {
+      flex-grow: 1;
+      cursor: pointer;
+    }
+
+    .todo-item.completed .todo-item-text {
+      text-decoration: line-through;
+      color: #999;
+    }
+
+    .dark-mode .todo-item.completed .todo-item-text {
+      color: #666;
+    }
+
+    .delete-btn {
+      all: unset;
+      cursor: pointer;
+      color: #ff5252;
+      font-size: 18px;
+      margin-left: 10px;
+    }
+
+    .delete-btn:hover {
+      color: red;
+    }
+
+    /* 탭 전환 원 */
+    .tab-circle-nav {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1000;
+    }
+
+    .tab-circle {
+      all: unset;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background-color: #e5e5e5;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s ease;
+    }
+
+    .tab-circle:hover {
+      background-color: #cccccc !important;
+    }
+
+    .tab-circle.active {
+      background-color: #cccccc;
+    }
+
+    .dark-mode .tab-circle {
+      background-color: #2a2a2a;
+    }
+
+    .dark-mode .tab-circle.active {
+      background-color: #888888;
+    }
+
+    /* ========================================= */
+    /* 📅 캘린더 관련 스타일 */
+    /* ========================================= */
+    .calendar-top-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 15px;
+    }
+
+    .calendar-top-header h2 {
+      margin: 0;
+      padding: 0;
+    }
+
+    .dark-mode .calendar-top-header {
+      border-bottom: 1px solid #444;
+    }
+
+    /* 캘린더 네비게이션 복구 및 스타일 수정 */
+    .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .calendar-nav #calendarTitle {
+      flex-grow: 1;
+      text-align: center;
+    }
+
+    .calendar-container {
+      width: 100%;
+    }
+
+    .calendar-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .calendar-table th {
+      padding: 10px 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .calendar-table td {
+      height: 70px;
+      vertical-align: top;
+      text-align: center;
+      cursor: pointer;
+      padding-top: 6px;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+      position: relative;
+    }
+
+    .calendar-table td:hover {
+      background-color: #f0f0f0;
+    }
+
+    .dark-mode .calendar-table td:hover {
+      background-color: #333;
+    }
+
+    /* 📅 캘린더 항차 표시 스타일 */
+    .calendar-voyage-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      margin-top: 4px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .voyage-badge {
+      display: inline-block;
+      padding: 1px 4px;
+      border-radius: 4px;
+      line-height: 1.2;
+      max-width: 90%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 수입항차 (E) - 연초록 계열 */
+    .voyage-badge.import {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+
+    .dark-mode .voyage-badge.import {
+      background-color: #1b5e2075;
+      color: #81c784;
+      border-color: #2e7d32;
+    }
+
+    /* 수출항차 (W) - 연파랑 계열 */
+    .voyage-badge.export {
+      background-color: #e3f2fd;
+      color: #1565c0;
+      border: 1px solid #bbdefb;
+    }
+
+    .dark-mode .voyage-badge.export {
+      background-color: #0d47a175;
+      color: #90caf9;
+      border-color: #1565c0;
+    }
+
+    /* 수동 지정 / 휴항 등 커스텀 텍스트 용 */
+    .voyage-badge.custom {
+      background-color: #f5f5f5;
+      color: #616161;
+      border: 1px solid #e0e0e0;
+      font-style: italic;
+    }
+
+    .dark-mode .voyage-badge.custom {
+      background-color: #373737;
+      color: #bdbdbd;
+      border-color: #424242;
+    }
+
+    /* 🚢 항차 설정 통합 패널 스타일 */
+    .voyage-override-panel {
+      margin-top: 20px;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 18px;
+      background-color: #f9f9f9;
+    }
+
+    .dark-mode .voyage-override-panel {
+      border-color: #333;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+    }
+
+    .calendar-voyage-settings {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 15px;
+      padding: 0 0 15px 0;
+      border-bottom: 1px dashed #ddd;
+      font-size: 13px;
+    }
+
+    .dark-mode .calendar-voyage-settings {
+      border-bottom-color: #444;
+      color: #e0e0e0;
+    }
+
+    .calendar-voyage-settings input[type="date"],
+    .calendar-voyage-settings input[type="number"] {
+      padding: 4px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 12px;
+      width: 110px;
+    }
+
+    .dark-mode .calendar-voyage-settings input[type="date"],
+    .dark-mode .calendar-voyage-settings input[type="number"] {
+      background-color: #2a2a2a;
+      color: #f1f1f1;
+      border: 1px solid #444;
+    }
+
+    .today-marker {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+      border-radius: 50%;
+      background-color: #3949ab;
+      color: white;
+      font-weight: bold;
+    }
+
+    .selected-date-cell {
+      background-color: #e8eaf6 !important;
+      font-weight: bold;
+    }
+
+    .dark-mode .selected-date-cell {
+      background-color: #2c2c2c !important;
+    }
+
+    .event-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #ef5350;
+      border-radius: 50%;
+      margin: 2px auto 0;
+      display: block;
+    }
+
+    /* 일정 영역 */
+    .schedule-area {
+      margin-top: 20px;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
+
+    .dark-mode .schedule-area {
+      border-top: 1px solid #444;
+    }
+
+    .schedule-list {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 15px;
+    }
+
+    .schedule-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background-color: #f9f9f9;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .dark-mode .schedule-item {
+      background-color: #242424;
+    }
+
+    /* 목록 보기용 스타일 */
+    .list-date-header {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+
+    .list-item-content {
+      flex-grow: 1;
+    }
+
+    /* 검색 결과 메시지 스타일 */
+    .found,
+    .found-soc,
+    .not-found {
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.6;
+    }
+
+    .found {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+
+    .found-soc {
+      background-color: #fff3e0;
+      color: #ff8f00;
+      border: 1px solid #ffe0b2;
+    }
+
+    .not-found {
+      background-color: #ffcdd2;
+      color: #c62828;
+      border: 1px solid #ef9a9a;
+    }
+
+    .dark-mode .found {
+      background-color: #2e3a2f75;
+      color: #81c784;
+      border: 1px solid #4c574d;
+    }
+
+    .dark-mode .found-soc {
+      background-color: #3e382e75;
+      color: #ffb74d;
+      border: 1px solid #6351366e;
+    }
+
+    .dark-mode .not-found {
+      background-color: #4a2828;
+      color: #e57373;
+      border: 1px solid #633e3e;
+    }
+
+    /* ⭐ 대량 검색 스타일 추가 ⭐ */
+    .search-input-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    #bulkSearchInput {
+      width: 100%;
+      height: 12.5em;
+      /* 약 12줄 높이 */
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      font-family: 'Pretendard', sans-serif;
+      resize: vertical;
+      transition: border 0.3s ease, box-shadow 0.3s ease;
+      max-width: none;
+      line-height: 1.1;
+    }
+
+    #bulkSearchInput:focus {
+      border-color: #26c6da;
+      box-shadow: 0 0 4px rgba(38, 198, 218, 0.5);
+      outline: none;
+    }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid transparent;
+      padding: 8px;
+      cursor: pointer;
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: none;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .icon-btn:hover {
+      background: #f0f0f0;
+      color: #3949ab;
+      transform: none;
+      box-shadow: none;
+      border-color: #ddd;
+    }
+
+    .dark-mode .icon-btn {
+      color: #aaa;
+    }
+
+    /* ⭐ 검색 필터 스타일 ⭐ */
+    .filter-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .filter-panel {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background-color: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 999;
+      min-width: 120px;
+      margin-top: 5px;
+    }
+
+    .filter-panel.active {
+      display: flex !important;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .dark-mode .filter-panel {
+      background-color: #2a2a2a;
+      border-color: #444;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .filter-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .filter-btn-active {
+      color: #3949ab;
+      background: #e8eaf6;
+      border-color: #3949ab;
+    }
+
+    .dark-mode .filter-btn-active {
+      color: #81c784;
+      background: #2e3a2f;
+      border-color: #4c574d;
+    }
+
+    .dark-mode .icon-btn:hover {
+      background: #333;
+      color: #fff;
+      border-color: #555;
+    }
+
+    /* Starry Night Easter Egg CSS */
+    body {
+      transition: background-color 1.5s ease, color 1.5s ease;
+    }
+
+    body.starry-bg {
+      background-color: #03040b !important;
+      background: radial-gradient(circle at center, #0A1429 0%, #010205 100%) !important;
+      color: #ffffff !important;
+    }
+
+    body.starry-bg .card {
+      background-color: rgba(255, 255, 255, 0.05) !important;
+      border-color: rgba(170, 200, 255, 0.2) !important;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+      backdrop-filter: blur(5px);
+    }
+
+    body.starry-bg h2,
+    body.starry-bg h3,
+    body.starry-bg span,
+    body.starry-bg .label,
+    body.starry-bg p,
+    body.starry-bg .progress-text,
+    body.starry-bg .check-item {
+      color: #ffffff !important;
+      text-shadow: 0 0 10px rgba(170, 200, 255, 0.3) !important;
+    }
+
+    body.starry-bg .progress-bar {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    body.starry-bg .reset-btn {
+      color: #ffffff !important;
+      border-color: #ffffff !important;
+    }
+
+    body.starry-bg .reset-btn:hover {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    #universe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1.5s ease;
+    }
+
+
+    body.starry-bg #universe {
+      opacity: 1;
+    }
+
+    /* ⭐ 운임 테이블 가독성 극대화 및 단순 정밀 스타일 ⭐ */
+    #freightTable {
+      font-size: 13px !important;
+      border-collapse: separate !important;
+      border-spacing: 0 !important;
+      border: 1px solid #d0d0d0 !important;
+      border-radius: 8px !important;
+      overflow: hidden !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    #freightTable th {
+      background-color: #f1f3f5 !important;
+      color: #333333 !important;
+      font-weight: 700 !important;
+      padding: 12px 10px !important;
+      border-bottom: 1px solid #dddddd !important;
+      border-right: 1px solid #dddddd !important;
+    }
+
+    #freightTable th:last-child {
+      border-right: none !important;
+    }
+
+    #freightTable td {
+      padding: 10px 10px !important;
+      border-bottom: 1px solid #e9ecef !important;
+      border-right: 1px solid #e9ecef !important;
+      color: #495057;
+      transition: background-color 0.15s ease;
+    }
+
+    #freightTable td:last-child {
+      border-right: none !important;
+    }
+
+    #freightTable tr:last-child td {
+      border-bottom: none !important;
+    }
+
+
+    /* 다크 모드 운임 테이블 가독성 스타일 */
+    .dark-mode #freightTable {
+      border: 1px solid #444444 !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .dark-mode #freightTable th {
+      background-color: #2b2b2b !important;
+      color: #e0e0e0 !important;
+      border-bottom: 1px solid #3d3d3d !important;
+      border-right: 1px solid #3d3d3d !important;
+    }
+
+    .dark-mode #freightTable td {
+      border-bottom: 1px solid #333333 !important;
+      border-right: 1px solid #333333 !important;
+      color: #cccccc;
+    }
+
+
+    /* ⭐ 셀 선택 행/열 하이라이트 스타일 ⭐ */
+    #freightTable th.highlight-col {
+      background-color: #cce8d5 !important;
+    }
+
+    #freightTable td.highlight-row,
+    #freightTable td.highlight-col {
+      background-color: #cce8d5 !important;
+    }
+
+    #freightTable td.highlight-cell {
+      background-color: #a5d6a7 !important;
+      border: 2px solid #2e7d32 !important;
+    }
+
+    .dark-mode #freightTable th.highlight-col {
+      background-color: #2e3b32 !important;
+    }
+
+    .dark-mode #freightTable td.highlight-row,
+    .dark-mode #freightTable td.highlight-col {
+      background-color: #2e3b32 !important;
+    }
+
+    .dark-mode #freightTable td.highlight-cell {
+      background-color: #3b4d3c !important;
+      border: 2px solid #81c784 !important;
+    }
+
+    /* ============================================ */
+    /* 엑셀식 필터 및 정렬 스타일 */
+    /* ============================================ */
+    #freightTable th {
+      position: relative !important;
+      cursor: pointer !important;
+      user-select: none !important;
+      padding-right: 32px !important;
+      /* 아이콘들이 들어갈 충분한 우측 여백 확보 */
+    }
+
+    #freightTable th .header-container {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 4px !important;
+    }
+
+    #freightTable th .sort-indicator {
+      font-size: 10px !important;
+      color: #888888 !important;
+      margin-left: 2px !important;
+    }
+
+    #freightTable th .filter-icon {
+      position: absolute !important;
+      right: 0 !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      width: 30px !important;
+      height: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      color: #999999 !important;
+      transition: background-color 0.2s, color 0.2s !important;
+    }
+
+    #freightTable th .filter-icon:hover {
+      background-color: rgba(0, 0, 0, 0.05) !important;
+      color: #333333 !important;
+    }
+
+    .dark-mode #freightTable th .filter-icon:hover {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+      color: #ffffff !important;
+    }
+
+    /* 필터 활성화 상태 */
+    #freightTable th .filter-icon.active {
+      color: #1e88e5 !important;
+      font-weight: bold !important;
+    }
+
+    .dark-mode #freightTable th .filter-icon.active {
+      color: #64b5f6 !important;
+    }
+
+    /* 필터 팝업 창 */
+    .freight-filter-popup {
+      position: absolute !important;
+      z-index: 10000 !important;
+      background-color: #ffffff !important;
+      border: 1px solid #d0d0d0 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+      padding: 12px !important;
+      width: 220px !important;
+      box-sizing: border-box !important;
+      font-family: inherit !important;
+      animation: fadeInSlide 0.15s ease-out !important;
+    }
+
+    .dark-mode .freight-filter-popup {
+      background-color: #2a2a2a !important;
+      border: 1px solid #444444 !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    @keyframes fadeInSlide {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .freight-filter-popup .search-box {
+      width: 100% !important;
+      padding: 6px 8px !important;
+      font-size: 13px !important;
+      border: 1px solid #cccccc !important;
+      border-radius: 4px !important;
+      margin-bottom: 8px !important;
+      box-sizing: border-box !important;
+    }
+
+    .dark-mode .freight-filter-popup .search-box {
+      background-color: #1e1e1e !important;
+      border: 1px solid #555555 !important;
+      color: #e0e0e0 !important;
+    }
+
+    .freight-filter-popup .btn-group {
+      display: flex !important;
+      justify-content: space-between !important;
+      margin-bottom: 8px !important;
+      gap: 4px !important;
+    }
+
+    .freight-filter-popup .btn-group button {
+      padding: 4px 6px !important;
+      font-size: 11px !important;
+      border-radius: 4px !important;
+      flex: 1 !important;
+      text-align: center !important;
+      background-color: #f1f3f5 !important;
+      color: #495057 !important;
+      border: 1px solid #ced4da !important;
+    }
+
+    .dark-mode .freight-filter-popup .btn-group button {
+      background-color: #333333 !important;
+      color: #cccccc !important;
+      border: 1px solid #555555 !important;
+    }
+
+    .freight-filter-popup .btn-group button:hover {
+      background-color: #e9ecef !important;
+    }
+
+    .dark-mode .freight-filter-popup .btn-group button:hover {
+      background-color: #444444 !important;
+    }
+
+    .freight-filter-popup .list-container {
+      max-height: 180px !important;
+      overflow-y: auto !important;
+      border: 1px solid #eeeeee !important;
+      border-radius: 4px !important;
+      padding: 6px !important;
+      margin-bottom: 10px !important;
+      background-color: #fafafa !important;
+    }
+
+    .dark-mode .freight-filter-popup .list-container {
+      border: 1px solid #3d3d3d !important;
+      background-color: #1e1e1e !important;
+    }
+
+    .freight-filter-popup .list-item {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      font-size: 12px !important;
+      padding: 3px 0 !important;
+      color: #333333 !important;
+      cursor: pointer !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    .dark-mode .freight-filter-popup .list-item {
+      color: #e0e0e0 !important;
+    }
+
+    .freight-filter-popup .list-item input[type="checkbox"] {
+      width: 14px !important;
+      height: 14px !important;
+      margin: 0 !important;
+      flex-shrink: 0 !important;
+    }
+
+    .freight-filter-popup .list-item label {
+      cursor: pointer !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      width: 100% !important;
+    }
+
+    .freight-filter-popup .action-group {
+      display: flex !important;
+      justify-content: flex-end !important;
+      gap: 6px !important;
+    }
+
+    .freight-filter-popup .action-group button {
+      padding: 6px 12px !important;
+      font-size: 12px !important;
+      border-radius: 6px !important;
+      cursor: pointer !important;
+    }
+
+    .freight-filter-popup .action-group .apply-btn {
+      background-color: #1e88e5 !important;
+      color: #ffffff !important;
+      border: none !important;
+    }
+
+    .freight-filter-popup .action-group .apply-btn:hover {
+      background-color: #1565c0 !important;
+    }
+
+    .freight-filter-popup .action-group .cancel-btn {
+      background-color: #f1f3f5 !important;
+      color: #495057 !important;
+      border: 1px solid #ced4da !important;
+    }
+
+    .dark-mode .freight-filter-popup .action-group .cancel-btn {
+      background-color: #333333 !important;
+      color: #cccccc !important;
+      border: 1px solid #555555 !important;
+    }
+
+    .freight-filter-popup .action-group .cancel-btn:hover {
+      background-color: #e9ecef !important;
+    }
+
+    .dark-mode .freight-filter-popup .action-group .cancel-btn:hover {
+      background-color: #444444 !important;
+    }
+  
+
+  /* 상단 헤더 바 */
+  #serverAuthHeader {
+    position: fixed;
+    top: 10px;
+    right: 16px;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 6px 14px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(6px);
+    font-size: 13px;
+    border: 1px solid #e2e8f0;
+  }
+  .dark-mode #serverAuthHeader {
+    background: rgba(30, 30, 30, 0.95);
+    color: #e2e8f0;
+    border-color: #475569;
+  }
+  .header-logout-btn {
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+    border: 1px solid #fca5a5 !important;
+    border-radius: 6px !important;
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+  }
+  .header-logout-btn:hover {
+    background: #fee2e2 !important;
+  }
+  </style>
+</head>
+<body>
+  <div id="serverAuthHeader">
+    <span>👤 <strong>__USER_EMAIL__</strong></span>
+    <span style="color: #16a34a; font-weight: bold; font-size: 12px;">● 승인됨</span>
+    <button type="button" class="header-logout-btn" onclick="handleLogoutClick()">로그아웃</button>
+  </div>
+
+<svg id="universe" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="1.5" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+    <g id="particles" filter="url(#glow)"></g>
+  </svg>
+<ul class="tab-list">
+    <li class="tab-item active" data-tab="main">메인</li>
+    <li class="tab-item" data-tab="checklist">체크리스트</li>
+    <li class="tab-item" data-tab="todo">To Do <span id="todoDot" class="todo-notification-dot"></span></li>
+    <li class="tab-item dropdown-tab" data-tab-group="etc">
+      기타
+      <div class="dropdown-content" id="etcDropdown">
+        <div class="dropdown-item" data-tab="discharge">양하 시간 확인</div>
+        <div class="dropdown-item" data-tab="freight">운임 필터</div>
+        <div class="dropdown-item" data-tab="calendar">캘린더</div>
+        <div class="dropdown-item" data-tab="cal">프리타임 계산기</div>
+        <div class="dropdown-item" data-tab="memo">메모장</div>
+        <div class="dropdown-item" data-tab="links" style="display: none;">LINK</div>
+      </div>
+    </li>
+    <li class="theme-switch-wrapper" style="display: none;">
+      <input type="checkbox" id="themeToggleCheckbox" class="toggle-checkbox" />
+      <label for="themeToggleCheckbox" class="toggle-label">
+        <svg class="toggle-sky" viewBox="0 0 66 32" xmlns="http://www.w3.org/2000/svg">
+          <g class="clouds" fill="#ffffff" opacity="0.9">
+            <circle cx="42" cy="16" r="5" />
+            <circle cx="53" cy="16" r="5" />
+            <circle cx="47" cy="12" r="6" />
+            <rect x="42" y="12" width="11" height="9" />
+          </g>
+          <g class="stars" fill="#ffffff" opacity="0.9">
+            <circle cx="15" cy="10" r="1.5" />
+            <circle cx="25" cy="7" r="1" />
+            <circle cx="21" cy="20" r="1" />
+            <path d="M11,16 L12,18 L14,19 L12,20 L11,22 L10,20 L8,19 L10,18 Z" />
+          </g>
+        </svg>
+        <div class="toggle-circle">
+          <svg class="toggle-sun-icon" viewBox="0 0 24 24" fill="none" stroke="#e8a800" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4" fill="#ffde54" stroke="none" />
+            <path
+              d="M12 3v1M12 20v1M5.64 5.64l.7.7M17.66 17.66l.7.7M3 12h1M20 12h1M5.64 18.36l.7-.7M17.66 6.34l.7-.7" />
+          </svg>
+          <svg class="toggle-moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="#ddeafb" />
+          </svg>
+        </div>
+      </label>
+    </li>
+  </ul>
+
+  <div class="tab-circle-nav">
+    <div class="tab-circle active" data-tab="main" role="button" tabindex="0"></div>
+    <div class="tab-circle" data-tab="checklist" role="button" tabindex="0"></div>
+    <div class="tab-circle" data-tab="todo" role="button" tabindex="0"></div>
+    <div class="tab-circle" data-tab="etc-group" role="button" tabindex="0"></div>
+  </div>
+
+
+  <div id="tab-content-main" class="tab-content active">
+    <div class="card">
+      <h2>🌳 컨테이너 실시간 검색</h2>
+      <div class="file-input-group">
+        <input type="file" id="excelFile" accept=".xlsx, .xls" />
+        <span id="fileStatusIndicator" class="file-status-text"></span>
+      </div>
+      <div class="search-input-wrapper">
+        <input type="text" id="searchInput" placeholder="컨테이너 번호를 입력하세요" />
+        <textarea id="bulkSearchInput" placeholder="여러 개의 컨테이너 번호를 입력하세요 (한 줄에 하나)" style="display: none;"></textarea>
+        <input type="text" id="freeTimeSearchInput" placeholder="비엘 번호를 입력하세요 (4자 이상 검색)"
+          style="display: none;" />
+
+        <button id="toggleFreeTimeBtn" class="icon-btn" title="프리타임 검색 토글">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </button>
+
+        <button id="toggleBulkBtn" class="icon-btn" title="대량 검색 토글">
+          <svg id="downArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+          <svg id="upArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <path d="m18 15-6-6-6 6" />
+          </svg>
+        </button>
+
+        <button id="excelDownloadBtn" class="icon-btn" title="엑셀 다운로드" style="display: none;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
+
+        <!-- 필터 영역 -->
+        <div class="filter-wrapper">
+          <button id="filterBtn" class="icon-btn" title="검색 항목 필터">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+          </button>
+          <div id="filterPanel" class="filter-panel">
+            <label class="filter-label"><input type="checkbox" id="chkOwner" checked> 소유 (COC/SOC)</label>
+            <label class="filter-label"><input type="checkbox" id="chkType" checked> 타입</label>
+            <label class="filter-label"><input type="checkbox" id="chkLoc" checked> 위치</label>
+            <label class="filter-label"><input type="checkbox" id="chkStat" checked> 상태</label>
+            <label class="filter-label"><input type="checkbox" id="chkBl" checked> 비엘 (SOC)</label>
+            <label class="filter-label"><input type="checkbox" id="chkReq" checked> 요청 (SOC)</label>
+          </div>
+        </div>
+      </div>
+      <p id="result">🔎 데이터 로딩 중입니다...</p>
+    </div>
+
+    <div class="card">
+      <h2>📌 정보를 입력하세요</h2>
+      <div class="form-group row">
+        <span class="label" style="width: 46px;">항차</span>
+        <input type="text" id="voyage" placeholder="예: 0979" onfocus="this.select()" />
+      </div>
+      <div class="form-group row">
+        <span class="label" style="width: 46px;">비엘</span>
+        <input type="text" id="blInput" placeholder="예: 1234" onfocus="this.select()" />
+      </div>
+      <div class="form-group row">
+        <span class="label" style="width: 46px;">TEU</span>
+        <input type="number" id="teuInput" placeholder="예: 301" onfocus="this.select()" />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="header-group">
+        <h3>📝 메일 제목 양식</h3>
+        <input type="text" id="nameInputNew" placeholder="항차" onfocus="this.select()" />
+        <input type="text" id="blInputNew" placeholder="비엘" onfocus="this.select()" />
+      </div>
+      <div id="sentenceArea"></div>
+    </div>
+
+    <div class="card">
+      <div class="header-group">
+        <h3>🌟 현대글로비스 AN 제목</h3>
+        <input type="text" id="glovisVoyageInput" placeholder="항차" onfocus="this.select()" />
+      </div>
+      <div id="extendedSentenceArea"></div>
+    </div>
+    <div class="card">
+      <div class="header-group">
+        <h3>🛳️ 전체 공지</h3>
+        <input type="text" id="noticeVoyageInput" placeholder="항차" onfocus="this.select()" />
+        <input type="number" id="noticeTeuInput" placeholder="TEU" onfocus="this.select()" />
+      </div>
+      <div id="extendedSentenceArea1"></div>
+    </div>
+    <div class="card">
+      <h3>🌿 하선장소 코드</h3>
+      <div id="disembarkationCodeArea"></div>
+    </div>
+    <div class="card">
+      <div class="header-group" style="margin-bottom: 0;">
+        <h3>💬 안내 문구</h3>
+        <input type="text" id="noticeGuideVoyageInput" placeholder="항차" onfocus="this.select()" />
+        <button id="toggleNoticeGuideBtn" class="icon-btn" title="안내 문구 토글"
+          style="margin-left: auto; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
+          <svg id="noticeGuideDownArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+          <svg id="noticeGuideUpArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <path d="m18 15-6-6-6 6" />
+          </svg>
+        </button>
+      </div>
+      <div id="noticeGuideArea" style="display: none; margin-top: 15px;"></div>
+    </div>
+
+  </div>
+
+  <div id="tab-content-checklist" class="tab-content">
+    <div class="card" id="pre-checklist-card">
+      <h2>✅ 입항 전날 체크리스트</h2>
+      <div class="progress-container">
+        <div class="progress-bar">
+          <div class="progress-fill" id="fill-pre"></div>
+        </div>
+        <span class="progress-text" id="text-pre">0%</span>
+      </div>
+      <button class="reset-btn" data-list="checklist-pre">초기화</button>
+      <div id="checklist-pre">
+        <div class="check-item"><input type="checkbox" id="pre-task-1" /><span data-for="pre-task-1">BOOKING (벌크
+            주의)</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-2" /><span data-for="pre-task-2">공샤시</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-4" /><span data-for="pre-task-4">선탁서류</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-5" /><span data-for="pre-task-5">벌크디멘션 (벌크
+            사진)</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-6" /><span data-for="pre-task-6">수화물 컨 넘버</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-21" /><span data-for="pre-task-21">현대글로비스
+            AN</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-22" /><span data-for="pre-task-22">선어리스트</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-7" /><span data-for="pre-task-7">특송 AN (메일)</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-8" /><span data-for="pre-task-8">하선지정 리스트 만들기
+            (메일)</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-24" /><span data-for="pre-task-24">전체 공지, 운항팀
+            공지</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-9" /><span data-for="pre-task-9">입항보고서1, 2 전송
+            (메일)</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-10" /><span data-for="pre-task-10">스페셜 리스트 전송
+            (메일)</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-11" /><span data-for="pre-task-11">Soc 리스트
+            (메일)</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-12" /><span data-for="pre-task-12">到付清单</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-13" /><span data-for="pre-task-13">서렌더 체크</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-23" /><span data-for="pre-task-23">프리즘 배정 장소
+            확인</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-25" /><span data-for="pre-task-25">변경 컨번호 실번호 모두
+            확인</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-14" /><span data-for="pre-task-14">긴급리스트
+            (메일)</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-15" /><span data-for="pre-task-15">시스템 하선 / 배정장소
+            관리</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-16" /><span data-for="pre-task-16">중량 정정 공지</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-17" /><span data-for="pre-task-17">평택 공유폴더에
+            저장하기</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-18" /><span data-for="pre-task-18">화물카톡방
+            인수인계</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-19" /><span data-for="pre-task-19">DEM DET
+            입금확인</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-20" /><span data-for="pre-task-20">act do,
+            선디오</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>✅ 입항 날 체크리스트</h2>
+      <div class="progress-container">
+        <div class="progress-bar">
+          <div class="progress-fill" id="fill-day"></div>
+        </div>
+        <span class="progress-text" id="text-day">0%</span>
+      </div>
+      <button class="reset-btn" data-list="checklist-day">초기화</button>
+      <div id="checklist-day">
+        <div class="check-item"><input type="checkbox" id="day-task-1" /><span data-for="day-task-1">홈페이지 입항 예정 시간
+            입력</span></div>
+        <div class="check-item"><input type="checkbox" id="day-task-2" /><span data-for="day-task-2">조부장님 카톡 전달</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="day-task-3" /><span data-for="day-task-3">하선신고</span></div>
+        <div class="check-item"><input type="checkbox" id="day-task-4" /><span data-for="day-task-4">세아트랜스, 즉시검사 공유 및
+            안내</span></div>
+        <div class="check-item"><input type="checkbox" id="day-task-5" /><span data-for="day-task-5">FREIGHT LIST
+            本社商务部</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-content-todo" class="tab-content">
+    <div class="card">
+      <div class="header-group" style="margin-bottom: 0;">
+        <h2>📝 오늘 할 일</h2>
+        <button id="todoResetBtn" class="reset-btn" style="position: static; margin-left: auto; border-radius: 8px;">전체
+          초기화</button>
+      </div>
+      <div class="form-group row" style="margin-top: 15px;">
+        <input type="text" id="todoInput" placeholder="업무를 입력하고 Enter" style="flex-grow: 1; max-width: none;" />
+        <button id="todoAddBtn" style="border-radius: 8px;">추가</button>
+      </div>
+      <div id="todo-list"></div>
+      <p id="todo-status" style="margin-top: 20px; font-size: 14px; color: #666;"></p>
+    </div>
+  </div>
+
+  <div id="tab-content-freight" class="tab-content">
+    <!-- 📊 기본 운임표 카드 -->
+    <div class="card" style="max-width: 660px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+        <h2 style="margin: 0;">📊 기본 운임표</h2>
+        <button id="toggleContractFreightBtn" class="icon-btn" title="연간 계약 기업 특별 운임표 토글"
+          style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
+          <svg id="contractFreightDownArrow" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+          <svg id="contractFreightUpArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <path d="m18 15-6-6-6 6" />
+          </svg>
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+        <label for="basicFreightExchangeRate" style="font-weight: bold; font-size: 15px;">당일 환율 (USD → KRW):</label>
+        <input type="number" id="basicFreightExchangeRate" placeholder="환율 입력 (예: 1480.5)" step="0.1"
+          style="width: 180px; padding: 8px 12px; font-size: 15px;" />
+        <span style="font-size: 14px; color: #666;" class="rate-unit-text">원 / $</span>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table id="basicFreightResultTable"
+          style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <thead>
+            <tr style="background-color: #2b579a; color: #ffffff;">
+              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">기본</th>
+              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20피트</th>
+              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40피트</th>
+              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">45피트</th>
+              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20냉동</th>
+              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40냉동</th>
+            </tr>
+          </thead>
+          <tbody id="basicFreightResultBody">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 📦 B/L 다중 컨테이너 총 운임 계산 영역 -->
+      <div id="blFreightCalculatorContainer" style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <h3 style="font-size: 15px; color: inherit; margin: 0; font-weight: bold;">📦 B/L 다중 컨테이너 총 운임 계산</h3>
+          <button id="blQtyResetBtn" class="icon-btn" title="컨테이너 수량 초기화"
+            style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- 수량 입력 그룹 -->
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="blQty20" style="font-weight: bold; font-size: 14px;">20':</label>
+            <input type="text" inputmode="numeric" id="blQty20" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="blQty40" style="font-weight: bold; font-size: 14px;">40':</label>
+            <input type="text" inputmode="numeric" id="blQty40" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="blQty45" style="font-weight: bold; font-size: 14px;">45':</label>
+            <input type="text" inputmode="numeric" id="blQty45" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="blQty20rf" style="font-weight: bold; font-size: 14px;">20RF:</label>
+            <input type="text" inputmode="numeric" id="blQty20rf" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="blQty40rf" style="font-weight: bold; font-size: 14px;">40RF:</label>
+            <input type="text" inputmode="numeric" id="blQty40rf" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+          </div>
+        </div>
+
+        <!-- B/L 계산 결과 표 -->
+        <div style="overflow-x: auto;">
+          <table id="blFreightResultTable"
+            style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <thead>
+              <tr style="background-color: #2b579a; color: #ffffff;">
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">구분</th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">총 컨테이너 수량</th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">Collect TTL</th>
+              </tr>
+            </thead>
+            <tbody id="blFreightResultBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 🏢 연간 계약 기업 특별 운임표 영역 (접기/펼치기) -->
+      <div id="contractFreightContainer"
+        style="display: none; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
+        <h3 style="font-size: 16px; color: #3949ab; margin: 0 0 12px 0; font-weight: bold;">🏢 연간 계약 기업 특별 운임표</h3>
+
+        <!-- 현대글로비스 -->
+        <div style="margin-bottom: 10px;">
+          <div style="overflow-x: auto;">
+            <table id="glovisFreightTable"
+              style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+              <thead>
+                <tr style="background-color: #2b579a; color: #ffffff;">
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                    현대글로비스</th>
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20피트
+                  </th>
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40피트
+                  </th>
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">45피트
+                  </th>
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20냉동
+                  </th>
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40냉동
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="glovisFreightResultBody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="max-width: 100%;">
+      <h2>🚚 운임 필터</h2>
+      <div class="file-input-group">
+        <input type="file" id="freightExcelFile" accept=".xlsx, .xls" />
+        <span id="freightFileStatusIndicator" class="file-status-text"></span>
+      </div>
+      <div class="search-input-wrapper"
+        style="margin-bottom: 15px; width: 100%; display: flex; gap: 10px; align-items: flex-start;">
+        <select id="freightSearchFilter" class="freight-select">
+          <option value="consignee" selected>Consignee</option>
+          <option value="ioDate">I/O Date</option>
+          <option value="voyage">VOYAGE</option>
+          <option value="notify">Notify</option>
+          <option value="remark">REMARK</option>
+          <option value="item">ITEM</option>
+          <option value="description">DESCRIPTION</option>
+          <option value="shipper">SHIPPER</option>
+        </select>
+        <input type="text" id="freightSearchInput" placeholder="Consignee 정보를 입력하세요" onfocus="this.select()"
+          style="max-width: none; flex-grow: 1; box-sizing: border-box;" />
+        <!-- 열 표시 필터 영역 -->
+        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+          <div class="filter-wrapper">
+            <button id="freightColFilterBtn" class="icon-btn" title="항목 표시/숨기기">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+            </button>
+            <div id="freightColFilterPanel" class="filter-panel"
+              style="width: 320px; max-height: 400px; overflow-y: auto; right: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-weight: bold; font-size: 14px;">표시할 항목 선택</span>
+                <div>
+                  <button id="freightColCheckAllBtn"
+                    style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">전체선택</button>
+                  <button id="freightColUncheckAllBtn"
+                    style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">모두해제</button>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;" id="freightColCheckboxes">
+                <!-- JS에서 동적으로 생성 -->
+              </div>
+            </div>
+          </div>
+          <button id="freightResetFiltersBtn" class="icon-btn" title="필터 및 정렬 일괄 초기화">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table id="freightTable"
+          style="width: 100%; border-collapse: collapse; display: none; margin-top: 10px; font-size: 14px; white-space: nowrap;">
+          <thead>
+            <tr>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">I/O Date</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/L NO</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cargo</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/T</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee Code</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Notify</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Actual Shipper</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">SHIPPER</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">20'</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">40'</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">45'</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">T/S</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">ITEM</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">DESCRIPTION</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">REMARK</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CRS</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">LSS</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">PSS</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">FRT</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">ESC</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CAF</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">BAF</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">THC</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CCF</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">DOC</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">WFG</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">TSF</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">PSC</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">EBS</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CFS</th>
+              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Collect TTL</th>
+            </tr>
+          </thead>
+          <tbody id="freightTableBody">
+          </tbody>
+        </table>
+        <div id="freightLoadMoreContainer" style="display: none; text-align: center; margin-top: 15px;">
+          <button id="freightLoadMoreBtn" style="border-radius: 8px; width: 100%; max-width: 300px;">나머지 더보기 확인</button>
+        </div>
+        <p id="freightEmptyMessage" style="text-align: center; color: #666; margin-top: 20px; font-weight: bold;">🔎 엑셀
+          파일을 업로드해주세요.</p>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="tab-content-cal" class="tab-content">
+    <div class="card">
+      <h2>📆 FREE TIME 계산기 (시작일 포함)</h2>
+      <div class="form-group row">
+        <span class="label">시작일</span>
+        <input type="date" id="startDate" oninput="updateEndDate()" />
+        <span id="startWeekday" class="weekday-label"></span>
+      </div>
+      <div class="form-group row">
+        <span class="label">기간(일)</span>
+        <input type="number" id="duration" oninput="updateEndDate()" />
+      </div>
+      <div class="form-group row">
+        <span class="label">종료일</span>
+        <input type="text" id="endDateOutput" disabled class="readonly-box" />
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-content-memo" class="tab-content">
+    <div class="card">
+      <h2>📝 메모장</h2>
+      <textarea id="memo" placeholder="여기에 메모를 작성하세요..." spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <div id="tab-content-links" class="tab-content">
+    <div class="card">
+      <h2>🔗 핵심 시스템 링크</h2>
+      <div class="form-group">
+        <p><a href="#" target="_blank">🚢 평택항만공사 시스템</a></p>
+        <p><a href="#" target="_blank">📦 관세청 UNI-PASS 로그인</a></p>
+        <p><a href="#" target="_blank">🌐 선사 EDI 시스템</a></p>
+        <p><a href="#" target="_blank">📬 사내 웹 메일</a></p>
+      </div>
+    </div>
+    <div class="card">
+      <h2>📞 주요 연락처</h2>
+      <div class="form-group">
+        <p>▪ 운항팀: 02-1234-5678</p>
+        <p>▪ 영업팀: 02-1234-5678</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-content-calendar" class="tab-content">
+    <div class="card">
+      <div class="calendar-top-header">
+        <h2>일정 캘린더</h2>
+        <button id="toggleViewBtn" style="border-radius: 8px;">목록 보기</button>
+      </div>
+
+      <div id="calendarView">
+        <div class="calendar-nav">
+          <button id="prevMonthBtn">&lt;</button>
+          <span id="calendarTitle"></span>
+          <button id="nextMonthBtn">&gt;</button>
+        </div>
+        <div class="calendar-container">
+          <table class="calendar-table">
+            <thead>
+              <tr>
+                <th style="color: #ef5350;">일</th>
+                <th>월</th>
+                <th>화</th>
+                <th>수</th>
+                <th>목</th>
+                <th>금</th>
+                <th style="color: #42a5f5;">토</th>
+              </tr>
+            </thead>
+            <tbody id="calendarBody">
+            </tbody>
+          </table>
+        </div>
+
+        <div class="schedule-area">
+          <h3 id="selectedDateTitle" style="font-size: 18px; margin-bottom: 12px;">날짜를 선택하세요</h3>
+          <ul id="scheduleList" class="schedule-list">
+          </ul>
+
+          <div class="form-group" style="margin-bottom: 8px;">
+            <input type="text" id="scheduleTitleInput" placeholder="일정 제목" style="width: 100%; margin-bottom: 6px;">
+            <input type="text" id="scheduleDescInput" placeholder="설명 (선택)" style="width: 100%;">
+          </div>
+          <button id="addScheduleBtn" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">일정 추가</button>
+
+          <!-- 해당 일자 항차 수동 오버라이드 영역 -->
+          <div id="voyageOverrideArea" class="voyage-override-panel" style="display: none;">
+            <!-- 항차 계산 기준 설정 영역 (이동됨) -->
+            <div class="calendar-voyage-settings"
+              style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+              <h4 style="font-size: 14px; color: #3949ab; margin: 0 0 4px 0; font-weight: bold;">🚢 항차 계산 기준 설정</h4>
+              <div style="display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px; width: 100%;">
+                <label style="display: flex; align-items: center; gap: 4px; font-size: 13px;">
+                  기준 화요일: <input type="date" id="calendarBaseDate"
+                    style="padding: 4px; font-size: 11px; width: 100px;" />
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; font-size: 13px;">
+                  기준 항차: <input type="number" id="calendarBaseVoyage" placeholder="예: 1115"
+                    style="padding: 4px; font-size: 11px; width: 50px;" />
+                </label>
+                <button id="saveCalendarSettingsBtn" style="padding: 4px 8px; font-size: 11px; border-radius: 4px;">설정
+                  저장</button>
+              </div>
+            </div>
+
+            <div style="margin-top: 5px;">
+              <h4 style="font-size: 14px; color: #3949ab; margin: 0 0 10px 0; font-weight: bold;">🛳️ 해당 일자 휴항(결항) 설정
+              </h4>
+              <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 12px;">
+                <label
+                  style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">
+                  <input type="checkbox" id="cancelImportCheckbox" /> 수입항차(E) 휴항
+                </label>
+                <label
+                  style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">
+                  <input type="checkbox" id="cancelExportCheckbox" /> 수출항차(W) 휴항
+                </label>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+                <span
+                  style="font-size: 12px; color: #666; font-weight: bold; white-space: nowrap; flex-shrink: 0; width: 70px;">메모/비고:</span>
+                <input type="text" id="voyageOverrideInput" placeholder="예: 특이사항 기재 시 항차 대신 표시됨"
+                  style="flex-grow: 1; max-width: none; font-size: 13px; padding: 6px 10px; height: 32px;" />
+                <button id="saveVoyageOverrideBtn"
+                  style="padding: 6px 12px; font-size: 12px; border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">저장</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="listView" style="display: none;">
+        <ul id="allEventsList" class="schedule-list">
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="tab-content-discharge" class="tab-content">
+    <style>
+      /* 양하 시간 확인 전용 스타일 */
+      .discharge-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(57, 73, 171, 0.3);
+        border-radius: 50%;
+        border-top-color: #3949ab;
+        animation: discharge-spin 1s ease-in-out infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      @keyframes discharge-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .discharge-table-container {
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        max-height: 500px;
+        margin-top: 15px;
+      }
+
+      .discharge-table-container table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 14px;
+      }
+
+      .discharge-table-container th,
+      .discharge-table-container td {
+        padding: 1rem;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .discharge-table-container th {
+        background-color: #f5f7fa;
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+
+      .dark-mode .discharge-table-container {
+        border-color: #444;
+      }
+
+      .dark-mode .discharge-table-container th {
+        background-color: #2a2a2a;
+        border-bottom: 1px solid #444;
+      }
+
+      .dark-mode .discharge-table-container td {
+        border-bottom: 1px solid #444;
+      }
+
+      .discharge-status-unknown {
+        color: #ef4444;
+        font-weight: 600;
+      }
+
+      .discharge-status-found {
+        color: #10b981;
+        font-weight: 600;
+      }
+
+      .discharge-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        background-color: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        color: #333;
+      }
+
+      .discharge-badge.no5 {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border-color: #bfdbfe;
+      }
+
+      .discharge-badge.no3 {
+        background-color: #fef08a;
+        color: #854d0e;
+        border-color: #fde047;
+      }
+
+      .discharge-badge.no1 {
+        background-color: #ffedd5;
+        color: #9a3412;
+        border-color: #fed7aa;
+      }
+
+      .dark-mode .discharge-badge {
+        background-color: #333;
+        border-color: #555;
+        color: #e0e0e0;
+      }
+
+      .dark-mode .discharge-badge.no5 {
+        background-color: #1e3a8a;
+        color: #bfdbfe;
+        border-color: #1e40af;
+      }
+
+      .dark-mode .discharge-badge.no3 {
+        background-color: #713f12;
+        color: #fef08a;
+        border-color: #854d0e;
+      }
+
+      .dark-mode .discharge-badge.no1 {
+        background-color: #7c2d12;
+        color: #ffedd5;
+        border-color: #9a3412;
+      }
+
+      .discharge-empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #64748b;
+      }
+
+      .dark-mode .discharge-empty-state {
+        color: #aaa;
+      }
+
+      .discharge-canvas-wrapper {
+        position: relative;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        background: #eee;
+        border-radius: 8px;
+        overflow: hidden;
+        /* 좌우 스크롤 제거 */
+        max-height: 800px;
+        margin-top: 10px;
+      }
+
+      .dark-mode .discharge-canvas-wrapper {
+        background: #2a2a2a;
+      }
+
+      .discharge-canvas-wrapper canvas {
+        width: 100%;
+        /* 카드 너비에 맞춤 */
+        height: auto;
+        /* 비율 유지 */
+      }
+
+      .discharge-visual-page-group {
+        margin-bottom: 20px;
+        width: 100%;
+      }
+
+      .discharge-visual-page-title {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        padding-left: 8px;
+        border-left: 4px solid #3949ab;
+      }
+
+      .dark-mode .discharge-visual-page-title {
+        color: #e0e0e0;
+        border-color: #1e88e5;
+      }
+
+      #dischargeContainerList {
+        min-height: 100px;
+        /* 기존 공통 스타일 덮어쓰기 */
+        height: 200px;
+        /* 높이 조정 */
+        max-height: 200px;
+        overflow-y: auto;
+        resize: none;
+        /* 레이아웃 유지 위해 크기 조절 비활성화 */
+      }
+
+      .card.discharge-wide {
+        max-width: 1200px !important;
+      }
+
+      .discharge-upper-content {
+        max-width: 612px;
+        width: 100%;
+      }
+    </style>
+    <div class="card" id="dischargeCard" style="max-width: 660px; transition: max-width 0.3s ease;">
+      <div class="discharge-upper-content">
+        <h2>⏳ 선박 양하 시간 계산기</h2>
+
+        <div class="form-group row">
+          <span class="label" style="width: 150px;">Stowage Plan PDF</span>
+          <div class="file-input-group" style="margin-bottom: 0;">
+            <input type="file" id="dischargePdfFile" accept="application/pdf" style="max-width: 250px;">
+          </div>
+        </div>
+
+        <div class="form-group row">
+          <span class="label" style="width: 150px;">모선 입항 시간(ETA)</span>
+          <input type="text" id="dischargeEtaTime" placeholder="예: 1430 (숫자만 4자리)" maxlength="5" />
+        </div>
+
+        <div class="form-group">
+          <div style="font-weight: bold; margin-bottom: 8px; margin-top:10px;">조회할 컨테이너 번호</div>
+          <textarea id="dischargeContainerList"
+            placeholder="ABCD1234567&#10;EFGH8901234&#10;(줄바꿈으로 구분하여 여러 개 입력 가능)"></textarea>
+        </div>
+
+        <div id="dischargeLoading"
+          style="display: none; text-align: center; margin: 15px 0; color: #3949ab; font-weight: bold;">
+          <span class="discharge-spinner"></span> PDF 분석 중... (잠시만 기다려주세요)
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 25px; margin-bottom: 10px;">
+          <h3 style="margin: 0;">계산 결과</h3>
+          <button id="copyDischargeResultBtn" style="padding: 6px 12px;">📋 복사</button>
+        </div>
+        <div class="discharge-table-container">
+          <table id="dischargeResultTable">
+            <thead>
+              <tr>
+                <th>컨테이너 번호</th>
+                <th>예상 양하 시간</th>
+                <th>위치 (Deck/X축/Y축)</th>
+              </tr>
+            </thead>
+            <tbody id="dischargeResultBody">
+              <tr>
+                <td colspan="3" class="discharge-empty-state">
+                  PDF 파일을 업로드하고 기준 시간 및 컨테이너 번호를 입력해주세요. 결과가 실시간 표시됩니다.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="dischargeVisualizerContainer" style="display: none; margin-top: 30px;">
+        <div
+          style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <h3 style="margin: 0;">🗺️ 적부도 위치 시각화</h3>
+          <button id="toggleDischargeWideBtn" style="padding: 6px 12px; font-size: 13px;">🔍 크게 보기</button>
+        </div>
+        <div id="dischargeVisualPagesList"></div>
+      </div>
+    </div>
+  
+
+<script>
+  async function handleLogoutClick() {
+    if (confirm('로그아웃 하시겠습니까?')) {
+      const SUPABASE_URL = "https://zukwzrejstclzbgcxyyz.supabase.co";
+      const SUPABASE_ANON_KEY = "sb_publishable_UKXgpZbXeccSS0h1Cooaxw_CnMIhX7p";
+      if (window.supabase) {
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        await client.auth.signOut();
+      }
+      // 쿠키 삭제 및 로그인 페이지로 이동
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      window.location.href = '/login';
+    }
+  }
+</script>
+</body>
+</html>
