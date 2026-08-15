@@ -41,8 +41,15 @@
     }
 
     @keyframes authFadeIn {
-      from { opacity: 0; transform: translateY(-12px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(-12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .auth-header {
@@ -186,8 +193,15 @@
     }
 
     @keyframes pulseIcon {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.1);
+      }
     }
 
     .pending-email {
@@ -253,7 +267,8 @@
       position: absolute;
       top: 100%;
       right: 0;
-      padding-top: 8px; /* 마우스가 내려올 수 있는 브릿지 공간 */
+      padding-top: 8px;
+      /* 마우스가 내려올 수 있는 브릿지 공간 */
       min-width: 230px;
       z-index: 999999;
       cursor: default;
@@ -418,7 +433,7 @@
       opacity: 0;
       visibility: hidden;
       transition: opacity 0.2s ease, transform 0.2s ease;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
       z-index: 1000000;
     }
 
@@ -2112,7 +2127,7 @@
     <!-- 1. 로그인 & 회원가입 카드 -->
     <div class="auth-card" id="authCard">
       <div class="auth-header">
-        <h1>🚢 화물 업무 도구</h1>
+        <h1>화물 업무 도구</h1>
         <p>팀원 전용 보안 포털</p>
       </div>
 
@@ -2146,7 +2161,7 @@
     <!-- 2. 승인 대기 중 안내 카드 -->
     <div class="auth-card" id="pendingCard" style="display: none;">
       <div class="auth-header">
-        <h1>⏳ 가입 승인 대기</h1>
+        <h1>가입 승인 대기</h1>
         <p>관리자 승인 후 시스템 이용이 가능합니다.</p>
       </div>
       <div class="pending-box">
@@ -2157,8 +2172,10 @@
           회원가입 요청이 관리자에게 전달되었습니다.<br />
           관리자 승인 완료 후 아래 <strong>[승인 상태 확인]</strong>을 누르시면 바로 도구를 사용하실 수 있습니다.
         </p>
-        <button type="button" class="auth-btn" style="margin-bottom: 8px;" onclick="checkApprovalStatus(true)">🔄 승인 상태 확인</button>
-        <button type="button" class="auth-logout-btn" style="width: 100%; padding: 10px !important; margin-top: 4px;" onclick="handleLogout()">다른 계정으로 로그인 (로그아웃)</button>
+        <button type="button" class="auth-btn" style="margin-bottom: 8px;" onclick="checkApprovalStatus(true)">🔄 승인 상태
+          확인</button>
+        <button type="button" class="auth-logout-btn" style="width: 100%; padding: 10px !important; margin-top: 4px;"
+          onclick="handleLogout()">다른 계정으로 로그인 (로그아웃)</button>
       </div>
     </div>
   </div>
@@ -2179,1009 +2196,1057 @@
       <g id="particles" filter="url(#glow)"></g>
     </svg>
     <ul class="tab-list">
-    <li class="tab-item active" data-tab="main">메인</li>
-    <li class="tab-item" data-tab="checklist">체크리스트</li>
-    <li class="tab-item" data-tab="todo">To Do <span id="todoDot" class="todo-notification-dot"></span></li>
-    <li class="tab-item dropdown-tab" data-tab-group="etc">
-      기타
-      <div class="dropdown-content" id="etcDropdown">
-        <div class="dropdown-item" data-tab="discharge">양하 시간 확인</div>
-        <div class="dropdown-item" data-tab="freight">운임 필터</div>
-        <div class="dropdown-item" data-tab="calendar">캘린더</div>
-        <div class="dropdown-item" data-tab="cal">프리타임 계산기</div>
-        <div class="dropdown-item" data-tab="memo">메모장</div>
-        <div class="dropdown-item" data-tab="links" style="display: none;">LINK</div>
-      </div>
-    </li>
-    <li class="theme-switch-wrapper" style="display: none;">
-      <input type="checkbox" id="themeToggleCheckbox" class="toggle-checkbox" />
-      <label for="themeToggleCheckbox" class="toggle-label">
-        <svg class="toggle-sky" viewBox="0 0 66 32" xmlns="http://www.w3.org/2000/svg">
-          <g class="clouds" fill="#ffffff" opacity="0.9">
-            <circle cx="42" cy="16" r="5" />
-            <circle cx="53" cy="16" r="5" />
-            <circle cx="47" cy="12" r="6" />
-            <rect x="42" y="12" width="11" height="9" />
-          </g>
-          <g class="stars" fill="#ffffff" opacity="0.9">
-            <circle cx="15" cy="10" r="1.5" />
-            <circle cx="25" cy="7" r="1" />
-            <circle cx="21" cy="20" r="1" />
-            <path d="M11,16 L12,18 L14,19 L12,20 L11,22 L10,20 L8,19 L10,18 Z" />
-          </g>
-        </svg>
-        <div class="toggle-circle">
-          <svg class="toggle-sun-icon" viewBox="0 0 24 24" fill="none" stroke="#e8a800" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4" fill="#ffde54" stroke="none" />
-            <path
-              d="M12 3v1M12 20v1M5.64 5.64l.7.7M17.66 17.66l.7.7M3 12h1M20 12h1M5.64 18.36l.7-.7M17.66 6.34l.7-.7" />
+      <li class="tab-item active" data-tab="main">메인</li>
+      <li class="tab-item" data-tab="checklist">체크리스트</li>
+      <li class="tab-item" data-tab="todo">To Do <span id="todoDot" class="todo-notification-dot"></span></li>
+      <li class="tab-item dropdown-tab" data-tab-group="etc">
+        기타
+        <div class="dropdown-content" id="etcDropdown">
+          <div class="dropdown-item" data-tab="discharge">양하 시간 확인</div>
+          <div class="dropdown-item" data-tab="freight">운임 필터</div>
+          <div class="dropdown-item" data-tab="calendar">캘린더</div>
+          <div class="dropdown-item" data-tab="cal">프리타임 계산기</div>
+          <div class="dropdown-item" data-tab="memo">메모장</div>
+          <div class="dropdown-item" data-tab="links" style="display: none;">LINK</div>
+        </div>
+      </li>
+      <li class="theme-switch-wrapper" style="display: none;">
+        <input type="checkbox" id="themeToggleCheckbox" class="toggle-checkbox" />
+        <label for="themeToggleCheckbox" class="toggle-label">
+          <svg class="toggle-sky" viewBox="0 0 66 32" xmlns="http://www.w3.org/2000/svg">
+            <g class="clouds" fill="#ffffff" opacity="0.9">
+              <circle cx="42" cy="16" r="5" />
+              <circle cx="53" cy="16" r="5" />
+              <circle cx="47" cy="12" r="6" />
+              <rect x="42" y="12" width="11" height="9" />
+            </g>
+            <g class="stars" fill="#ffffff" opacity="0.9">
+              <circle cx="15" cy="10" r="1.5" />
+              <circle cx="25" cy="7" r="1" />
+              <circle cx="21" cy="20" r="1" />
+              <path d="M11,16 L12,18 L14,19 L12,20 L11,22 L10,20 L8,19 L10,18 Z" />
+            </g>
           </svg>
-          <svg class="toggle-moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#90caf9" stroke="#90caf9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          <div class="toggle-circle">
+            <svg class="toggle-sun-icon" viewBox="0 0 24 24" fill="none" stroke="#e8a800" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4" fill="#ffde54" stroke="none" />
+              <path
+                d="M12 3v1M12 20v1M5.64 5.64l.7.7M17.66 17.66l.7.7M3 12h1M20 12h1M5.64 18.36l.7-.7M17.66 6.34l.7-.7" />
+            </svg>
+            <svg class="toggle-moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#90caf9" stroke="#90caf9"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+        </label>
+      </li>
+
+      <!-- 👤 탭 바 맨 우측: 사용자 원형 아이콘 & 호버 드롭다운 -->
+      <li class="tab-user-profile" id="tabUserProfile">
+        <div class="user-avatar-btn" title="계정 정보">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
           </svg>
         </div>
-      </label>
-    </li>
 
-    <!-- 👤 탭 바 맨 우측: 사용자 원형 아이콘 & 호버 드롭다운 -->
-    <li class="tab-user-profile" id="tabUserProfile">
-      <div class="user-avatar-btn" title="계정 정보">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-      </div>
-
-      <!-- 마우스 호버 시 아래로 뜨는 카드 -->
-      <div class="user-profile-dropdown">
-        <div class="user-profile-dropdown-inner">
-          <div class="user-dropdown-header">
-            <div class="user-dropdown-info">
-              <span id="headerUserRole" class="user-role-badge role-admin">👑 최고 관리자</span>
-              <span id="headerUserEmail" class="user-dropdown-email">-</span>
+        <!-- 마우스 호버 시 아래로 뜨는 카드 -->
+        <div class="user-profile-dropdown">
+          <div class="user-profile-dropdown-inner">
+            <div class="user-dropdown-header">
+              <div class="user-dropdown-info">
+                <span id="headerUserRole" class="user-role-badge role-admin">👑 최고 관리자</span>
+                <span id="headerUserEmail" class="user-dropdown-email">-</span>
+              </div>
+              <button type="button" class="logout-icon-btn" onclick="handleLogout()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span class="logout-tooltip">로그아웃</span>
+              </button>
             </div>
-            <button type="button" class="logout-icon-btn" onclick="handleLogout()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              <span class="logout-tooltip">로그아웃</span>
-            </button>
           </div>
         </div>
-      </div>
-    </li>
-  </ul>
+      </li>
+    </ul>
 
-  <div class="tab-circle-nav">
-    <div class="tab-circle active" data-tab="main" role="button" tabindex="0"></div>
-    <div class="tab-circle" data-tab="checklist" role="button" tabindex="0"></div>
-    <div class="tab-circle" data-tab="todo" role="button" tabindex="0"></div>
-    <div class="tab-circle" data-tab="etc-group" role="button" tabindex="0"></div>
-  </div>
+    <div class="tab-circle-nav">
+      <div class="tab-circle active" data-tab="main" role="button" tabindex="0"></div>
+      <div class="tab-circle" data-tab="checklist" role="button" tabindex="0"></div>
+      <div class="tab-circle" data-tab="todo" role="button" tabindex="0"></div>
+      <div class="tab-circle" data-tab="etc-group" role="button" tabindex="0"></div>
+    </div>
 
 
-  <div id="tab-content-main" class="tab-content active">
-    <div class="card">
-      <h2>🌳 컨테이너 실시간 검색</h2>
-      <div class="file-input-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-        <input type="file" id="excelFile" accept=".xlsx, .xls" />
-        
-        <!-- 🔄 클라우드 최신 데이터 새로고침 버튼 (모든 팀원 공통) -->
-        <button type="button" id="reloadFromCloudBtn" class="icon-btn" title="클라우드 최신 데이터 새로고침" onclick="initLoadContainerData(true)" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-          </svg>
-        </button>
+    <div id="tab-content-main" class="tab-content active">
+      <div class="card">
+        <h2>🌳 컨테이너 실시간 검색</h2>
+        <div class="file-input-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <input type="file" id="excelFile" accept=".xlsx, .xls" />
 
-        <!-- ☁️⬆️ 클라우드에 동기화 업로드 버튼 (관리자 전용) -->
-        <button type="button" id="syncToCloudBtn" class="icon-btn" title="현재 엑셀 데이터를 클라우드에 동기화 (관리자 전용)" onclick="syncCurrentDataToSupabase()" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
-            <path d="M12 12v9"></path>
-            <path d="m16 16-4-4-4 4"></path>
-          </svg>
-        </button>
-      </div>
-      <!-- 항상 입력창 바로 위에 단독행으로 표시되는 상태 영역 -->
-      <div style="margin: 4px 0 10px 2px; min-height: 18px;">
-        <span id="fileStatusIndicator" class="file-status-text"></span>
-      </div>
-      <div class="search-input-wrapper">
-        <input type="text" id="searchInput" placeholder="컨테이너 번호를 입력하세요" />
-        <textarea id="bulkSearchInput" placeholder="여러 개의 컨테이너 번호를 입력하세요 (한 줄에 하나)" style="display: none;"></textarea>
-        <input type="text" id="freeTimeSearchInput" placeholder="비엘 번호를 입력하세요 (4자 이상 검색)"
-          style="display: none;" />
-
-        <button id="toggleFreeTimeBtn" class="icon-btn" title="프리타임 검색 토글">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-        </button>
-
-        <button id="toggleBulkBtn" class="icon-btn" title="대량 검색 토글">
-          <svg id="downArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-          <svg id="upArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-            <path d="m18 15-6-6-6 6" />
-          </svg>
-        </button>
-
-        <button id="excelDownloadBtn" class="icon-btn" title="엑셀 다운로드" style="display: none;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-        </button>
-
-        <!-- 필터 영역 -->
-        <div class="filter-wrapper">
-          <button id="filterBtn" class="icon-btn" title="검색 항목 필터">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          <!-- 🔄 클라우드 최신 데이터 새로고침 버튼 (모든 팀원 공통) -->
+          <button type="button" id="reloadFromCloudBtn" class="icon-btn" title="클라우드 최신 데이터 새로고침"
+            onclick="initLoadContainerData(true)"
+            style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
           </button>
-          <div id="filterPanel" class="filter-panel">
-            <label class="filter-label"><input type="checkbox" id="chkOwner" checked> 소유 (COC/SOC)</label>
-            <label class="filter-label"><input type="checkbox" id="chkType" checked> 타입</label>
-            <label class="filter-label"><input type="checkbox" id="chkLoc" checked> 위치</label>
-            <label class="filter-label"><input type="checkbox" id="chkStat" checked> 상태</label>
-            <label class="filter-label"><input type="checkbox" id="chkBl" checked> 비엘 (SOC)</label>
-            <label class="filter-label"><input type="checkbox" id="chkReq" checked> 요청 (SOC)</label>
+
+          <!-- ☁️⬆️ 클라우드에 동기화 업로드 버튼 (관리자 전용) -->
+          <button type="button" id="syncToCloudBtn" class="icon-btn" title="현재 엑셀 데이터를 클라우드에 동기화 (관리자 전용)"
+            onclick="syncCurrentDataToSupabase()"
+            style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+              <path d="M12 12v9"></path>
+              <path d="m16 16-4-4-4 4"></path>
+            </svg>
+          </button>
+        </div>
+        <!-- 항상 입력창 바로 위에 단독행으로 표시되는 상태 영역 -->
+        <div style="margin: 4px 0 10px 2px; min-height: 18px;">
+          <span id="fileStatusIndicator" class="file-status-text"></span>
+        </div>
+        <div class="search-input-wrapper">
+          <input type="text" id="searchInput" placeholder="컨테이너 번호를 입력하세요" />
+          <textarea id="bulkSearchInput" placeholder="여러 개의 컨테이너 번호를 입력하세요 (한 줄에 하나)" style="display: none;"></textarea>
+          <input type="text" id="freeTimeSearchInput" placeholder="비엘 번호를 입력하세요 (4자 이상 검색)" style="display: none;" />
+
+          <button id="toggleFreeTimeBtn" class="icon-btn" title="프리타임 검색 토글">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </button>
+
+          <button id="toggleBulkBtn" class="icon-btn" title="대량 검색 토글">
+            <svg id="downArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            <svg id="upArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+              <path d="m18 15-6-6-6 6" />
+            </svg>
+          </button>
+
+          <button id="excelDownloadBtn" class="icon-btn" title="엑셀 다운로드" style="display: none;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+
+          <!-- 필터 영역 -->
+          <div class="filter-wrapper">
+            <button id="filterBtn" class="icon-btn" title="검색 항목 필터">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+            </button>
+            <div id="filterPanel" class="filter-panel">
+              <label class="filter-label"><input type="checkbox" id="chkOwner" checked> 소유 (COC/SOC)</label>
+              <label class="filter-label"><input type="checkbox" id="chkType" checked> 타입</label>
+              <label class="filter-label"><input type="checkbox" id="chkLoc" checked> 위치</label>
+              <label class="filter-label"><input type="checkbox" id="chkStat" checked> 상태</label>
+              <label class="filter-label"><input type="checkbox" id="chkBl" checked> 비엘 (SOC)</label>
+              <label class="filter-label"><input type="checkbox" id="chkReq" checked> 요청 (SOC)</label>
+            </div>
           </div>
         </div>
+        <p id="result">🔎 데이터 로딩 중입니다...</p>
       </div>
-      <p id="result">🔎 데이터 로딩 중입니다...</p>
+
+      <div class="card">
+        <h2>📌 정보를 입력하세요</h2>
+        <div class="form-group row">
+          <span class="label" style="width: 46px;">항차</span>
+          <input type="text" id="voyage" placeholder="예: 0979" onfocus="this.select()" />
+        </div>
+        <div class="form-group row">
+          <span class="label" style="width: 46px;">비엘</span>
+          <input type="text" id="blInput" placeholder="예: 1234" onfocus="this.select()" />
+        </div>
+        <div class="form-group row">
+          <span class="label" style="width: 46px;">TEU</span>
+          <input type="number" id="teuInput" placeholder="예: 301" onfocus="this.select()" />
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="header-group">
+          <h3>📝 메일 제목 양식</h3>
+          <input type="text" id="nameInputNew" placeholder="항차" onfocus="this.select()" />
+          <input type="text" id="blInputNew" placeholder="비엘" onfocus="this.select()" />
+        </div>
+        <div id="sentenceArea"></div>
+      </div>
+
+      <div class="card">
+        <div class="header-group">
+          <h3>🌟 현대글로비스 AN 제목</h3>
+          <input type="text" id="glovisVoyageInput" placeholder="항차" onfocus="this.select()" />
+        </div>
+        <div id="extendedSentenceArea"></div>
+      </div>
+      <div class="card">
+        <div class="header-group">
+          <h3>🛳️ 전체 공지</h3>
+          <input type="text" id="noticeVoyageInput" placeholder="항차" onfocus="this.select()" />
+          <input type="number" id="noticeTeuInput" placeholder="TEU" onfocus="this.select()" />
+        </div>
+        <div id="extendedSentenceArea1"></div>
+      </div>
+      <div class="card">
+        <h3>🌿 하선장소 코드</h3>
+        <div id="disembarkationCodeArea"></div>
+      </div>
+      <div class="card">
+        <div class="header-group" style="margin-bottom: 0;">
+          <h3>💬 안내 문구</h3>
+          <input type="text" id="noticeGuideVoyageInput" placeholder="항차" onfocus="this.select()" />
+          <button id="toggleNoticeGuideBtn" class="icon-btn" title="안내 문구 토글"
+            style="margin-left: auto; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
+            <svg id="noticeGuideDownArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            <svg id="noticeGuideUpArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+              <path d="m18 15-6-6-6 6" />
+            </svg>
+          </button>
+        </div>
+        <div id="noticeGuideArea" style="display: none; margin-top: 15px;"></div>
+      </div>
+
     </div>
 
-    <div class="card">
-      <h2>📌 정보를 입력하세요</h2>
-      <div class="form-group row">
-        <span class="label" style="width: 46px;">항차</span>
-        <input type="text" id="voyage" placeholder="예: 0979" onfocus="this.select()" />
-      </div>
-      <div class="form-group row">
-        <span class="label" style="width: 46px;">비엘</span>
-        <input type="text" id="blInput" placeholder="예: 1234" onfocus="this.select()" />
-      </div>
-      <div class="form-group row">
-        <span class="label" style="width: 46px;">TEU</span>
-        <input type="number" id="teuInput" placeholder="예: 301" onfocus="this.select()" />
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="header-group">
-        <h3>📝 메일 제목 양식</h3>
-        <input type="text" id="nameInputNew" placeholder="항차" onfocus="this.select()" />
-        <input type="text" id="blInputNew" placeholder="비엘" onfocus="this.select()" />
-      </div>
-      <div id="sentenceArea"></div>
-    </div>
-
-    <div class="card">
-      <div class="header-group">
-        <h3>🌟 현대글로비스 AN 제목</h3>
-        <input type="text" id="glovisVoyageInput" placeholder="항차" onfocus="this.select()" />
-      </div>
-      <div id="extendedSentenceArea"></div>
-    </div>
-    <div class="card">
-      <div class="header-group">
-        <h3>🛳️ 전체 공지</h3>
-        <input type="text" id="noticeVoyageInput" placeholder="항차" onfocus="this.select()" />
-        <input type="number" id="noticeTeuInput" placeholder="TEU" onfocus="this.select()" />
-      </div>
-      <div id="extendedSentenceArea1"></div>
-    </div>
-    <div class="card">
-      <h3>🌿 하선장소 코드</h3>
-      <div id="disembarkationCodeArea"></div>
-    </div>
-    <div class="card">
-      <div class="header-group" style="margin-bottom: 0;">
-        <h3>💬 안내 문구</h3>
-        <input type="text" id="noticeGuideVoyageInput" placeholder="항차" onfocus="this.select()" />
-        <button id="toggleNoticeGuideBtn" class="icon-btn" title="안내 문구 토글"
-          style="margin-left: auto; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
-          <svg id="noticeGuideDownArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-          <svg id="noticeGuideUpArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-            <path d="m18 15-6-6-6 6" />
-          </svg>
-        </button>
-      </div>
-      <div id="noticeGuideArea" style="display: none; margin-top: 15px;"></div>
-    </div>
-
-  </div>
-
-  <div id="tab-content-checklist" class="tab-content">
-    <div class="card" id="pre-checklist-card">
-      <h2>✅ 입항 전날 체크리스트</h2>
-      <div class="progress-container">
-        <div class="progress-bar">
-          <div class="progress-fill" id="fill-pre"></div>
+    <div id="tab-content-checklist" class="tab-content">
+      <div class="card" id="pre-checklist-card">
+        <h2>✅ 입항 전날 체크리스트</h2>
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" id="fill-pre"></div>
+          </div>
+          <span class="progress-text" id="text-pre">0%</span>
         </div>
-        <span class="progress-text" id="text-pre">0%</span>
-      </div>
-      <button class="reset-btn icon-btn" data-list="checklist-pre" title="초기화" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-        </svg>
-      </button>
-      <div id="checklist-pre">
-        <div class="check-item"><input type="checkbox" id="pre-task-1" /><span data-for="pre-task-1">BOOKING (벌크
-            주의)</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-2" /><span data-for="pre-task-2">공샤시</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-4" /><span data-for="pre-task-4">선탁서류</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-5" /><span data-for="pre-task-5">벌크디멘션 (벌크
-            사진)</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-6" /><span data-for="pre-task-6">수화물 컨 넘버</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-21" /><span data-for="pre-task-21">현대글로비스
-            AN</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-22" /><span data-for="pre-task-22">선어리스트</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-7" /><span data-for="pre-task-7">특송 AN (메일)</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-8" /><span data-for="pre-task-8">하선지정 리스트 만들기
-            (메일)</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-24" /><span data-for="pre-task-24">전체 공지, 운항팀
-            공지</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-9" /><span data-for="pre-task-9">입항보고서1, 2 전송
-            (메일)</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-10" /><span data-for="pre-task-10">스페셜 리스트 전송
-            (메일)</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-11" /><span data-for="pre-task-11">Soc 리스트
-            (메일)</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-12" /><span data-for="pre-task-12">到付清单</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-13" /><span data-for="pre-task-13">서렌더 체크</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-23" /><span data-for="pre-task-23">프리즘 배정 장소
-            확인</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-25" /><span data-for="pre-task-25">변경 컨/씰번호 확인(특송씰 주의)</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-14" /><span data-for="pre-task-14">긴급리스트
-            (메일)</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-15" /><span data-for="pre-task-15">시스템 하선 / 배정장소
-            관리</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-16" /><span data-for="pre-task-16">중량 정정 공지</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-26" /><span data-for="pre-task-26">적하목록 제출(메일 3건 전송)</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-17" /><span data-for="pre-task-17">평택 공유폴더에
-            저장하기</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-18" /><span data-for="pre-task-18">화물카톡방
-            인수인계</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="pre-task-19" /><span data-for="pre-task-19">DEM DET
-            입금확인</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-20" /><span data-for="pre-task-20">act do,
-            선디오</span></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>✅ 입항 날 체크리스트</h2>
-      <div class="progress-container">
-        <div class="progress-bar">
-          <div class="progress-fill" id="fill-day"></div>
-        </div>
-        <span class="progress-text" id="text-day">0%</span>
-      </div>
-      <button class="reset-btn icon-btn" data-list="checklist-day" title="초기화" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-        </svg>
-      </button>
-      <div id="checklist-day">
-        <div class="check-item"><input type="checkbox" id="day-task-1" /><span data-for="day-task-1">홈페이지 입항 예정 시간
-            입력</span></div>
-        <div class="check-item"><input type="checkbox" id="day-task-2" /><span data-for="day-task-2">조부장님 카톡 전달</span>
-        </div>
-        <div class="check-item"><input type="checkbox" id="day-task-3" /><span data-for="day-task-3">하선신고</span></div>
-        <div class="check-item"><input type="checkbox" id="day-task-4" /><span data-for="day-task-4">세아트랜스, 즉시검사 공유 및
-            안내</span></div>
-        <div class="check-item"><input type="checkbox" id="day-task-5" /><span data-for="day-task-5">FREIGHT LIST
-            本社商务部</span></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="tab-content-todo" class="tab-content">
-    <div class="card">
-      <div class="header-group" style="margin-bottom: 0;">
-        <h2>📝 오늘 할 일</h2>
-        <button id="todoResetBtn" class="reset-btn icon-btn" title="전체 초기화" style="position: static; margin-left: auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="reset-btn icon-btn" data-list="checklist-pre" title="초기화"
+          style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
           </svg>
         </button>
+        <div id="checklist-pre">
+          <div class="check-item"><input type="checkbox" id="pre-task-1" /><span data-for="pre-task-1">BOOKING (벌크
+              주의)</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-2" /><span data-for="pre-task-2">공샤시</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-4" /><span data-for="pre-task-4">선탁서류</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-5" /><span data-for="pre-task-5">벌크디멘션 (벌크
+              사진)</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-6" /><span data-for="pre-task-6">수화물 컨 넘버</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-21" /><span data-for="pre-task-21">현대글로비스
+              AN</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-22" /><span data-for="pre-task-22">선어리스트</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-7" /><span data-for="pre-task-7">특송 AN (메일)</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-8" /><span data-for="pre-task-8">하선지정 리스트 만들기
+              (메일)</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-24" /><span data-for="pre-task-24">전체 공지, 운항팀
+              공지</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-9" /><span data-for="pre-task-9">입항보고서1, 2 전송
+              (메일)</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-10" /><span data-for="pre-task-10">스페셜 리스트 전송
+              (메일)</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-11" /><span data-for="pre-task-11">Soc 리스트
+              (메일)</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-12" /><span data-for="pre-task-12">到付清单</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-13" /><span data-for="pre-task-13">서렌더 체크</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-23" /><span data-for="pre-task-23">프리즘 배정 장소
+              확인</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-25" /><span data-for="pre-task-25">변경 컨/씰번호 확인(특송씰
+              주의)</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-14" /><span data-for="pre-task-14">긴급리스트
+              (메일)</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-15" /><span data-for="pre-task-15">시스템 하선 / 배정장소
+              관리</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-16" /><span data-for="pre-task-16">중량 정정 공지</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-26" /><span data-for="pre-task-26">적하목록 제출(메일 3건
+              전송)</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-17" /><span data-for="pre-task-17">평택 공유폴더에
+              저장하기</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-18" /><span data-for="pre-task-18">화물카톡방
+              인수인계</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="pre-task-19" /><span data-for="pre-task-19">DEM DET
+              입금확인</span></div>
+          <div class="check-item"><input type="checkbox" id="pre-task-20" /><span data-for="pre-task-20">act do,
+              선디오</span></div>
+        </div>
       </div>
-      <div class="form-group row" style="margin-top: 15px;">
-        <input type="text" id="todoInput" placeholder="업무를 입력하고 Enter" style="flex-grow: 1; max-width: none;" />
-        <button id="todoAddBtn" style="border-radius: 8px;">추가</button>
-      </div>
-      <div id="todo-list"></div>
-      <p id="todo-status" style="margin-top: 20px; font-size: 14px; color: #666;"></p>
-    </div>
-  </div>
 
-  <div id="tab-content-freight" class="tab-content">
-    <!-- 📊 기본 운임표 카드 -->
-    <div class="card" style="max-width: 660px; margin-bottom: 20px;">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-        <h2 style="margin: 0;">📊 기본 운임표</h2>
-        <button id="toggleContractFreightBtn" class="icon-btn" title="연간 계약 기업 특별 운임표 토글"
-          style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
-          <svg id="contractFreightDownArrow" width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-          <svg id="contractFreightUpArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-            <path d="m18 15-6-6-6 6" />
+      <div class="card">
+        <h2>✅ 입항 날 체크리스트</h2>
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" id="fill-day"></div>
+          </div>
+          <span class="progress-text" id="text-day">0%</span>
+        </div>
+        <button class="reset-btn icon-btn" data-list="checklist-day" title="초기화"
+          style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
           </svg>
         </button>
+        <div id="checklist-day">
+          <div class="check-item"><input type="checkbox" id="day-task-1" /><span data-for="day-task-1">홈페이지 입항 예정 시간
+              입력</span></div>
+          <div class="check-item"><input type="checkbox" id="day-task-2" /><span data-for="day-task-2">조부장님 카톡 전달</span>
+          </div>
+          <div class="check-item"><input type="checkbox" id="day-task-3" /><span data-for="day-task-3">하선신고</span></div>
+          <div class="check-item"><input type="checkbox" id="day-task-4" /><span data-for="day-task-4">세아트랜스, 즉시검사 공유 및
+              안내</span></div>
+          <div class="check-item"><input type="checkbox" id="day-task-5" /><span data-for="day-task-5">FREIGHT LIST
+              本社商务部</span></div>
+        </div>
       </div>
+    </div>
 
-      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-        <label for="basicFreightExchangeRate" style="font-weight: bold; font-size: 15px;">당일 환율 (USD → KRW):</label>
-        <input type="number" id="basicFreightExchangeRate" placeholder="환율 입력 (예: 1480.5)" step="0.1"
-          style="width: 180px; padding: 8px 12px; font-size: 15px;" />
-        <span style="font-size: 14px; color: #666;" class="rate-unit-text">원 / $</span>
-      </div>
-
-      <div style="overflow-x: auto;">
-        <table id="basicFreightResultTable"
-          style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-          <thead>
-            <tr style="background-color: #2b579a; color: #ffffff;">
-              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">기본</th>
-              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20피트</th>
-              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40피트</th>
-              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">45피트</th>
-              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20냉동</th>
-              <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40냉동</th>
-            </tr>
-          </thead>
-          <tbody id="basicFreightResultBody">
-          </tbody>
-        </table>
-      </div>
-
-      <!-- 📦 B/L 다중 컨테이너 총 운임 계산 영역 -->
-      <div id="blFreightCalculatorContainer" style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-          <h3 style="font-size: 15px; color: inherit; margin: 0; font-weight: bold;">📦 B/L 다중 컨테이너 총 운임 계산</h3>
-          <button id="blQtyResetBtn" class="icon-btn" title="컨테이너 수량 초기화"
-            style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    <div id="tab-content-todo" class="tab-content">
+      <div class="card">
+        <div class="header-group" style="margin-bottom: 0;">
+          <h2>📝 오늘 할 일</h2>
+          <button id="todoResetBtn" class="reset-btn icon-btn" title="전체 초기화"
+            style="position: static; margin-left: auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
             </svg>
           </button>
         </div>
+        <div class="form-group row" style="margin-top: 15px;">
+          <input type="text" id="todoInput" placeholder="업무를 입력하고 Enter" style="flex-grow: 1; max-width: none;" />
+          <button id="todoAddBtn" style="border-radius: 8px;">추가</button>
+        </div>
+        <div id="todo-list"></div>
+        <p id="todo-status" style="margin-top: 20px; font-size: 14px; color: #666;"></p>
+      </div>
+    </div>
 
-        <!-- 수량 입력 그룹 -->
-        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="blQty20" style="font-weight: bold; font-size: 14px;">20':</label>
-            <input type="text" inputmode="numeric" id="blQty20" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="blQty40" style="font-weight: bold; font-size: 14px;">40':</label>
-            <input type="text" inputmode="numeric" id="blQty40" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="blQty45" style="font-weight: bold; font-size: 14px;">45':</label>
-            <input type="text" inputmode="numeric" id="blQty45" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="blQty20rf" style="font-weight: bold; font-size: 14px;">20RF:</label>
-            <input type="text" inputmode="numeric" id="blQty20rf" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="blQty40rf" style="font-weight: bold; font-size: 14px;">40RF:</label>
-            <input type="text" inputmode="numeric" id="blQty40rf" value="0" placeholder="0" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
-          </div>
+    <div id="tab-content-freight" class="tab-content">
+      <!-- 📊 기본 운임표 카드 -->
+      <div class="card" style="max-width: 660px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+          <h2 style="margin: 0;">📊 기본 운임표</h2>
+          <button id="toggleContractFreightBtn" class="icon-btn" title="연간 계약 기업 특별 운임표 토글"
+            style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
+            <svg id="contractFreightDownArrow" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            <svg id="contractFreightUpArrow" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              style="display: none;">
+              <path d="m18 15-6-6-6 6" />
+            </svg>
+          </button>
         </div>
 
-        <!-- B/L 계산 결과 표 -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+          <label for="basicFreightExchangeRate" style="font-weight: bold; font-size: 15px;">당일 환율 (USD → KRW):</label>
+          <input type="number" id="basicFreightExchangeRate" placeholder="환율 입력 (예: 1480.5)" step="0.1"
+            style="width: 180px; padding: 8px 12px; font-size: 15px;" />
+          <span style="font-size: 14px; color: #666;" class="rate-unit-text">원 / $</span>
+        </div>
+
         <div style="overflow-x: auto;">
-          <table id="blFreightResultTable"
+          <table id="basicFreightResultTable"
             style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <thead>
               <tr style="background-color: #2b579a; color: #ffffff;">
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">구분</th>
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">총 컨테이너 수량</th>
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">Collect TTL</th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">기본</th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20피트
+                </th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40피트
+                </th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">45피트
+                </th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20냉동
+                </th>
+                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40냉동
+                </th>
               </tr>
             </thead>
-            <tbody id="blFreightResultBody">
+            <tbody id="basicFreightResultBody">
             </tbody>
           </table>
         </div>
-      </div>
 
-      <!-- 🏢 연간 계약 기업 특별 운임표 영역 (접기/펼치기) -->
-      <div id="contractFreightContainer"
-        style="display: none; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
-        <h3 style="font-size: 16px; color: #3949ab; margin: 0 0 12px 0; font-weight: bold;">🏢 연간 계약 기업 특별 운임표</h3>
+        <!-- 📦 B/L 다중 컨테이너 총 운임 계산 영역 -->
+        <div id="blFreightCalculatorContainer"
+          style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <h3 style="font-size: 15px; color: inherit; margin: 0; font-weight: bold;">📦 B/L 다중 컨테이너 총 운임 계산</h3>
+            <button id="blQtyResetBtn" class="icon-btn" title="컨테이너 수량 초기화"
+              style="display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+              </svg>
+            </button>
+          </div>
 
-        <!-- 현대글로비스 -->
-        <div style="margin-bottom: 10px;">
+          <!-- 수량 입력 그룹 -->
+          <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="blQty20" style="font-weight: bold; font-size: 14px;">20':</label>
+              <input type="text" inputmode="numeric" id="blQty20" value="0" placeholder="0"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="blQty40" style="font-weight: bold; font-size: 14px;">40':</label>
+              <input type="text" inputmode="numeric" id="blQty40" value="0" placeholder="0"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="blQty45" style="font-weight: bold; font-size: 14px;">45':</label>
+              <input type="text" inputmode="numeric" id="blQty45" value="0" placeholder="0"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="blQty20rf" style="font-weight: bold; font-size: 14px;">20RF:</label>
+              <input type="text" inputmode="numeric" id="blQty20rf" value="0" placeholder="0"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="blQty40rf" style="font-weight: bold; font-size: 14px;">40RF:</label>
+              <input type="text" inputmode="numeric" id="blQty40rf" value="0" placeholder="0"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                style="width: 65px; padding: 8px 10px; font-size: 15px; text-align: center; box-sizing: border-box;" />
+            </div>
+          </div>
+
+          <!-- B/L 계산 결과 표 -->
           <div style="overflow-x: auto;">
-            <table id="glovisFreightTable"
+            <table id="blFreightResultTable"
               style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
               <thead>
                 <tr style="background-color: #2b579a; color: #ffffff;">
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">구분
+                  </th>
+                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">총
+                    컨테이너 수량</th>
                   <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
-                    현대글로비스</th>
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20피트
-                  </th>
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40피트
-                  </th>
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">45피트
-                  </th>
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20냉동
-                  </th>
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40냉동
-                  </th>
+                    Collect TTL</th>
                 </tr>
               </thead>
-              <tbody id="glovisFreightResultBody">
+              <tbody id="blFreightResultBody">
               </tbody>
             </table>
           </div>
         </div>
-      </div>
-    </div>
 
-    <div class="card" style="max-width: 100%;">
-      <h2>🚚 운임 필터</h2>
-      <div class="file-input-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-        <input type="file" id="freightExcelFile" accept=".xlsx, .xls" />
-        
-        <!-- 🔄 운임 클라우드 최신 데이터 새로고침 버튼 (모든 팀원 공통) -->
-        <button type="button" id="reloadFreightFromCloudBtn" class="icon-btn" title="클라우드 최신 운임 데이터 새로고침" onclick="initLoadFreightData(true)" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-          </svg>
-        </button>
+        <!-- 🏢 연간 계약 기업 특별 운임표 영역 (접기/펼치기) -->
+        <div id="contractFreightContainer"
+          style="display: none; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
+          <h3 style="font-size: 16px; color: #3949ab; margin: 0 0 12px 0; font-weight: bold;">🏢 연간 계약 기업 특별 운임표</h3>
 
-        <!-- ☁️⬆️ 운임 클라우드 동기화 업로드 버튼 (관리자 전용) -->
-        <button type="button" id="syncFreightToCloudBtn" class="icon-btn" title="현재 운임 엑셀 데이터를 클라우드에 동기화 (관리자 전용)" onclick="syncFreightDataToSupabase()" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
-            <path d="M12 12v9"></path>
-            <path d="m16 16-4-4-4 4"></path>
-          </svg>
-        </button>
-      </div>
-      <!-- 항상 입력창 바로 위에 단독행으로 표시되는 상태 영역 -->
-      <div style="margin: 4px 0 10px 2px; min-height: 18px;">
-        <span id="freightFileStatusIndicator" class="file-status-text"></span>
-      </div>
-      <div class="search-input-wrapper"
-        style="margin-bottom: 15px; width: 100%; display: flex; gap: 10px; align-items: flex-start;">
-        <select id="freightSearchFilter" class="freight-select">
-          <option value="consignee" selected>Consignee</option>
-          <option value="ioDate">I/O Date</option>
-          <option value="voyage">VOYAGE</option>
-          <option value="notify">Notify</option>
-          <option value="remark">REMARK</option>
-          <option value="item">ITEM</option>
-          <option value="description">DESCRIPTION</option>
-          <option value="shipper">SHIPPER</option>
-        </select>
-        <input type="text" id="freightSearchInput" placeholder="Consignee 정보를 입력하세요" onfocus="this.select()"
-          style="max-width: none; flex-grow: 1; box-sizing: border-box;" />
-        <!-- 열 표시 필터 영역 -->
-        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
-          <div class="filter-wrapper">
-            <button id="freightColFilterBtn" class="icon-btn" title="항목 표시/숨기기">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="9" y1="3" x2="9" y2="21"></line>
-              </svg>
-            </button>
-            <div id="freightColFilterPanel" class="filter-panel"
-              style="width: 320px; max-height: 400px; overflow-y: auto; right: 0;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <span style="font-weight: bold; font-size: 14px;">표시할 항목 선택</span>
-                <div>
-                  <button id="freightColCheckAllBtn"
-                    style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">전체선택</button>
-                  <button id="freightColUncheckAllBtn"
-                    style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">모두해제</button>
-                </div>
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;" id="freightColCheckboxes">
-                <!-- JS에서 동적으로 생성 -->
-              </div>
+          <!-- 현대글로비스 -->
+          <div style="margin-bottom: 10px;">
+            <div style="overflow-x: auto;">
+              <table id="glovisFreightTable"
+                style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <thead>
+                  <tr style="background-color: #2b579a; color: #ffffff;">
+                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                      현대글로비스</th>
+                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                      20피트
+                    </th>
+                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                      40피트
+                    </th>
+                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                      45피트
+                    </th>
+                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                      20냉동
+                    </th>
+                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                      40냉동
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="glovisFreightResultBody">
+                </tbody>
+              </table>
             </div>
           </div>
-          <button id="freightResetFiltersBtn" class="icon-btn" title="필터 및 정렬 일괄 초기화">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        </div>
+      </div>
+
+      <div class="card" style="max-width: 100%;">
+        <h2>🚚 운임 필터</h2>
+        <div class="file-input-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <input type="file" id="freightExcelFile" accept=".xlsx, .xls" />
+
+          <!-- 🔄 운임 클라우드 최신 데이터 새로고침 버튼 (모든 팀원 공통) -->
+          <button type="button" id="reloadFreightFromCloudBtn" class="icon-btn" title="클라우드 최신 운임 데이터 새로고침"
+            onclick="initLoadFreightData(true)"
+            style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+
+          <!-- ☁️⬆️ 운임 클라우드 동기화 업로드 버튼 (관리자 전용) -->
+          <button type="button" id="syncFreightToCloudBtn" class="icon-btn" title="현재 운임 엑셀 데이터를 클라우드에 동기화 (관리자 전용)"
+            onclick="syncFreightDataToSupabase()"
+            style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+              <path d="M12 12v9"></path>
+              <path d="m16 16-4-4-4 4"></path>
             </svg>
           </button>
         </div>
-      </div>
-      <div style="overflow-x: auto;">
-        <table id="freightTable"
-          style="width: 100%; border-collapse: collapse; display: none; margin-top: 10px; font-size: 14px; white-space: nowrap;">
-          <thead>
-            <tr>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">I/O Date</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/L NO</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cargo</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/T</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee Code</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Notify</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Actual Shipper</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">SHIPPER</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">20'</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">40'</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">45'</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">T/S</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">ITEM</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">DESCRIPTION</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">REMARK</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CRS</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">LSS</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">PSS</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">FRT</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">ESC</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CAF</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">BAF</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">THC</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CCF</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">DOC</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">WFG</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">TSF</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">PSC</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">EBS</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CFS</th>
-              <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Collect TTL</th>
-            </tr>
-          </thead>
-          <tbody id="freightTableBody">
-          </tbody>
-        </table>
-        <div id="freightLoadMoreContainer" style="display: none; text-align: center; margin-top: 15px;">
-          <button id="freightLoadMoreBtn" style="border-radius: 8px; width: 100%; max-width: 300px;">나머지 더보기 확인</button>
+        <!-- 항상 입력창 바로 위에 단독행으로 표시되는 상태 영역 -->
+        <div style="margin: 4px 0 10px 2px; min-height: 18px;">
+          <span id="freightFileStatusIndicator" class="file-status-text"></span>
         </div>
-        <p id="freightEmptyMessage" style="text-align: center; color: #666; margin-top: 20px; font-weight: bold;">🔎 엑셀
-          파일을 업로드해주세요.</p>
-      </div>
-    </div>
-  </div>
-
-
-  <div id="tab-content-cal" class="tab-content">
-    <div class="card">
-      <h2>📆 FREE TIME 계산기 (시작일 포함)</h2>
-      <div class="form-group row">
-        <span class="label">시작일</span>
-        <input type="date" id="startDate" oninput="updateEndDate()" />
-        <span id="startWeekday" class="weekday-label"></span>
-      </div>
-      <div class="form-group row">
-        <span class="label">기간(일)</span>
-        <input type="number" id="duration" oninput="updateEndDate()" />
-      </div>
-      <div class="form-group row">
-        <span class="label">종료일</span>
-        <input type="text" id="endDateOutput" disabled class="readonly-box" />
-      </div>
-    </div>
-  </div>
-
-  <div id="tab-content-memo" class="tab-content">
-    <div class="card">
-      <h2>📝 메모장</h2>
-      <textarea id="memo" placeholder="여기에 메모를 작성하세요..." spellcheck="false"></textarea>
-    </div>
-  </div>
-
-  <div id="tab-content-links" class="tab-content">
-    <div class="card">
-      <h2>🔗 핵심 시스템 링크</h2>
-      <div class="form-group">
-        <p><a href="#" target="_blank">🚢 평택항만공사 시스템</a></p>
-        <p><a href="#" target="_blank">📦 관세청 UNI-PASS 로그인</a></p>
-        <p><a href="#" target="_blank">🌐 선사 EDI 시스템</a></p>
-        <p><a href="#" target="_blank">📬 사내 웹 메일</a></p>
-      </div>
-    </div>
-    <div class="card">
-      <h2>📞 주요 연락처</h2>
-      <div class="form-group">
-        <p>▪ 운항팀: 02-1234-5678</p>
-        <p>▪ 영업팀: 02-1234-5678</p>
-      </div>
-    </div>
-  </div>
-
-  <div id="tab-content-calendar" class="tab-content">
-    <div class="card">
-      <div class="calendar-top-header">
-        <h2>일정 캘린더</h2>
-        <button id="toggleViewBtn" style="border-radius: 8px;">목록 보기</button>
-      </div>
-
-      <div id="calendarView">
-        <div class="calendar-nav">
-          <button id="prevMonthBtn">&lt;</button>
-          <span id="calendarTitle"></span>
-          <button id="nextMonthBtn">&gt;</button>
+        <div class="search-input-wrapper"
+          style="margin-bottom: 15px; width: 100%; display: flex; gap: 10px; align-items: flex-start;">
+          <select id="freightSearchFilter" class="freight-select">
+            <option value="consignee" selected>Consignee</option>
+            <option value="ioDate">I/O Date</option>
+            <option value="voyage">VOYAGE</option>
+            <option value="notify">Notify</option>
+            <option value="remark">REMARK</option>
+            <option value="item">ITEM</option>
+            <option value="description">DESCRIPTION</option>
+            <option value="shipper">SHIPPER</option>
+          </select>
+          <input type="text" id="freightSearchInput" placeholder="Consignee 정보를 입력하세요" onfocus="this.select()"
+            style="max-width: none; flex-grow: 1; box-sizing: border-box;" />
+          <!-- 열 표시 필터 영역 -->
+          <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+            <div class="filter-wrapper">
+              <button id="freightColFilterBtn" class="icon-btn" title="항목 표시/숨기기">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="9" y1="3" x2="9" y2="21"></line>
+                </svg>
+              </button>
+              <div id="freightColFilterPanel" class="filter-panel"
+                style="width: 320px; max-height: 400px; overflow-y: auto; right: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                  <span style="font-weight: bold; font-size: 14px;">표시할 항목 선택</span>
+                  <div>
+                    <button id="freightColCheckAllBtn"
+                      style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">전체선택</button>
+                    <button id="freightColUncheckAllBtn"
+                      style="padding: 4px 8px; font-size: 12px; border-radius: 6px;">모두해제</button>
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;" id="freightColCheckboxes">
+                  <!-- JS에서 동적으로 생성 -->
+                </div>
+              </div>
+            </div>
+            <button id="freightResetFiltersBtn" class="icon-btn" title="필터 및 정렬 일괄 초기화">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div class="calendar-container">
-          <table class="calendar-table">
+        <div style="overflow-x: auto;">
+          <table id="freightTable"
+            style="width: 100%; border-collapse: collapse; display: none; margin-top: 10px; font-size: 14px; white-space: nowrap;">
             <thead>
               <tr>
-                <th style="color: #ef5350;">일</th>
-                <th>월</th>
-                <th>화</th>
-                <th>수</th>
-                <th>목</th>
-                <th>금</th>
-                <th style="color: #42a5f5;">토</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">I/O Date</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/L NO</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cargo</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/T</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee Code</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Notify</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Actual Shipper</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">SHIPPER</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">20'</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">40'</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">45'</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">T/S</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">ITEM</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">DESCRIPTION</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">REMARK</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CRS</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">LSS</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">PSS</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">FRT</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">ESC</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CAF</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">BAF</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">THC</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CCF</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">DOC</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">WFG</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">TSF</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">PSC</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">EBS</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CFS</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Collect TTL</th>
               </tr>
             </thead>
-            <tbody id="calendarBody">
+            <tbody id="freightTableBody">
             </tbody>
           </table>
-        </div>
-
-        <div class="schedule-area">
-          <h3 id="selectedDateTitle" style="font-size: 18px; margin-bottom: 12px;">날짜를 선택하세요</h3>
-          <ul id="scheduleList" class="schedule-list">
-          </ul>
-
-          <div class="form-group" style="margin-bottom: 8px;">
-            <input type="text" id="scheduleTitleInput" placeholder="일정 제목" style="width: 100%; margin-bottom: 6px;">
-            <input type="text" id="scheduleDescInput" placeholder="설명 (선택)" style="width: 100%;">
+          <div id="freightLoadMoreContainer" style="display: none; text-align: center; margin-top: 15px;">
+            <button id="freightLoadMoreBtn" style="border-radius: 8px; width: 100%; max-width: 300px;">나머지 더보기
+              확인</button>
           </div>
-          <button id="addScheduleBtn" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">일정 추가</button>
-
-          <!-- 해당 일자 항차 수동 오버라이드 영역 -->
-          <div id="voyageOverrideArea" class="voyage-override-panel" style="display: none;">
-            <!-- 항차 계산 기준 설정 영역 (이동됨) -->
-            <div class="calendar-voyage-settings"
-              style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
-              <h4 style="font-size: 14px; color: #3949ab; margin: 0 0 4px 0; font-weight: bold;">🚢 항차 계산 기준 설정</h4>
-              <div style="display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px; width: 100%;">
-                <label style="display: flex; align-items: center; gap: 4px; font-size: 13px;">
-                  기준 화요일: <input type="date" id="calendarBaseDate"
-                    style="padding: 4px; font-size: 11px; width: 100px;" />
-                </label>
-                <label style="display: flex; align-items: center; gap: 4px; font-size: 13px;">
-                  기준 항차: <input type="number" id="calendarBaseVoyage" placeholder="예: 1115"
-                    style="padding: 4px; font-size: 11px; width: 50px;" />
-                </label>
-                <button id="saveCalendarSettingsBtn" style="padding: 4px 8px; font-size: 11px; border-radius: 4px;">설정
-                  저장</button>
-              </div>
-            </div>
-
-            <div style="margin-top: 5px;">
-              <h4 style="font-size: 14px; color: #3949ab; margin: 0 0 10px 0; font-weight: bold;">🛳️ 해당 일자 휴항(결항) 설정
-              </h4>
-              <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 12px;">
-                <label
-                  style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">
-                  <input type="checkbox" id="cancelImportCheckbox" /> 수입항차(E) 휴항
-                </label>
-                <label
-                  style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">
-                  <input type="checkbox" id="cancelExportCheckbox" /> 수출항차(W) 휴항
-                </label>
-              </div>
-              <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
-                <span
-                  style="font-size: 12px; color: #666; font-weight: bold; white-space: nowrap; flex-shrink: 0; width: 70px;">메모/비고:</span>
-                <input type="text" id="voyageOverrideInput" placeholder="예: 특이사항 기재 시 항차 대신 표시됨"
-                  style="flex-grow: 1; max-width: none; font-size: 13px; padding: 6px 10px; height: 32px;" />
-                <button id="saveVoyageOverrideBtn"
-                  style="padding: 6px 12px; font-size: 12px; border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">저장</button>
-              </div>
-            </div>
-          </div>
+          <p id="freightEmptyMessage" style="text-align: center; color: #666; margin-top: 20px; font-weight: bold;">🔎
+            엑셀
+            파일을 업로드해주세요.</p>
         </div>
       </div>
-
-      <div id="listView" style="display: none;">
-        <ul id="allEventsList" class="schedule-list">
-        </ul>
-      </div>
-
     </div>
-  </div>
 
-  <div id="tab-content-discharge" class="tab-content">
-    <style>
-      /* 양하 시간 확인 전용 스타일 */
-      .discharge-spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 3px solid rgba(57, 73, 171, 0.3);
-        border-radius: 50%;
-        border-top-color: #3949ab;
-        animation: discharge-spin 1s ease-in-out infinite;
-        margin-right: 8px;
-        vertical-align: middle;
-      }
 
-      @keyframes discharge-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .discharge-table-container {
-        overflow-x: auto;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-        max-height: 500px;
-        margin-top: 15px;
-      }
-
-      .discharge-table-container table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-        font-size: 14px;
-      }
-
-      .discharge-table-container th,
-      .discharge-table-container td {
-        padding: 1rem;
-        border-bottom: 1px solid #ddd;
-      }
-
-      .discharge-table-container th {
-        background-color: #f5f7fa;
-        font-weight: bold;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-      }
-
-      .dark-mode .discharge-table-container {
-        border-color: #444;
-      }
-
-      .dark-mode .discharge-table-container th {
-        background-color: #2a2a2a;
-        border-bottom: 1px solid #444;
-      }
-
-      .dark-mode .discharge-table-container td {
-        border-bottom: 1px solid #444;
-      }
-
-      .discharge-status-unknown {
-        color: #ef4444;
-        font-weight: 600;
-      }
-
-      .discharge-status-found {
-        color: #10b981;
-        font-weight: 600;
-      }
-
-      .discharge-badge {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.85rem;
-        font-weight: bold;
-        background-color: #f1f5f9;
-        border: 1px solid #cbd5e1;
-        color: #333;
-      }
-
-      .discharge-badge.no5 {
-        background-color: #dbeafe;
-        color: #1e40af;
-        border-color: #bfdbfe;
-      }
-
-      .discharge-badge.no3 {
-        background-color: #fef08a;
-        color: #854d0e;
-        border-color: #fde047;
-      }
-
-      .discharge-badge.no1 {
-        background-color: #ffedd5;
-        color: #9a3412;
-        border-color: #fed7aa;
-      }
-
-      .dark-mode .discharge-badge {
-        background-color: #333;
-        border-color: #555;
-        color: #e0e0e0;
-      }
-
-      .dark-mode .discharge-badge.no5 {
-        background-color: #1e3a8a;
-        color: #bfdbfe;
-        border-color: #1e40af;
-      }
-
-      .dark-mode .discharge-badge.no3 {
-        background-color: #713f12;
-        color: #fef08a;
-        border-color: #854d0e;
-      }
-
-      .dark-mode .discharge-badge.no1 {
-        background-color: #7c2d12;
-        color: #ffedd5;
-        border-color: #9a3412;
-      }
-
-      .discharge-empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: #64748b;
-      }
-
-      .dark-mode .discharge-empty-state {
-        color: #aaa;
-      }
-
-      .discharge-canvas-wrapper {
-        position: relative;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        background: #eee;
-        border-radius: 8px;
-        overflow: hidden;
-        /* 좌우 스크롤 제거 */
-        max-height: 800px;
-        margin-top: 10px;
-      }
-
-      .dark-mode .discharge-canvas-wrapper {
-        background: #2a2a2a;
-      }
-
-      .discharge-canvas-wrapper canvas {
-        width: 100%;
-        /* 카드 너비에 맞춤 */
-        height: auto;
-        /* 비율 유지 */
-      }
-
-      .discharge-visual-page-group {
-        margin-bottom: 20px;
-        width: 100%;
-      }
-
-      .discharge-visual-page-title {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 8px;
-        padding-left: 8px;
-        border-left: 4px solid #3949ab;
-      }
-
-      .dark-mode .discharge-visual-page-title {
-        color: #e0e0e0;
-        border-color: #1e88e5;
-      }
-
-      #dischargeContainerList {
-        min-height: 100px;
-        /* 기존 공통 스타일 덮어쓰기 */
-        height: 200px;
-        /* 높이 조정 */
-        max-height: 200px;
-        overflow-y: auto;
-        resize: none;
-        /* 레이아웃 유지 위해 크기 조절 비활성화 */
-      }
-
-      .card.discharge-wide {
-        max-width: 1200px !important;
-      }
-
-      .discharge-upper-content {
-        max-width: 612px;
-        width: 100%;
-      }
-    </style>
-    <div class="card" id="dischargeCard" style="max-width: 660px; transition: max-width 0.3s ease;">
-      <div class="discharge-upper-content">
-        <h2>⏳ 선박 양하 시간 계산기</h2>
-
+    <div id="tab-content-cal" class="tab-content">
+      <div class="card">
+        <h2>📆 FREE TIME 계산기 (시작일 포함)</h2>
         <div class="form-group row">
-          <span class="label" style="width: 150px;">Stowage Plan PDF</span>
-          <div class="file-input-group" style="margin-bottom: 0;">
-            <input type="file" id="dischargePdfFile" accept="application/pdf" style="max-width: 250px;">
-          </div>
+          <span class="label">시작일</span>
+          <input type="date" id="startDate" oninput="updateEndDate()" />
+          <span id="startWeekday" class="weekday-label"></span>
         </div>
-
         <div class="form-group row">
-          <span class="label" style="width: 150px;">모선 입항 시간(ETA)</span>
-          <input type="text" id="dischargeEtaTime" placeholder="예: 1430 (숫자만 4자리)" maxlength="5" />
+          <span class="label">기간(일)</span>
+          <input type="number" id="duration" oninput="updateEndDate()" />
         </div>
+        <div class="form-group row">
+          <span class="label">종료일</span>
+          <input type="text" id="endDateOutput" disabled class="readonly-box" />
+        </div>
+      </div>
+    </div>
 
+    <div id="tab-content-memo" class="tab-content">
+      <div class="card">
+        <h2>📝 메모장</h2>
+        <textarea id="memo" placeholder="여기에 메모를 작성하세요..." spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div id="tab-content-links" class="tab-content">
+      <div class="card">
+        <h2>🔗 핵심 시스템 링크</h2>
         <div class="form-group">
-          <div style="font-weight: bold; margin-bottom: 8px; margin-top:10px;">조회할 컨테이너 번호</div>
-          <textarea id="dischargeContainerList"
-            placeholder="ABCD1234567&#10;EFGH8901234&#10;(줄바꿈으로 구분하여 여러 개 입력 가능)"></textarea>
-        </div>
-
-        <div id="dischargeLoading"
-          style="display: none; text-align: center; margin: 15px 0; color: #3949ab; font-weight: bold;">
-          <span class="discharge-spinner"></span> PDF 분석 중... (잠시만 기다려주세요)
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 10px; margin-top: 25px; margin-bottom: 10px;">
-          <h3 style="margin: 0;">계산 결과</h3>
-          <button id="copyDischargeResultBtn" style="padding: 6px 12px;">📋 복사</button>
-        </div>
-        <div class="discharge-table-container">
-          <table id="dischargeResultTable">
-            <thead>
-              <tr>
-                <th>컨테이너 번호</th>
-                <th>예상 양하 시간</th>
-                <th>위치 (Deck/X축/Y축)</th>
-              </tr>
-            </thead>
-            <tbody id="dischargeResultBody">
-              <tr>
-                <td colspan="3" class="discharge-empty-state">
-                  PDF 파일을 업로드하고 기준 시간 및 컨테이너 번호를 입력해주세요. 결과가 실시간 표시됩니다.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <p><a href="#" target="_blank">🚢 평택항만공사 시스템</a></p>
+          <p><a href="#" target="_blank">📦 관세청 UNI-PASS 로그인</a></p>
+          <p><a href="#" target="_blank">🌐 선사 EDI 시스템</a></p>
+          <p><a href="#" target="_blank">📬 사내 웹 메일</a></p>
         </div>
       </div>
-
-      <div id="dischargeVisualizerContainer" style="display: none; margin-top: 30px;">
-        <div
-          style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-          <h3 style="margin: 0;">🗺️ 적부도 위치 시각화</h3>
-          <button id="toggleDischargeWideBtn" style="padding: 6px 12px; font-size: 13px;">🔍 크게 보기</button>
+      <div class="card">
+        <h2>📞 주요 연락처</h2>
+        <div class="form-group">
+          <p>▪ 운항팀: 02-1234-5678</p>
+          <p>▪ 영업팀: 02-1234-5678</p>
         </div>
-        <div id="dischargeVisualPagesList"></div>
       </div>
     </div>
-  </div>
+
+    <div id="tab-content-calendar" class="tab-content">
+      <div class="card">
+        <div class="calendar-top-header">
+          <h2>일정 캘린더</h2>
+          <button id="toggleViewBtn" style="border-radius: 8px;">목록 보기</button>
+        </div>
+
+        <div id="calendarView">
+          <div class="calendar-nav">
+            <button id="prevMonthBtn">&lt;</button>
+            <span id="calendarTitle"></span>
+            <button id="nextMonthBtn">&gt;</button>
+          </div>
+          <div class="calendar-container">
+            <table class="calendar-table">
+              <thead>
+                <tr>
+                  <th style="color: #ef5350;">일</th>
+                  <th>월</th>
+                  <th>화</th>
+                  <th>수</th>
+                  <th>목</th>
+                  <th>금</th>
+                  <th style="color: #42a5f5;">토</th>
+                </tr>
+              </thead>
+              <tbody id="calendarBody">
+              </tbody>
+            </table>
+          </div>
+
+          <div class="schedule-area">
+            <h3 id="selectedDateTitle" style="font-size: 18px; margin-bottom: 12px;">날짜를 선택하세요</h3>
+            <ul id="scheduleList" class="schedule-list">
+            </ul>
+
+            <div class="form-group" style="margin-bottom: 8px;">
+              <input type="text" id="scheduleTitleInput" placeholder="일정 제목" style="width: 100%; margin-bottom: 6px;">
+              <input type="text" id="scheduleDescInput" placeholder="설명 (선택)" style="width: 100%;">
+            </div>
+            <button id="addScheduleBtn" style="width: 100%; border-radius: 8px; margin-bottom: 10px;">일정 추가</button>
+
+            <!-- 해당 일자 항차 수동 오버라이드 영역 -->
+            <div id="voyageOverrideArea" class="voyage-override-panel" style="display: none;">
+              <!-- 항차 계산 기준 설정 영역 (이동됨) -->
+              <div class="calendar-voyage-settings"
+                style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+                <h4 style="font-size: 14px; color: #3949ab; margin: 0 0 4px 0; font-weight: bold;">🚢 항차 계산 기준 설정</h4>
+                <div style="display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px; width: 100%;">
+                  <label style="display: flex; align-items: center; gap: 4px; font-size: 13px;">
+                    기준 화요일: <input type="date" id="calendarBaseDate"
+                      style="padding: 4px; font-size: 11px; width: 100px;" />
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 4px; font-size: 13px;">
+                    기준 항차: <input type="number" id="calendarBaseVoyage" placeholder="예: 1115"
+                      style="padding: 4px; font-size: 11px; width: 50px;" />
+                  </label>
+                  <button id="saveCalendarSettingsBtn" style="padding: 4px 8px; font-size: 11px; border-radius: 4px;">설정
+                    저장</button>
+                </div>
+              </div>
+
+              <div style="margin-top: 5px;">
+                <h4 style="font-size: 14px; color: #3949ab; margin: 0 0 10px 0; font-weight: bold;">🛳️ 해당 일자 휴항(결항) 설정
+                </h4>
+                <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 12px;">
+                  <label
+                    style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">
+                    <input type="checkbox" id="cancelImportCheckbox" /> 수입항차(E) 휴항
+                  </label>
+                  <label
+                    style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: bold; cursor: pointer;">
+                    <input type="checkbox" id="cancelExportCheckbox" /> 수출항차(W) 휴항
+                  </label>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+                  <span
+                    style="font-size: 12px; color: #666; font-weight: bold; white-space: nowrap; flex-shrink: 0; width: 70px;">메모/비고:</span>
+                  <input type="text" id="voyageOverrideInput" placeholder="예: 특이사항 기재 시 항차 대신 표시됨"
+                    style="flex-grow: 1; max-width: none; font-size: 13px; padding: 6px 10px; height: 32px;" />
+                  <button id="saveVoyageOverrideBtn"
+                    style="padding: 6px 12px; font-size: 12px; border-radius: 8px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">저장</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="listView" style="display: none;">
+          <ul id="allEventsList" class="schedule-list">
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="tab-content-discharge" class="tab-content">
+      <style>
+        /* 양하 시간 확인 전용 스타일 */
+        .discharge-spinner {
+          display: inline-block;
+          width: 20px;
+          height: 20px;
+          border: 3px solid rgba(57, 73, 171, 0.3);
+          border-radius: 50%;
+          border-top-color: #3949ab;
+          animation: discharge-spin 1s ease-in-out infinite;
+          margin-right: 8px;
+          vertical-align: middle;
+        }
+
+        @keyframes discharge-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .discharge-table-container {
+          overflow-x: auto;
+          border-radius: 8px;
+          border: 1px solid #ccc;
+          max-height: 500px;
+          margin-top: 15px;
+        }
+
+        .discharge-table-container table {
+          width: 100%;
+          border-collapse: collapse;
+          text-align: left;
+          font-size: 14px;
+        }
+
+        .discharge-table-container th,
+        .discharge-table-container td {
+          padding: 1rem;
+          border-bottom: 1px solid #ddd;
+        }
+
+        .discharge-table-container th {
+          background-color: #f5f7fa;
+          font-weight: bold;
+          position: sticky;
+          top: 0;
+          z-index: 1;
+        }
+
+        .dark-mode .discharge-table-container {
+          border-color: #444;
+        }
+
+        .dark-mode .discharge-table-container th {
+          background-color: #2a2a2a;
+          border-bottom: 1px solid #444;
+        }
+
+        .dark-mode .discharge-table-container td {
+          border-bottom: 1px solid #444;
+        }
+
+        .discharge-status-unknown {
+          color: #ef4444;
+          font-weight: 600;
+        }
+
+        .discharge-status-found {
+          color: #10b981;
+          font-weight: 600;
+        }
+
+        .discharge-badge {
+          display: inline-block;
+          padding: 0.25rem 0.75rem;
+          border-radius: 9999px;
+          font-size: 0.85rem;
+          font-weight: bold;
+          background-color: #f1f5f9;
+          border: 1px solid #cbd5e1;
+          color: #333;
+        }
+
+        .discharge-badge.no5 {
+          background-color: #dbeafe;
+          color: #1e40af;
+          border-color: #bfdbfe;
+        }
+
+        .discharge-badge.no3 {
+          background-color: #fef08a;
+          color: #854d0e;
+          border-color: #fde047;
+        }
+
+        .discharge-badge.no1 {
+          background-color: #ffedd5;
+          color: #9a3412;
+          border-color: #fed7aa;
+        }
+
+        .dark-mode .discharge-badge {
+          background-color: #333;
+          border-color: #555;
+          color: #e0e0e0;
+        }
+
+        .dark-mode .discharge-badge.no5 {
+          background-color: #1e3a8a;
+          color: #bfdbfe;
+          border-color: #1e40af;
+        }
+
+        .dark-mode .discharge-badge.no3 {
+          background-color: #713f12;
+          color: #fef08a;
+          border-color: #854d0e;
+        }
+
+        .dark-mode .discharge-badge.no1 {
+          background-color: #7c2d12;
+          color: #ffedd5;
+          border-color: #9a3412;
+        }
+
+        .discharge-empty-state {
+          text-align: center;
+          padding: 3rem 1rem;
+          color: #64748b;
+        }
+
+        .dark-mode .discharge-empty-state {
+          color: #aaa;
+        }
+
+        .discharge-canvas-wrapper {
+          position: relative;
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          background: #eee;
+          border-radius: 8px;
+          overflow: hidden;
+          /* 좌우 스크롤 제거 */
+          max-height: 800px;
+          margin-top: 10px;
+        }
+
+        .dark-mode .discharge-canvas-wrapper {
+          background: #2a2a2a;
+        }
+
+        .discharge-canvas-wrapper canvas {
+          width: 100%;
+          /* 카드 너비에 맞춤 */
+          height: auto;
+          /* 비율 유지 */
+        }
+
+        .discharge-visual-page-group {
+          margin-bottom: 20px;
+          width: 100%;
+        }
+
+        .discharge-visual-page-title {
+          font-size: 16px;
+          font-weight: bold;
+          margin-bottom: 8px;
+          padding-left: 8px;
+          border-left: 4px solid #3949ab;
+        }
+
+        .dark-mode .discharge-visual-page-title {
+          color: #e0e0e0;
+          border-color: #1e88e5;
+        }
+
+        #dischargeContainerList {
+          min-height: 100px;
+          /* 기존 공통 스타일 덮어쓰기 */
+          height: 200px;
+          /* 높이 조정 */
+          max-height: 200px;
+          overflow-y: auto;
+          resize: none;
+          /* 레이아웃 유지 위해 크기 조절 비활성화 */
+        }
+
+        .card.discharge-wide {
+          max-width: 1200px !important;
+        }
+
+        .discharge-upper-content {
+          max-width: 612px;
+          width: 100%;
+        }
+      </style>
+      <div class="card" id="dischargeCard" style="max-width: 660px; transition: max-width 0.3s ease;">
+        <div class="discharge-upper-content">
+          <h2>⏳ 선박 양하 시간 계산기</h2>
+
+          <div class="form-group row">
+            <span class="label" style="width: 150px;">Stowage Plan PDF</span>
+            <div class="file-input-group" style="margin-bottom: 0;">
+              <input type="file" id="dischargePdfFile" accept="application/pdf" style="max-width: 250px;">
+            </div>
+          </div>
+
+          <div class="form-group row">
+            <span class="label" style="width: 150px;">모선 입항 시간(ETA)</span>
+            <input type="text" id="dischargeEtaTime" placeholder="예: 1430 (숫자만 4자리)" maxlength="5" />
+          </div>
+
+          <div class="form-group">
+            <div style="font-weight: bold; margin-bottom: 8px; margin-top:10px;">조회할 컨테이너 번호</div>
+            <textarea id="dischargeContainerList"
+              placeholder="ABCD1234567&#10;EFGH8901234&#10;(줄바꿈으로 구분하여 여러 개 입력 가능)"></textarea>
+          </div>
+
+          <div id="dischargeLoading"
+            style="display: none; text-align: center; margin: 15px 0; color: #3949ab; font-weight: bold;">
+            <span class="discharge-spinner"></span> PDF 분석 중... (잠시만 기다려주세요)
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; margin-top: 25px; margin-bottom: 10px;">
+            <h3 style="margin: 0;">계산 결과</h3>
+            <button id="copyDischargeResultBtn" style="padding: 6px 12px;">📋 복사</button>
+          </div>
+          <div class="discharge-table-container">
+            <table id="dischargeResultTable">
+              <thead>
+                <tr>
+                  <th>컨테이너 번호</th>
+                  <th>예상 양하 시간</th>
+                  <th>위치 (Deck/X축/Y축)</th>
+                </tr>
+              </thead>
+              <tbody id="dischargeResultBody">
+                <tr>
+                  <td colspan="3" class="discharge-empty-state">
+                    PDF 파일을 업로드하고 기준 시간 및 컨테이너 번호를 입력해주세요. 결과가 실시간 표시됩니다.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="dischargeVisualizerContainer" style="display: none; margin-top: 30px;">
+          <div
+            style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="margin: 0;">🗺️ 적부도 위치 시각화</h3>
+            <button id="toggleDischargeWideBtn" style="padding: 6px 12px; font-size: 13px;">🔍 크게 보기</button>
+          </div>
+          <div id="dischargeVisualPagesList"></div>
+        </div>
+      </div>
+    </div>
 
 
 </body>
@@ -7058,143 +7123,202 @@
   }
 </script>
 
-  </div> <!-- /#mainAppWrapper -->
+</div> <!-- /#mainAppWrapper -->
 
-  <!-- ================= SUPABASE AUTH SCRIPT ================= -->
-  <script>
-    const SUPABASE_URL = "https://zukwzrejstclzbgcxyyz.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_UKXgpZbXeccSS0h1Cooaxw_CnMIhX7p";
-    let supabaseClient = null;
-    let currentAuthMode = 'login'; // 'login' | 'signup'
+<!-- ================= SUPABASE AUTH SCRIPT ================= -->
+<script>
+  const SUPABASE_URL = "https://zukwzrejstclzbgcxyyz.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_UKXgpZbXeccSS0h1Cooaxw_CnMIhX7p";
+  let supabaseClient = null;
+  let currentAuthMode = 'login'; // 'login' | 'signup'
 
-    if (window.supabase) {
-      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  function showAuthMessage(text, type = 'error') {
+    const msgEl = document.getElementById('authMsg');
+    if (!msgEl) return;
+    if (!text) {
+      msgEl.style.display = 'none';
+      msgEl.textContent = '';
+      msgEl.className = 'auth-msg';
+      return;
+    }
+    msgEl.textContent = text;
+    msgEl.className = `auth-msg ${type}`;
+    msgEl.style.display = 'block';
+  }
+
+  function switchAuthTab(mode) {
+    currentAuthMode = mode;
+    showAuthMessage('');
+    const tabLogin = document.getElementById('tabBtnLogin');
+    const tabSignup = document.getElementById('tabBtnSignup');
+    const confirmGroup = document.getElementById('signupConfirmGroup');
+    const submitBtn = document.getElementById('authSubmitBtn');
+
+    if (mode === 'signup') {
+      tabSignup.classList.add('active');
+      tabLogin.classList.remove('active');
+      confirmGroup.style.display = 'block';
+      submitBtn.textContent = '회원가입 신청';
+    } else {
+      tabLogin.classList.add('active');
+      tabSignup.classList.remove('active');
+      confirmGroup.style.display = 'none';
+      submitBtn.textContent = '로그인';
+    }
+  }
+
+  async function handleAuthSubmit(event) {
+    event.preventDefault();
+    if (!supabaseClient) {
+      showAuthMessage('인증 서버에 연결할 수 없습니다. 페이지를 새로고침 해주세요.', 'error');
+      return;
     }
 
-    function showAuthMessage(text, type = 'error') {
-      const msgEl = document.getElementById('authMsg');
-      if (!msgEl) return;
-      if (!text) {
-        msgEl.style.display = 'none';
-        msgEl.textContent = '';
-        msgEl.className = 'auth-msg';
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const submitBtn = document.getElementById('authSubmitBtn');
+
+    if (!email || !password) {
+      showAuthMessage('이메일과 비밀번호를 모두 입력해주세요.', 'error');
+      return;
+    }
+
+    if (currentAuthMode === 'signup') {
+      const confirmPw = document.getElementById('authPasswordConfirm').value;
+      if (password !== confirmPw) {
+        showAuthMessage('비밀번호와 비밀번호 확인이 일치하지 않습니다.', 'error');
         return;
       }
-      msgEl.textContent = text;
-      msgEl.className = `auth-msg ${type}`;
-      msgEl.style.display = 'block';
-    }
+      if (password.length < 6) {
+        showAuthMessage('비밀번호는 최소 6자리 이상이어야 합니다.', 'error');
+        return;
+      }
 
-    function switchAuthTab(mode) {
-      currentAuthMode = mode;
-      showAuthMessage('');
-      const tabLogin = document.getElementById('tabBtnLogin');
-      const tabSignup = document.getElementById('tabBtnSignup');
-      const confirmGroup = document.getElementById('signupConfirmGroup');
-      const submitBtn = document.getElementById('authSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '가입 신청 처리 중...';
+      showAuthMessage('회원가입 신청 중입니다...', 'info');
 
-      if (mode === 'signup') {
-        tabSignup.classList.add('active');
-        tabLogin.classList.remove('active');
-        confirmGroup.style.display = 'block';
+      try {
+        const { data, error } = await supabaseClient.auth.signUp({
+          email: email,
+          password: password
+        });
+
+        if (error) {
+          showAuthMessage(error.message || '회원가입 중 오류가 발생했습니다.', 'error');
+          return;
+        }
+
+        // 가입 성공 -> 승인 상태 체크
+        await checkApprovalStatus(false);
+      } catch (err) {
+        console.error(err);
+        showAuthMessage('네트워크 오류가 발생했습니다.', 'error');
+      } finally {
+        submitBtn.disabled = false;
         submitBtn.textContent = '회원가입 신청';
-      } else {
-        tabLogin.classList.add('active');
-        tabSignup.classList.remove('active');
-        confirmGroup.style.display = 'none';
+      }
+    } else {
+      // 로그인
+      submitBtn.disabled = true;
+      submitBtn.textContent = '로그인 중...';
+      showAuthMessage('로그인 확인 중...', 'info');
+
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+        if (error) {
+          showAuthMessage('이메일 또는 비밀번호가 일치하지 않습니다.', 'error');
+          return;
+        }
+
+        await checkApprovalStatus(false);
+      } catch (err) {
+        console.error(err);
+        showAuthMessage('로그인 처리 중 오류가 발생했습니다.', 'error');
+      } finally {
+        submitBtn.disabled = false;
         submitBtn.textContent = '로그인';
       }
     }
+  }
 
-    async function handleAuthSubmit(event) {
-      event.preventDefault();
-      if (!supabaseClient) {
-        showAuthMessage('인증 서버에 연결할 수 없습니다. 페이지를 새로고침 해주세요.', 'error');
-        return;
-      }
+  const SERVER_INJECTED_EMAIL = '__USER_EMAIL__';
 
-      const email = document.getElementById('authEmail').value.trim();
-      const password = document.getElementById('authPassword').value;
-      const submitBtn = document.getElementById('authSubmitBtn');
+  async function checkApprovalStatus(isManualClick = false) {
+    // 1. Next.js 서버에서 이미 승인 검증 후 내려온 경우 -> 즉시 메인 도구 활성화!
+    if (SERVER_INJECTED_EMAIL !== '__USER_EMAIL__' && SERVER_INJECTED_EMAIL.includes('@')) {
+      document.getElementById('authOverlay').style.display = 'none';
+      document.getElementById('mainAppWrapper').style.display = 'block';
+      document.getElementById('headerUserEmail').textContent = SERVER_INJECTED_EMAIL;
 
-      if (!email || !password) {
-        showAuthMessage('이메일과 비밀번호를 모두 입력해주세요.', 'error');
-        return;
-      }
+      const isUserAdmin = SERVER_INJECTED_EMAIL.toLowerCase() === 'junhong2579@gmail.com';
+      const roleEl = document.getElementById('headerUserRole');
+      const syncBtn = document.getElementById('syncToCloudBtn');
+      const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
 
-      if (currentAuthMode === 'signup') {
-        const confirmPw = document.getElementById('authPasswordConfirm').value;
-        if (password !== confirmPw) {
-          showAuthMessage('비밀번호와 비밀번호 확인이 일치하지 않습니다.', 'error');
-          return;
+      if (isUserAdmin) {
+        if (roleEl) {
+          roleEl.textContent = '👑 최고 관리자';
+          roleEl.className = 'user-role-badge role-admin';
         }
-        if (password.length < 6) {
-          showAuthMessage('비밀번호는 최소 6자리 이상이어야 합니다.', 'error');
-          return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = '가입 신청 처리 중...';
-        showAuthMessage('회원가입 신청 중입니다...', 'info');
-
-        try {
-          const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password
-          });
-
-          if (error) {
-            showAuthMessage(error.message || '회원가입 중 오류가 발생했습니다.', 'error');
-            return;
-          }
-
-          // 가입 성공 -> 승인 상태 체크
-          await checkApprovalStatus(false);
-        } catch (err) {
-          console.error(err);
-          showAuthMessage('네트워크 오류가 발생했습니다.', 'error');
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = '회원가입 신청';
-        }
+        if (syncBtn) syncBtn.style.display = 'inline-flex';
+        if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
       } else {
-        // 로그인
-        submitBtn.disabled = true;
-        submitBtn.textContent = '로그인 중...';
-        showAuthMessage('로그인 확인 중...', 'info');
-
-        try {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-          });
-
-          if (error) {
-            showAuthMessage('이메일 또는 비밀번호가 일치하지 않습니다.', 'error');
-            return;
-          }
-
-          await checkApprovalStatus(false);
-        } catch (err) {
-          console.error(err);
-          showAuthMessage('로그인 처리 중 오류가 발생했습니다.', 'error');
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = '로그인';
+        if (roleEl) {
+          roleEl.textContent = '👤 일반 사용자';
+          roleEl.className = 'user-role-badge role-user';
         }
+        if (syncBtn) syncBtn.style.display = 'none';
+        if (syncFreightBtn) syncFreightBtn.style.display = 'none';
       }
+
+      initLoadContainerData(false);
+      initLoadFreightData(false);
+      return;
     }
 
-    const SERVER_INJECTED_EMAIL = '__USER_EMAIL__';
+    if (!supabaseClient) return;
 
-    async function checkApprovalStatus(isManualClick = false) {
-      // 1. Next.js 서버에서 이미 승인 검증 후 내려온 경우 -> 즉시 메인 도구 활성화!
-      if (SERVER_INJECTED_EMAIL !== '__USER_EMAIL__' && SERVER_INJECTED_EMAIL.includes('@')) {
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session || !session.user) {
+        // 미로그인 상태 -> 로그인 카드 표시
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('authCard').style.display = 'block';
+        document.getElementById('pendingCard').style.display = 'none';
+        document.getElementById('mainAppWrapper').style.display = 'none';
+        return;
+      }
+
+      const user = session.user;
+      // profiles 테이블에서 승인 및 관리자 여부 조회
+      const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('is_approved, is_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('승인 상태 조회 오류:', error);
+      }
+
+      const isUserApproved = (profile && profile.is_approved === true) || (user.email && user.email.toLowerCase() === 'junhong2579@gmail.com');
+      const isUserAdmin = (user.email && user.email.toLowerCase() === 'junhong2579@gmail.com') || (profile && profile.is_admin === true);
+
+      if (isUserApproved) {
+        // 승인된 사용자 -> 메인 도구 활성화 및 컨테이너 데이터 로드
         document.getElementById('authOverlay').style.display = 'none';
         document.getElementById('mainAppWrapper').style.display = 'block';
-        document.getElementById('headerUserEmail').textContent = SERVER_INJECTED_EMAIL;
+        document.getElementById('headerUserEmail').textContent = user.email || '팀원';
 
-        const isUserAdmin = SERVER_INJECTED_EMAIL.toLowerCase() === 'junhong2579@gmail.com';
         const roleEl = document.getElementById('headerUserRole');
         const syncBtn = document.getElementById('syncToCloudBtn');
         const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
@@ -7217,115 +7341,57 @@
 
         initLoadContainerData(false);
         initLoadFreightData(false);
-        return;
+      } else {
+        // 미승인 상태 -> 승인 대기 카드 표시
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('authCard').style.display = 'none';
+        document.getElementById('pendingCard').style.display = 'block';
+        document.getElementById('pendingUserEmail').textContent = user.email || '가입 계정';
+        document.getElementById('mainAppWrapper').style.display = 'none';
+
+        if (isManualClick) {
+          alert('아직 관리자 승인 전입니다.\n관리자가 승인한 후 다시 눌러주세요.');
+        }
       }
+    } catch (err) {
+      console.error('Auth Check Error:', err);
+    }
+  }
 
-      if (!supabaseClient) return;
-
+  async function handleLogout() {
+    if (!supabaseClient) return;
+    if (confirm('로그아웃 하시겠습니까?')) {
       try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session || !session.user) {
-          // 미로그인 상태 -> 로그인 카드 표시
-          document.getElementById('authOverlay').style.display = 'flex';
-          document.getElementById('authCard').style.display = 'block';
-          document.getElementById('pendingCard').style.display = 'none';
-          document.getElementById('mainAppWrapper').style.display = 'none';
-          return;
-        }
+        await supabaseClient.auth.signOut();
+      } catch (e) {
+        console.error(e);
+      }
+      // 브라우저 쿠키 삭제
+      document.cookie.split(";").forEach(function (c) {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
 
-        const user = session.user;
-        // profiles 테이블에서 승인 및 관리자 여부 조회
-        const { data: profile, error } = await supabaseClient
-          .from('profiles')
-          .select('is_approved, is_admin')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error('승인 상태 조회 오류:', error);
-        }
-
-        const isUserApproved = (profile && profile.is_approved === true) || (user.email && user.email.toLowerCase() === 'junhong2579@gmail.com');
-        const isUserAdmin = (user.email && user.email.toLowerCase() === 'junhong2579@gmail.com') || (profile && profile.is_admin === true);
-
-        if (isUserApproved) {
-          // 승인된 사용자 -> 메인 도구 활성화 및 컨테이너 데이터 로드
-          document.getElementById('authOverlay').style.display = 'none';
-          document.getElementById('mainAppWrapper').style.display = 'block';
-          document.getElementById('headerUserEmail').textContent = user.email || '팀원';
-
-          const roleEl = document.getElementById('headerUserRole');
-          const syncBtn = document.getElementById('syncToCloudBtn');
-          const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
-
-          if (isUserAdmin) {
-            if (roleEl) {
-              roleEl.textContent = '👑 최고 관리자';
-              roleEl.className = 'user-role-badge role-admin';
-            }
-            if (syncBtn) syncBtn.style.display = 'inline-flex';
-            if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
-          } else {
-            if (roleEl) {
-              roleEl.textContent = '👤 일반 사용자';
-              roleEl.className = 'user-role-badge role-user';
-            }
-            if (syncBtn) syncBtn.style.display = 'none';
-            if (syncFreightBtn) syncFreightBtn.style.display = 'none';
-          }
-
-          initLoadContainerData(false);
-          initLoadFreightData(false);
-        } else {
-          // 미승인 상태 -> 승인 대기 카드 표시
-          document.getElementById('authOverlay').style.display = 'flex';
-          document.getElementById('authCard').style.display = 'none';
-          document.getElementById('pendingCard').style.display = 'block';
-          document.getElementById('pendingUserEmail').textContent = user.email || '가입 계정';
-          document.getElementById('mainAppWrapper').style.display = 'none';
-
-          if (isManualClick) {
-            alert('아직 관리자 승인 전입니다.\n관리자가 승인한 후 다시 눌러주세요.');
-          }
-        }
-      } catch (err) {
-        console.error('Auth Check Error:', err);
+      // 1. 내 컴퓨터에서 직접 더블클릭(file://)하여 열었을 때: 로그인 오버레이 창으로 전환
+      if (window.location.protocol === 'file:') {
+        document.getElementById('mainAppWrapper').style.display = 'none';
+        document.getElementById('authOverlay').style.display = 'flex';
+        document.getElementById('authCard').style.display = 'block';
+        document.getElementById('pendingCard').style.display = 'none';
+        document.getElementById('authEmail').value = '';
+        document.getElementById('authPassword').value = '';
+        showAuthMessage('로그아웃 되었습니다.', 'info');
+      } else {
+        // 2. Vercel 웹 서버에서 열었을 때: /login 페이지로 이동
+        window.location.href = '/login';
       }
     }
+  }
 
-    async function handleLogout() {
-      if (!supabaseClient) return;
-      if (confirm('로그아웃 하시겠습니까?')) {
-        try {
-          await supabaseClient.auth.signOut();
-        } catch (e) {
-          console.error(e);
-        }
-        // 브라우저 쿠키 삭제
-        document.cookie.split(";").forEach(function(c) { 
-          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-        });
-
-        // 1. 내 컴퓨터에서 직접 더블클릭(file://)하여 열었을 때: 로그인 오버레이 창으로 전환
-        if (window.location.protocol === 'file:') {
-          document.getElementById('mainAppWrapper').style.display = 'none';
-          document.getElementById('authOverlay').style.display = 'flex';
-          document.getElementById('authCard').style.display = 'block';
-          document.getElementById('pendingCard').style.display = 'none';
-          document.getElementById('authEmail').value = '';
-          document.getElementById('authPassword').value = '';
-          showAuthMessage('로그아웃 되었습니다.', 'info');
-        } else {
-          // 2. Vercel 웹 서버에서 열었을 때: /login 페이지로 이동
-          window.location.href = '/login';
-        }
-      }
-    }
-
-    // 초기 로드 시 세션 확인
-    document.addEventListener('DOMContentLoaded', () => {
-      checkApprovalStatus(false);
-    });
-  </script>
+  // 초기 로드 시 세션 확인
+  document.addEventListener('DOMContentLoaded', () => {
+    checkApprovalStatus(false);
+  });
+</script>
 </body>
+
 </html>
