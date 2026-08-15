@@ -34,7 +34,7 @@ export default function LoginPage() {
         .single();
 
       if (profile && profile.is_approved === true) {
-        router.push('/');
+        window.location.href = '/';
       } else {
         setIsPending(true);
       }
@@ -108,7 +108,7 @@ export default function LoginPage() {
           .single();
 
         if (profile && profile.is_approved === true) {
-          router.push('/');
+          window.location.href = '/';
         } else {
           setIsPending(true);
         }
@@ -137,7 +137,7 @@ export default function LoginPage() {
 
     setLoading(false);
     if (profile && profile.is_approved === true) {
-      router.push('/');
+      window.location.href = '/';
     } else {
       alert('아직 관리자 승인 대기 중입니다.\n관리자 승인 후 다시 확인해 주세요.');
     }
