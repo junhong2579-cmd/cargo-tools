@@ -201,63 +201,295 @@
       font-size: 14px;
     }
 
-    /* 상단 로그인 정보 & 로그아웃 바 */
-    #authHeaderBar {
-      display: none;
+    /* 사용자 프로필 탭 (탭 바 맨 오른쪽 정렬) */
+    .tab-user-profile {
+      margin-left: auto;
+      display: flex;
       align-items: center;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding: 8px 16px;
+      position: relative;
+      list-style: none;
+      padding: 0 6px 0 16px;
+    }
+
+    .user-avatar-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .user-avatar-btn:hover {
+      transform: scale(1.05);
+      background: #e2e8f0;
+      color: #334155;
+      border-color: #cbd5e1;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark-mode .user-avatar-btn {
+      background: #262626;
+      color: #94a3b8;
+      border-color: #404040;
+      box-shadow: none;
+    }
+
+    .dark-mode .user-avatar-btn:hover {
+      background: #333333;
+      color: #f1f5f9;
+      border-color: #555555;
+    }
+
+    /* 프로필 호버 드롭다운 카드 */
+    .user-profile-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      padding-top: 8px; /* 마우스가 내려올 수 있는 브릿지 공간 */
+      min-width: 230px;
+      z-index: 999999;
+      cursor: default;
+    }
+
+    /* 마우스 이동 시 호버가 끊기지 않도록 투명 브릿지 */
+    .user-profile-dropdown::before {
+      content: '';
+      position: absolute;
+      top: -12px;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background: transparent;
+    }
+
+    .user-profile-dropdown-inner {
       background: #ffffff;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      font-size: 13px;
-      color: #475569;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+      padding: 12px 14px;
+      animation: authFadeIn 0.2s ease-out;
     }
 
-    .dark-mode #authHeaderBar {
+    .tab-user-profile:hover .user-profile-dropdown,
+    .user-profile-dropdown:hover {
+      display: block !important;
+    }
+
+    .dark-mode .user-profile-dropdown-inner {
       background: #1e1e1e;
-      color: #cbd5e1;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      border-color: #334155;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     }
 
-    .auth-user-badge {
+    .user-dropdown-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .user-dropdown-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      overflow: hidden;
+    }
+
+    .user-dropdown-label {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .dark-mode .user-dropdown-label {
+      color: #94a3b8;
+    }
+
+    .user-dropdown-email {
+      font-size: 13px;
       font-weight: 600;
-      color: #3949ab;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px;
     }
 
-    .dark-mode .auth-user-badge {
-      color: #81c784;
+    .dark-mode .user-dropdown-email {
+      color: #f8fafc;
     }
 
-    .auth-logout-btn {
-      padding: 5px 12px !important;
+    /* 권한 뱃지 스타일 */
+    .user-role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      width: fit-content;
+      margin-top: 2px;
+    }
+
+    .role-admin {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+
+    .role-user {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+
+    .dark-mode .role-admin {
+      background: #78350f;
+      color: #fef3c7;
+      border-color: #92400e;
+    }
+
+    .dark-mode .role-user {
+      background: #14532d;
+      color: #dcfce7;
+      border-color: #166534;
+    }
+
+    /* 로그아웃 아이콘 버튼 */
+    .logout-icon-btn {
+      position: relative;
+      background: #fee2e2 !important;
+      color: #dc2626 !important;
+      border: 1px solid #fca5a5 !important;
+      border-radius: 8px !important;
+      width: 32px !important;
+      height: 32px !important;
+      padding: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      flex-shrink: 0;
+      transition: all 0.2s ease !important;
+      box-shadow: none !important;
+    }
+
+    .logout-icon-btn:hover {
+      background: #fecaca !important;
+      color: #b91c1c !important;
+      transform: scale(1.06) !important;
+    }
+
+    .dark-mode .logout-icon-btn {
+      background: #450a0a !important;
+      border-color: #991b1b !important;
+      color: #fca5a5 !important;
+    }
+
+    .dark-mode .logout-icon-btn:hover {
+      background: #7f1d1d !important;
+      color: #fee2e2 !important;
+    }
+
+    /* 로그아웃 툴팁 (호버 시 표시) */
+    .logout-icon-btn .logout-tooltip {
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      z-index: 1000000;
+    }
+
+    .logout-icon-btn .logout-tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 4px 4px 0 4px;
+      border-style: solid;
+      border-color: rgba(15, 23, 42, 0.9) transparent transparent transparent;
+    }
+
+    .logout-icon-btn:hover .logout-tooltip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* 클라우드 동기화 & 새로고침 버튼 스타일 */
+    .cloud-sync-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px !important;
       font-size: 12px !important;
       border-radius: 6px !important;
-      border: 1px solid #cbd5e1 !important;
-      background: #f8fafc !important;
-      color: #475569 !important;
+      background: #3949ab !important;
+      color: #ffffff !important;
+      border: none !important;
       cursor: pointer;
+      font-weight: 600 !important;
+      transition: all 0.2s;
+      box-shadow: 0 2px 6px rgba(57, 73, 171, 0.25) !important;
+    }
+
+    .cloud-sync-btn:hover {
+      background: #303f9f !important;
+      transform: translateY(-1px);
+    }
+
+    .cloud-reload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px !important;
+      font-size: 12px !important;
+      border-radius: 6px !important;
+      background: #f1f5f9 !important;
+      color: #475569 !important;
+      border: 1px solid #cbd5e1 !important;
+      cursor: pointer;
+      font-weight: 600 !important;
       transition: all 0.2s;
     }
 
-    .auth-logout-btn:hover {
-      background: #fee2e2 !important;
-      color: #dc2626 !important;
-      border-color: #fca5a5 !important;
+    .cloud-reload-btn:hover {
+      background: #e2e8f0 !important;
+      color: #1e293b !important;
     }
 
-    .dark-mode .auth-logout-btn {
+    .dark-mode .cloud-sync-btn {
+      background: #3b82f6 !important;
+      color: #ffffff !important;
+    }
+
+    .dark-mode .cloud-reload-btn {
       background: #2a2a2a !important;
       border-color: #475569 !important;
-      color: #e2e8f0 !important;
-    }
-
-    .dark-mode .auth-logout-btn:hover {
-      background: #7f1d1d !important;
-      color: #fecaca !important;
-      border-color: #991b1b !important;
+      color: #cbd5e1 !important;
     }
 
     /* ========== 기존 스타일 유지 ========== */
@@ -849,20 +1081,23 @@
 
     .reset-btn {
       position: absolute;
-      top: 28px;
+      top: 24px;
       right: 24px;
+      cursor: pointer;
+    }
+
+    .reset-btn:not(.icon-btn) {
       padding: 5px 11px;
       font-size: 0.875rem;
       border: 1px solid #ccc;
       border-radius: 8px;
-      cursor: pointer;
     }
 
-    .dark-mode .reset-btn {
+    .dark-mode .reset-btn:not(.icon-btn) {
       border: 1px solid #444;
     }
 
-    .reset-btn:hover {
+    .reset-btn:not(.icon-btn):hover {
       background-color: #e0e0e0;
     }
 
@@ -1930,12 +2165,6 @@
 
   <!-- ================= 메인 앱 콘텐츠 (승인 시만 표시) ================= -->
   <div id="mainAppWrapper" style="display: none;">
-    <!-- 상단 로그인 상태 및 로그아웃 바 -->
-    <div id="authHeaderBar">
-      <span>👤 접속 계정: <strong id="headerUserEmail" class="auth-user-badge">-</strong></span>
-      <span style="color: #22c55e; font-weight: 600;">● 승인됨</span>
-      <button type="button" class="auth-logout-btn" onclick="handleLogout()">로그아웃</button>
-    </div>
 
     <svg id="universe" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -1989,10 +2218,41 @@
               d="M12 3v1M12 20v1M5.64 5.64l.7.7M17.66 17.66l.7.7M3 12h1M20 12h1M5.64 18.36l.7-.7M17.66 6.34l.7-.7" />
           </svg>
           <svg class="toggle-moon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="#ddeafb" />
+            <path
+              d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#90caf9" stroke="#90caf9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
         </div>
       </label>
+    </li>
+
+    <!-- 👤 탭 바 맨 우측: 사용자 원형 아이콘 & 호버 드롭다운 -->
+    <li class="tab-user-profile" id="tabUserProfile">
+      <div class="user-avatar-btn" title="계정 정보">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      </div>
+
+      <!-- 마우스 호버 시 아래로 뜨는 카드 -->
+      <div class="user-profile-dropdown">
+        <div class="user-profile-dropdown-inner">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-info">
+              <span id="headerUserRole" class="user-role-badge role-admin">👑 최고 관리자</span>
+              <span id="headerUserEmail" class="user-dropdown-email">-</span>
+            </div>
+            <button type="button" class="logout-icon-btn" onclick="handleLogout()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              <span class="logout-tooltip">로그아웃</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </li>
   </ul>
 
@@ -2007,8 +2267,28 @@
   <div id="tab-content-main" class="tab-content active">
     <div class="card">
       <h2>🌳 컨테이너 실시간 검색</h2>
-      <div class="file-input-group">
+      <div class="file-input-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
         <input type="file" id="excelFile" accept=".xlsx, .xls" />
+        
+        <!-- 🔄 클라우드 최신 데이터 새로고침 버튼 (모든 팀원 공통) -->
+        <button type="button" id="reloadFromCloudBtn" class="icon-btn" title="클라우드 최신 데이터 새로고침" onclick="initLoadContainerData(true)" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+
+        <!-- ☁️⬆️ 클라우드에 동기화 업로드 버튼 (관리자 전용) -->
+        <button type="button" id="syncToCloudBtn" class="icon-btn" title="현재 엑셀 데이터를 클라우드에 동기화 (관리자 전용)" onclick="syncCurrentDataToSupabase()" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+            <path d="M12 12v9"></path>
+            <path d="m16 16-4-4-4 4"></path>
+          </svg>
+        </button>
+      </div>
+      <!-- 항상 입력창 바로 위에 단독행으로 표시되는 상태 영역 -->
+      <div style="margin: 4px 0 10px 2px; min-height: 18px;">
         <span id="fileStatusIndicator" class="file-status-text"></span>
       </div>
       <div class="search-input-wrapper">
@@ -2140,7 +2420,11 @@
         </div>
         <span class="progress-text" id="text-pre">0%</span>
       </div>
-      <button class="reset-btn" data-list="checklist-pre">초기화</button>
+      <button class="reset-btn icon-btn" data-list="checklist-pre" title="초기화" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+        </svg>
+      </button>
       <div id="checklist-pre">
         <div class="check-item"><input type="checkbox" id="pre-task-1" /><span data-for="pre-task-1">BOOKING (벌크
             주의)</span></div>
@@ -2173,14 +2457,15 @@
         </div>
         <div class="check-item"><input type="checkbox" id="pre-task-23" /><span data-for="pre-task-23">프리즘 배정 장소
             확인</span></div>
-        <div class="check-item"><input type="checkbox" id="pre-task-25" /><span data-for="pre-task-25">변경 컨번호 실번호 모두
-            확인</span></div>
+        <div class="check-item"><input type="checkbox" id="pre-task-25" /><span data-for="pre-task-25">변경 컨/씰번호 확인(특송씰 주의)</span></div>
         <div class="check-item"><input type="checkbox" id="pre-task-14" /><span data-for="pre-task-14">긴급리스트
             (메일)</span>
         </div>
         <div class="check-item"><input type="checkbox" id="pre-task-15" /><span data-for="pre-task-15">시스템 하선 / 배정장소
             관리</span></div>
         <div class="check-item"><input type="checkbox" id="pre-task-16" /><span data-for="pre-task-16">중량 정정 공지</span>
+        </div>
+        <div class="check-item"><input type="checkbox" id="pre-task-26" /><span data-for="pre-task-26">적하목록 제출(메일 3건 전송)</span>
         </div>
         <div class="check-item"><input type="checkbox" id="pre-task-17" /><span data-for="pre-task-17">평택 공유폴더에
             저장하기</span></div>
@@ -2202,7 +2487,11 @@
         </div>
         <span class="progress-text" id="text-day">0%</span>
       </div>
-      <button class="reset-btn" data-list="checklist-day">초기화</button>
+      <button class="reset-btn icon-btn" data-list="checklist-day" title="초기화" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+        </svg>
+      </button>
       <div id="checklist-day">
         <div class="check-item"><input type="checkbox" id="day-task-1" /><span data-for="day-task-1">홈페이지 입항 예정 시간
             입력</span></div>
@@ -2366,8 +2655,28 @@
 
     <div class="card" style="max-width: 100%;">
       <h2>🚚 운임 필터</h2>
-      <div class="file-input-group">
+      <div class="file-input-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
         <input type="file" id="freightExcelFile" accept=".xlsx, .xls" />
+        
+        <!-- 🔄 운임 클라우드 최신 데이터 새로고침 버튼 (모든 팀원 공통) -->
+        <button type="button" id="reloadFreightFromCloudBtn" class="icon-btn" title="클라우드 최신 운임 데이터 새로고침" onclick="initLoadFreightData(true)" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+
+        <!-- ☁️⬆️ 운임 클라우드 동기화 업로드 버튼 (관리자 전용) -->
+        <button type="button" id="syncFreightToCloudBtn" class="icon-btn" title="현재 운임 엑셀 데이터를 클라우드에 동기화 (관리자 전용)" onclick="syncFreightDataToSupabase()" style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+            <path d="M12 12v9"></path>
+            <path d="m16 16-4-4-4 4"></path>
+          </svg>
+        </button>
+      </div>
+      <!-- 항상 입력창 바로 위에 단독행으로 표시되는 상태 영역 -->
+      <div style="margin: 4px 0 10px 2px; min-height: 18px;">
         <span id="freightFileStatusIndicator" class="file-status-text"></span>
       </div>
       <div class="search-input-wrapper"
@@ -3223,6 +3532,71 @@
 
 
   /**
+   * Supabase 클라우드에서 최신 컨테이너 데이터를 가져옵니다.
+   */
+  async function loadContainerDataFromSupabase(isManual = false) {
+    if (!supabaseClient) return false;
+    try {
+      if (isManual) {
+        FILE_STATUS_EL.textContent = "☁️ 클라우드 데이터 가져오는 중...";
+        RESULT_EL.textContent = "⏳ Supabase 클라우드에서 최신 데이터를 불러오고 있습니다...";
+      }
+
+      const { data, error } = await supabaseClient
+        .from('container_cache')
+        .select('*')
+        .eq('id', 'latest')
+        .single();
+
+      if (error || !data) {
+        console.log('클라우드 캐시 데이터 없음 또는 로드 실패:', error);
+        return false;
+      }
+
+      containerList = data.container_list || [];
+      socList = data.soc_list || [];
+      nonsocList = data.nonsoc_list || [];
+      inYardList = data.in_yard_list || [];
+      freeTimeList = data.free_time_list || [];
+
+      // LocalStorage에도 동기화 저장
+      saveContainerDataToStorage();
+
+      const formattedTime = formatTimestamp(data.updated_at || Date.now());
+      FILE_STATUS_EL.textContent = `☁️ 클라우드 동기화됨 (${formattedTime})`;
+      FILE_STATUS_EL.classList.remove('error');
+
+      const totalItems = containerList.length + socList.length + nonsocList.length;
+      RESULT_EL.textContent = `✅ 클라우드 데이터 로드 완료! (${totalItems.toLocaleString()}개 항목) 검색을 시작하세요.`;
+      RESULT_EL.className = "found";
+
+      return true;
+    } catch (err) {
+      console.error('Supabase 데이터 로드 예외:', err);
+      return false;
+    }
+  }
+
+  /**
+   * 초기 실행 시 데이터 로드 순서:
+   * 1. Supabase 클라우드 데이터 조회 시도
+   * 2. 클라우드 실패 시 Local Storage 캐시 조회 시도
+   * 3. 둘 다 없으면 파일 업로드 대기 상태
+   */
+  async function initLoadContainerData(isManualReload = false) {
+    const cloudLoaded = await loadContainerDataFromSupabase(isManualReload);
+    if (cloudLoaded) return true;
+
+    const storageLoaded = loadContainerDataFromStorage();
+    if (storageLoaded) return true;
+
+    RESULT_EL.textContent = "🔎 엑셀 파일을 업로드해주세요.";
+    RESULT_EL.className = "";
+    FILE_STATUS_EL.textContent = "";
+    return false;
+  }
+
+  /**
    * Local Storage에서 컨테이너 데이터를 로드하고 전역 변수에 저장합니다.
    * @returns {boolean} 로드 성공 여부
    */
@@ -3246,17 +3620,16 @@
           inYardList = parsedData.inYardList || [];
           freeTimeList = parsedData.freeTimeList || [];
 
-          // ⭐ 이전 수정 유지: 상태 텍스트를 "최근 로드 (YYYY-MM-DD HH:MM)" 형식으로 변경 ⭐
           const formattedTime = formatTimestamp(parsedData.timestamp);
-          FILE_STATUS_EL.textContent = `최근 로드 (${formattedTime})`;
+          FILE_STATUS_EL.textContent = `최근 로컬 저장 (${formattedTime})`;
           FILE_STATUS_EL.classList.remove('error');
 
-          RESULT_EL.textContent = `✅ 저장된 데이터 로드 완료! ${containerList.length + socList.length + nonsocList.length}개 항목. 검색을 시작하세요.`;
+          const totalItems = containerList.length + socList.length + nonsocList.length;
+          RESULT_EL.textContent = `✅ 저장된 데이터 로드 완료! (${totalItems.toLocaleString()}개 항목) 검색을 시작하세요.`;
           RESULT_EL.className = "found";
 
           return true;
         } else {
-          // 데이터는 있으나 내용이 비어있음 (오류 복구)
           localStorage.removeItem(CONTAINER_STORAGE_KEY);
         }
       } catch (error) {
@@ -3265,8 +3638,62 @@
       }
     }
 
-    // 로드 실패 또는 데이터 없음
     return false;
+  }
+
+  /**
+   * 현재 로드된 엑셀 데이터를 Supabase 클라우드에 영구 저장 (동기화)
+   */
+  async function syncCurrentDataToSupabase() {
+    if (!supabaseClient) {
+      alert('Supabase 연결이 필요합니다.');
+      return;
+    }
+
+    if (!containerList.length && !socList.length) {
+      alert('동기화할 데이터가 없습니다. 먼저 엑셀 파일을 선택해주세요.');
+      return;
+    }
+
+    const syncBtn = document.getElementById('syncToCloudBtn');
+    if (syncBtn) {
+      syncBtn.disabled = true;
+      syncBtn.style.opacity = '0.4';
+    }
+
+    try {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      const payload = {
+        id: 'latest',
+        container_list: containerList,
+        soc_list: socList,
+        nonsoc_list: nonsocList,
+        in_yard_list: inYardList,
+        free_time_list: freeTimeList,
+        updated_at: new Date().toISOString(),
+        updated_by: user ? user.email : '관리자'
+      };
+
+      const { error } = await supabaseClient
+        .from('container_cache')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Supabase upsert error:', error);
+        alert('클라우드 저장 중 오류: ' + error.message + '\n\n(Supabase SQL Editor에서 container_cache 테이블을 생성해주세요.)');
+      } else {
+        alert('🎉 최신 엑셀 데이터가 Supabase 클라우드에 성공적으로 저장되었습니다!\n이제 모든 팀원이 엑셀 파일 없이 즉시 최신 정보를 조회할 수 있습니다.');
+        FILE_STATUS_EL.textContent = `☁️ 클라우드 동기화됨 (${formatTimestamp(Date.now())})`;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('클라우드 동기화 처리 중 오류가 발생했습니다.');
+    } finally {
+      if (syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.style.opacity = '1';
+      }
+    }
   }
 
   /**
@@ -3287,6 +3714,7 @@
 
   /**
    * 엑셀 파일을 읽고 데이터를 파싱하여 전역 변수에 저장 및 Local Storage에 저장합니다.
+   * (수동 업로드 시 로컬 데이터 기준으로 즉시 전환)
    */
   function handleExcelFile(event) {
     const file = event.target.files[0];
@@ -3301,7 +3729,7 @@
       return;
     }
 
-    // ⭐ STATUS TEXT UPDATE (Processing) ⭐
+    // STATUS TEXT UPDATE (Processing)
     RESULT_EL.textContent = `⚙️ ${file.name} 파일 로딩 중...`;
     RESULT_EL.className = "";
     FILE_STATUS_EL.textContent = "⚙️ 처리 중...";
@@ -3319,7 +3747,7 @@
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-        // 데이터 파싱 로직 재현 (생략)
+        // 데이터 파싱
         containerList = jsonData.map(row => ({ number: row[0] ? row[0].toString().trim().toUpperCase() : null, type: row[1] })).filter(entry => entry.number && entry.type);
 
         let lastValidSocrequ = "정보 없음";
@@ -3362,7 +3790,6 @@
         if (freeTimeSheetName && workbook.Sheets[freeTimeSheetName]) {
           const freeTimeSheet = workbook.Sheets[freeTimeSheetName];
           const freeTimeData = XLSX.utils.sheet_to_json(freeTimeSheet, { header: 1, defval: "" });
-          // 첫번째 행이 헤더라고 가정하고 두번째 행부터 파싱
           freeTimeList = freeTimeData.slice(1).map(row => {
             return {
               bl: row[0] ? String(row[0]).trim().toUpperCase() : null,
@@ -3372,14 +3799,18 @@
           }).filter(item => item.bl);
         }
 
-        // ⭐ Local Storage에 저장 ⭐
+        // Local Storage에 저장
         saveContainerDataToStorage();
 
-        // ⭐ STATUS TEXT UPDATE (Upload Success) ⭐
-        RESULT_EL.textContent = `✅ ${file.name} 데이터 로드 및 저장 완료! ${containerList.length + socList.length + nonsocList.length}개 항목.`;
+        const totalItems = containerList.length + socList.length + nonsocList.length;
+        RESULT_EL.textContent = `✅ [수동 로드] ${file.name} 데이터 적용 완료! (${totalItems.toLocaleString()}개 항목)`;
         RESULT_EL.className = "found";
-        FILE_STATUS_EL.textContent = "파일 로드 성공.";
+        FILE_STATUS_EL.textContent = `💻 수동 파일 로드됨 (${file.name})`;
         FILE_STATUS_EL.classList.remove('error');
+
+        // 클라우드 동기화 버튼 표시
+        const syncBtn = document.getElementById('syncToCloudBtn');
+        if (syncBtn) syncBtn.style.display = 'inline-flex';
 
         document.getElementById("searchInput").focus();
 
@@ -3390,8 +3821,6 @@
         console.error("Error processing Excel file:", error);
         RESULT_EL.textContent = "❌ 엑셀 파일 처리 중 오류가 발생했습니다. 파일 형식을 확인해주세요.";
         RESULT_EL.className = "not-found";
-
-        // ⭐ STATUS TEXT UPDATE (Upload Error) ⭐
         FILE_STATUS_EL.textContent = "❌ 파일 처리 실패.";
         FILE_STATUS_EL.classList.add('error');
       }
@@ -5452,9 +5881,12 @@
           };
         });
 
+        // Local Storage에 저장
+        saveFreightDataToStorage();
+
         const selectedFilterText = document.getElementById("freightSearchFilter") ? document.getElementById("freightSearchFilter").options[document.getElementById("freightSearchFilter").selectedIndex].text : "Consignee";
-        freightEmptyMessage.textContent = `✅ ${file.name} 데이터 로드 완료! ${selectedFilterText} 검색을 시작하세요.`;
-        freightFileStatus.textContent = "파일 로드 성공.";
+        freightEmptyMessage.textContent = `✅ [수동 로드] ${file.name} 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
+        freightFileStatus.textContent = `💻 수동 파일 로드됨 (${file.name})`;
         freightFileStatus.classList.remove('error');
 
         // 테이블 머리글 초기화 및 필터/정렬 상태 초기화 적용
@@ -5462,6 +5894,9 @@
         resetAllFreightFiltersAndSort();
 
         freightSearchInput.focus();
+
+        // 파일 선택 인풋 초기화
+        event.target.value = '';
       } catch (error) {
         console.error("Error processing Freight Excel file:", error);
         freightEmptyMessage.textContent = "❌ 엑셀 파일 처리 중 오류가 발생했습니다.";
@@ -5471,6 +5906,142 @@
     };
     reader.readAsArrayBuffer(file);
   });
+
+  const FREIGHT_STORAGE_KEY = 'freightDataCache';
+
+  function saveFreightDataToStorage() {
+    try {
+      const dataToSave = {
+        freightDataList: freightDataList,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(FREIGHT_STORAGE_KEY, JSON.stringify(dataToSave));
+    } catch (e) {
+      console.warn("운임 데이터 로컬 스토리지 캐시 오류:", e);
+    }
+  }
+
+  function loadFreightDataFromStorage() {
+    const data = localStorage.getItem(FREIGHT_STORAGE_KEY);
+    if (data) {
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.freightDataList?.length > 0) {
+          freightDataList = parsed.freightDataList;
+          const formattedTime = formatTimestamp(parsed.timestamp);
+          freightFileStatus.textContent = `최근 로컬 저장 (${formattedTime})`;
+          freightFileStatus.classList.remove('error');
+
+          const selectedFilterText = document.getElementById("freightSearchFilter") ? document.getElementById("freightSearchFilter").options[document.getElementById("freightSearchFilter").selectedIndex].text : "Consignee";
+          freightEmptyMessage.textContent = `✅ 저장된 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
+          initFreightHeaders();
+          resetAllFreightFiltersAndSort();
+          return true;
+        }
+      } catch (e) {
+        console.error("Freight local storage error:", e);
+      }
+    }
+    return false;
+  }
+
+  async function loadFreightDataFromSupabase(isManual = false) {
+    if (!supabaseClient) return false;
+    try {
+      if (isManual) {
+        freightFileStatus.textContent = "☁️ 클라우드 운임 데이터 가져오는 중...";
+        freightEmptyMessage.textContent = "⏳ Supabase 클라우드에서 최신 운임 데이터를 불러오고 있습니다...";
+      }
+
+      const { data, error } = await supabaseClient
+        .from('freight_cache')
+        .select('*')
+        .eq('id', 'latest')
+        .single();
+
+      if (error || !data) {
+        console.log('운임 클라우드 캐시 데이터 없음:', error);
+        return false;
+      }
+
+      freightDataList = data.freight_data_list || [];
+      saveFreightDataToStorage();
+
+      const formattedTime = formatTimestamp(data.updated_at || Date.now());
+      freightFileStatus.textContent = `☁️ 클라우드 동기화됨 (${formattedTime})`;
+      freightFileStatus.classList.remove('error');
+
+      const selectedFilterText = document.getElementById("freightSearchFilter") ? document.getElementById("freightSearchFilter").options[document.getElementById("freightSearchFilter").selectedIndex].text : "Consignee";
+      freightEmptyMessage.textContent = `✅ 클라우드 운임 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
+
+      initFreightHeaders();
+      resetAllFreightFiltersAndSort();
+      return true;
+    } catch (err) {
+      console.error('Supabase 운임 로드 에러:', err);
+      return false;
+    }
+  }
+
+  async function initLoadFreightData(isManualReload = false) {
+    const cloudLoaded = await loadFreightDataFromSupabase(isManualReload);
+    if (cloudLoaded) return true;
+
+    const storageLoaded = loadFreightDataFromStorage();
+    if (storageLoaded) return true;
+
+    freightEmptyMessage.textContent = "🔎 엑셀 파일을 업로드해주세요.";
+    freightFileStatus.textContent = "";
+    return false;
+  }
+
+  async function syncFreightDataToSupabase() {
+    if (!supabaseClient) {
+      alert('Supabase 연결이 필요합니다.');
+      return;
+    }
+
+    if (!freightDataList || freightDataList.length === 0) {
+      alert('동기화할 운임 데이터가 없습니다. 먼저 엑셀 파일을 선택해주세요.');
+      return;
+    }
+
+    const syncBtn = document.getElementById('syncFreightToCloudBtn');
+    if (syncBtn) {
+      syncBtn.disabled = true;
+      syncBtn.style.opacity = '0.4';
+    }
+
+    try {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      const payload = {
+        id: 'latest',
+        freight_data_list: freightDataList,
+        updated_at: new Date().toISOString(),
+        updated_by: user ? user.email : '관리자'
+      };
+
+      const { error } = await supabaseClient
+        .from('freight_cache')
+        .upsert(payload, { onConflict: 'id' });
+
+      if (error) {
+        console.error('Supabase freight upsert error:', error);
+        alert('클라우드 저장 중 오류: ' + error.message + '\n\n(Supabase SQL Editor에서 freight_cache 테이블을 생성해주세요.)');
+      } else {
+        alert('🎉 최신 운임 데이터가 Supabase 클라우드에 성공적으로 저장되었습니다!\n이제 모든 팀원이 엑셀 파일 없이 즉시 최신 운임을 조회할 수 있습니다.');
+        freightFileStatus.textContent = `☁️ 클라우드 동기화됨 (${formatTimestamp(Date.now())})`;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('운임 클라우드 동기화 처리 중 오류가 발생했습니다.');
+    } finally {
+      if (syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.style.opacity = '1';
+      }
+    }
+  }
 
   function renderFreightRow(item) {
     const tr = document.createElement("tr");
@@ -6626,10 +7197,10 @@
         }
 
         const user = session.user;
-        // profiles 테이블에서 승인 여부 조회
+        // profiles 테이블에서 승인 및 관리자 여부 조회
         const { data: profile, error } = await supabaseClient
           .from('profiles')
-          .select('is_approved')
+          .select('is_approved, is_admin')
           .eq('id', user.id)
           .single();
 
@@ -6637,11 +7208,37 @@
           console.error('승인 상태 조회 오류:', error);
         }
 
-        if (profile && profile.is_approved === true) {
-          // 승인된 사용자 -> 메인 도구 활성화
+        const isUserApproved = (profile && profile.is_approved === true) || (user.email && user.email.toLowerCase() === 'junhong2579@gmail.com');
+        const isUserAdmin = (user.email && user.email.toLowerCase() === 'junhong2579@gmail.com') || (profile && profile.is_admin === true);
+
+        if (isUserApproved) {
+          // 승인된 사용자 -> 메인 도구 활성화 및 컨테이너 데이터 로드
           document.getElementById('authOverlay').style.display = 'none';
           document.getElementById('mainAppWrapper').style.display = 'block';
           document.getElementById('headerUserEmail').textContent = user.email || '팀원';
+
+          const roleEl = document.getElementById('headerUserRole');
+          const syncBtn = document.getElementById('syncToCloudBtn');
+          const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
+
+          if (isUserAdmin) {
+            if (roleEl) {
+              roleEl.textContent = '👑 최고 관리자';
+              roleEl.className = 'user-role-badge role-admin';
+            }
+            if (syncBtn) syncBtn.style.display = 'inline-flex';
+            if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
+          } else {
+            if (roleEl) {
+              roleEl.textContent = '👤 일반 사용자';
+              roleEl.className = 'user-role-badge role-user';
+            }
+            if (syncBtn) syncBtn.style.display = 'none';
+            if (syncFreightBtn) syncFreightBtn.style.display = 'none';
+          }
+
+          initLoadContainerData(false);
+          initLoadFreightData(false);
         } else {
           // 미승인 상태 -> 승인 대기 카드 표시
           document.getElementById('authOverlay').style.display = 'flex';
@@ -6662,12 +7259,29 @@
     async function handleLogout() {
       if (!supabaseClient) return;
       if (confirm('로그아웃 하시겠습니까?')) {
-        await supabaseClient.auth.signOut();
-        document.getElementById('authOverlay').style.display = 'flex';
-        document.getElementById('authCard').style.display = 'block';
-        document.getElementById('pendingCard').style.display = 'none';
-        document.getElementById('mainAppWrapper').style.display = 'none';
-        showAuthMessage('로그아웃 되었습니다.', 'info');
+        try {
+          await supabaseClient.auth.signOut();
+        } catch (e) {
+          console.error(e);
+        }
+        // 브라우저 쿠키 삭제
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+
+        // 1. 내 컴퓨터에서 직접 더블클릭(file://)하여 열었을 때: 로그인 오버레이 창으로 전환
+        if (window.location.protocol === 'file:') {
+          document.getElementById('mainAppWrapper').style.display = 'none';
+          document.getElementById('authOverlay').style.display = 'flex';
+          document.getElementById('authCard').style.display = 'block';
+          document.getElementById('pendingCard').style.display = 'none';
+          document.getElementById('authEmail').value = '';
+          document.getElementById('authPassword').value = '';
+          showAuthMessage('로그아웃 되었습니다.', 'info');
+        } else {
+          // 2. Vercel 웹 서버에서 열었을 때: /login 페이지로 이동
+          window.location.href = '/login';
+        }
       }
     }
 
