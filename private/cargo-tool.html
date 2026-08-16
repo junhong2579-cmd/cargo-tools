@@ -363,9 +363,9 @@
     }
 
     .role-user {
-      background: #dcfce7;
-      color: #15803d;
-      border: 1px solid #bbf7d0;
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
     }
 
     .dark-mode .role-admin {
@@ -375,9 +375,9 @@
     }
 
     .dark-mode .role-user {
-      background: #14532d;
-      color: #dcfce7;
-      border-color: #166534;
+      background: #2d3748;
+      color: #e2e8f0;
+      border-color: #4a5568;
     }
 
     /* 로그아웃 아이콘 버튼 */
@@ -2317,9 +2317,9 @@
           <span id="fileStatusIndicator" class="file-status-text"></span>
         </div>
         <div class="search-input-wrapper">
-          <input type="text" id="searchInput" placeholder="컨테이너 번호를 입력하세요" />
-          <textarea id="bulkSearchInput" placeholder="여러 개의 컨테이너 번호를 입력하세요 (한 줄에 하나)" style="display: none;"></textarea>
-          <input type="text" id="freeTimeSearchInput" placeholder="비엘 번호를 입력하세요 (4자 이상 검색)" style="display: none;" />
+          <input type="text" id="searchInput" placeholder="컨테이너 번호를 입력하세요" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <textarea id="bulkSearchInput" placeholder="여러 개의 컨테이너 번호를 입력하세요 (한 줄에 하나)" autocomplete="off" spellcheck="false" style="display: none;"></textarea>
+          <input type="text" id="freeTimeSearchInput" placeholder="비엘 번호를 입력하세요 (4자 이상 검색)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="display: none;" />
 
           <button id="toggleFreeTimeBtn" class="icon-btn" title="프리타임 검색 토글">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -2374,23 +2374,23 @@
         <h2>📌 정보를 입력하세요</h2>
         <div class="form-group row">
           <span class="label" style="width: 46px;">항차</span>
-          <input type="text" id="voyage" placeholder="예: 0979" onfocus="this.select()" />
+          <input type="text" id="voyage" placeholder="예: 0979" onfocus="this.select()" autocomplete="off" autocorrect="off" spellcheck="false" />
         </div>
         <div class="form-group row">
           <span class="label" style="width: 46px;">비엘</span>
-          <input type="text" id="blInput" placeholder="예: 1234" onfocus="this.select()" />
+          <input type="text" id="blInput" placeholder="예: 1234" onfocus="this.select()" autocomplete="off" autocorrect="off" spellcheck="false" />
         </div>
         <div class="form-group row">
           <span class="label" style="width: 46px;">TEU</span>
-          <input type="number" id="teuInput" placeholder="예: 301" onfocus="this.select()" />
+          <input type="number" id="teuInput" placeholder="예: 301" onfocus="this.select()" autocomplete="off" />
         </div>
       </div>
 
       <div class="card">
         <div class="header-group">
           <h3>📝 메일 제목 양식</h3>
-          <input type="text" id="nameInputNew" placeholder="항차" onfocus="this.select()" />
-          <input type="text" id="blInputNew" placeholder="비엘" onfocus="this.select()" />
+          <input type="text" id="nameInputNew" placeholder="항차" onfocus="this.select()" autocomplete="off" />
+          <input type="text" id="blInputNew" placeholder="비엘" onfocus="this.select()" autocomplete="off" />
         </div>
         <div id="sentenceArea"></div>
       </div>
@@ -2398,15 +2398,15 @@
       <div class="card">
         <div class="header-group">
           <h3>🌟 현대글로비스 AN 제목</h3>
-          <input type="text" id="glovisVoyageInput" placeholder="항차" onfocus="this.select()" />
+          <input type="text" id="glovisVoyageInput" placeholder="항차" onfocus="this.select()" autocomplete="off" />
         </div>
         <div id="extendedSentenceArea"></div>
       </div>
       <div class="card">
         <div class="header-group">
           <h3>🛳️ 전체 공지</h3>
-          <input type="text" id="noticeVoyageInput" placeholder="항차" onfocus="this.select()" />
-          <input type="number" id="noticeTeuInput" placeholder="TEU" onfocus="this.select()" />
+          <input type="text" id="noticeVoyageInput" placeholder="항차" onfocus="this.select()" autocomplete="off" />
+          <input type="number" id="noticeTeuInput" placeholder="TEU" onfocus="this.select()" autocomplete="off" />
         </div>
         <div id="extendedSentenceArea1"></div>
       </div>
@@ -2417,7 +2417,7 @@
       <div class="card">
         <div class="header-group" style="margin-bottom: 0;">
           <h3>💬 안내 문구</h3>
-          <input type="text" id="noticeGuideVoyageInput" placeholder="항차" onfocus="this.select()" />
+          <input type="text" id="noticeGuideVoyageInput" placeholder="항차" onfocus="this.select()" autocomplete="off" />
           <button id="toggleNoticeGuideBtn" class="icon-btn" title="안내 문구 토글"
             style="margin-left: auto; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 6px;">
             <svg id="noticeGuideDownArrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -2757,7 +2757,7 @@
             <option value="description">DESCRIPTION</option>
             <option value="shipper">SHIPPER</option>
           </select>
-          <input type="text" id="freightSearchInput" placeholder="Consignee 정보를 입력하세요" onfocus="this.select()"
+          <input type="text" id="freightSearchInput" placeholder="Consignee 정보를 입력하세요" onfocus="this.select()" autocomplete="off" autocorrect="off" spellcheck="false"
             style="max-width: none; flex-grow: 1; box-sizing: border-box;" />
           <!-- 열 표시 필터 영역 -->
           <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
