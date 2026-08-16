@@ -101,13 +101,31 @@ export default function LoginPage() {
         const user = data.user;
         setCurrentUserEmail(user.email || '');
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_approved')
-          .eq('id', user.id)
-          .single();
+        // 클라이언트 단 Supabase 인스턴스에도 관리자 세션 동기화
+        if (data.session) {
+          try {
+            localStorage.setItem('sb-zukwzrejstclzbgcxyyz-auth-token', JSON.stringify(data.session));
+          } catch (e) {
+            console.warn('localStorage sync error:', e);
+          }
+        }
 
-        if (profile && profile.is_approved === true) {
+        const isManager = user.email && user.email.toLowerCase() === 'junhong2579@gmail.com';
+        let isApproved = isManager;
+
+        if (!isApproved) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_approved')
+            .eq('id', user.id)
+            .single();
+
+          if (profile && profile.is_approved === true) {
+            isApproved = true;
+          }
+        }
+
+        if (isApproved) {
           setMessage({ text: '로그인 성공! 메인 도구로 이동 중...', type: 'info' });
           // 쿠키가 브라우저에 안전하게 저장될 수 있도록 250ms 대기 후 이동
           setTimeout(() => {
