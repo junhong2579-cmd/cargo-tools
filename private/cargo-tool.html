@@ -4054,6 +4054,9 @@
           style="margin-bottom: 15px; width: 100%; display: flex; gap: 10px; align-items: flex-start;">
           <select id="freightSearchFilter" class="freight-select">
             <option value="consignee" selected>Consignee</option>
+            <option value="consigneeCode">Consignee Code</option>
+            <option value="actualShipper">Actual Shipper</option>
+            <option value="aShipperCode">A/Shipper Code</option>
             <option value="ioDate">I/O Date</option>
             <option value="voyage">VOYAGE</option>
             <option value="notify">Notify</option>
@@ -4111,6 +4114,7 @@
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Notify</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Actual Shipper</th>
+                <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">A/Shipper Code</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">SHIPPER</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">20'</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">40'</th>
@@ -4835,10 +4839,14 @@
                     <th style="width: 50px; text-align: center;">No</th>
                     <th style="min-width: 130px;">B/L NO</th>
                     <th style="min-width: 200px;">불일치 내용</th>
-                    <th style="min-width: 160px;">Consignee</th>
                     <th style="min-width: 60px;">Cargo</th>
                     <th style="min-width: 60px;">B/T</th>
                     <th style="min-width: 60px;">T/S</th>
+                    <th style="min-width: 160px;">Consignee</th>
+                    <th style="min-width: 120px;">Consignee Code</th>
+                    <th style="min-width: 150px;">Notify</th>
+                    <th style="min-width: 150px;">Actual Shipper</th>
+                    <th style="min-width: 120px;">A/Shipper Code</th>
                     <th style="min-width: 60px; text-align: right;">20'</th>
                     <th style="min-width: 60px; text-align: right;">40'</th>
                     <th style="min-width: 60px; text-align: right;">45'</th>
@@ -4859,7 +4867,7 @@
                 </thead>
                 <tbody id="fcHistoryResultBody">
                   <tr>
-                    <td colspan="23" class="edi-empty-state">
+                    <td colspan="27" class="edi-empty-state">
                       <span class="edi-empty-icon">📊</span>
                       과거 데이터 불일치 결과가 여기에 표시됩니다.
                     </td>
@@ -4904,10 +4912,14 @@
                     <th style="width: 50px; text-align: center;">No</th>
                     <th style="min-width: 130px;">B/L NO</th>
                     <th style="min-width: 100px; text-align: center;">검증 상태</th>
-                    <th style="min-width: 160px;">Consignee</th>
-                    <th style="min-width: 140px;">Notify</th>
                     <th style="min-width: 60px;">Cargo</th>
                     <th style="min-width: 60px;">B/T</th>
+                    <th style="min-width: 60px;">T/S</th>
+                    <th style="min-width: 160px;">Consignee</th>
+                    <th style="min-width: 120px;">Consignee Code</th>
+                    <th style="min-width: 140px;">Notify</th>
+                    <th style="min-width: 140px;">Actual Shipper</th>
+                    <th style="min-width: 120px;">A/Shipper Code</th>
                     <th style="min-width: 60px; text-align: center;">MSN</th>
                     <th style="min-width: 60px; text-align: right;">20'</th>
                     <th style="min-width: 60px; text-align: right;">40'</th>
@@ -4920,7 +4932,7 @@
                 </thead>
                 <tbody id="fcAllResultBody">
                   <tr>
-                    <td colspan="15" class="edi-empty-state">
+                    <td colspan="19" class="edi-empty-state">
                       <span class="edi-empty-icon">📊</span>
                       전체 검증 데이터가 여기에 표시됩니다.
                     </td>
@@ -8409,10 +8421,11 @@
             voyage: getVal(["VOYAGE", "VVD"]),
             description: getVal(["DESCRIPTION", "DESC"]),
             bt: getVal(["B/T", "B/L TYPE", "B/T (B/L TYPE)"]),
-            consigneeCode: getVal(["CONSIGNEE CODE"]),
+            consigneeCode: getVal(["CONSIGNEE CODE", "CONSIGNEECODE", "C/CODE"]),
             consignee: getVal(["CONSIGNEE"]),
             notify: getVal(["NOTIFY"]),
-            actualShipper: getVal(["ACTUAL SHIPPER", "SHIPPER"]),
+            actualShipper: getVal(["ACTUAL SHIPPER", "ACTUALSHIPPER", "A/SHIPPER"]),
+            aShipperCode: getVal(["A/SHIPPER CODE", "A/SHIPPERCODE", "ACTUAL SHIPPER CODE", "ASHIPPER CODE", "A/CODE", "ACTUALSHIPPERCODE"]),
             shipper: getVal(["SHIPPER"]),
             twenty: getVal(["20'", "20", "20FT"]),
             forty: getVal(["40'", "40", "40FT"]),
@@ -8649,6 +8662,7 @@
     tr.appendChild(createTd(item.consignee));
     tr.appendChild(createTd(item.notify));
     tr.appendChild(createTd(item.actualShipper));
+    tr.appendChild(createTd(item.aShipperCode));
     tr.appendChild(createTd(item.shipper));
     tr.appendChild(createTd(item.twenty, 'container'));
     tr.appendChild(createTd(item.forty, 'container'));
@@ -8977,7 +8991,7 @@
 
   const freightCols = [
     "I/O Date", "B/L NO", "Cargo", "B/T", "Consignee Code", "Consignee", "Notify",
-    "Actual Shipper", "SHIPPER", "20'", "40'", "45'", "T/S", "ITEM", "DESCRIPTION", "REMARK",
+    "Actual Shipper", "A/Shipper Code", "SHIPPER", "20'", "40'", "45'", "T/S", "ITEM", "DESCRIPTION", "REMARK",
     "CRS", "LSS", "PSS", "FRT", "ESC", "CAF", "BAF", "THC", "CCF", "DOC", "WFG", "TSF", "PSC",
     "EBS", "CFS", "Collect TTL"
   ];
@@ -10232,6 +10246,7 @@
         'Consignee': item.consignee || '',
         'Notify': item.notify || '',
         'Actual Shipper': item.actualShipper || '',
+        'A/Shipper Code': item.aShipperCode || '',
         'SHIPPER': item.shipper || '',
         "20'": item.twenty || '0',
         "40'": item.forty || '0',
@@ -10568,7 +10583,7 @@
     const discrepancies = [];
     if (!pastDf || pastDf.length === 0) return discrepancies;
 
-    const stringCols = ['Cargo', 'B/T (B/L Type)', 'T/S', 'Consignee', 'Notify', 'Actual Shipper'];
+    const stringCols = ['Cargo', 'B/T (B/L Type)', 'T/S', 'Consignee', 'Consignee Code', 'Notify', 'Actual Shipper', 'A/Shipper Code'];
     const containerCols = ["20'", "40'", "45'"];
 
     function findDynamicCol(dataframe, key1, key2) {
@@ -10631,6 +10646,9 @@
         stringCols.forEach(col => {
           let cVal = fcNormalizeVal(row[col]);
           if (col === 'B/T (B/L Type)' && !cVal) cVal = fcNormalizeVal(row['B/T']);
+          else if (col === 'Consignee Code' && !cVal) cVal = fcNormalizeVal(row['CONSIGNEE CODE'] || row['ConsigneeCode']);
+          else if (col === 'A/Shipper Code' && !cVal) cVal = fcNormalizeVal(row['A/SHIPPER CODE'] || row['Actual Shipper Code'] || row['AShipperCode']);
+          else if (col === 'Actual Shipper' && !cVal) cVal = fcNormalizeVal(row['ACTUAL SHIPPER'] || row['ActualShipper']);
           currentOrderedData[col] = cVal;
         });
 
@@ -10670,13 +10688,22 @@
         const currentDiffDetails = {};
         const currentOrderedData = {};
 
-        // 1. 문자열 컬럼 비교
+        // 1. 문자열 및 코드 컬럼 비교 (Consignee, Consignee Code, Notify, Actual Shipper, A/Shipper Code 포함)
         stringCols.forEach(col => {
           let cVal = fcNormalizeVal(row[col]);
           let pVal = fcNormalizeVal(pRow[col]);
           if (col === 'B/T (B/L Type)') {
             if (!cVal) cVal = fcNormalizeVal(row['B/T']);
             if (!pVal) pVal = fcNormalizeVal(pRow['B/T']);
+          } else if (col === 'Consignee Code') {
+            if (!cVal) cVal = fcNormalizeVal(row['CONSIGNEE CODE'] || row['ConsigneeCode']);
+            if (!pVal) pVal = fcNormalizeVal(pRow['CONSIGNEE CODE'] || pRow['ConsigneeCode']);
+          } else if (col === 'A/Shipper Code') {
+            if (!cVal) cVal = fcNormalizeVal(row['A/SHIPPER CODE'] || row['Actual Shipper Code'] || row['AShipperCode']);
+            if (!pVal) pVal = fcNormalizeVal(pRow['A/SHIPPER CODE'] || pRow['Actual Shipper Code'] || pRow['AShipperCode']);
+          } else if (col === 'Actual Shipper') {
+            if (!cVal) cVal = fcNormalizeVal(row['ACTUAL SHIPPER'] || row['ActualShipper']);
+            if (!pVal) pVal = fcNormalizeVal(pRow['ACTUAL SHIPPER'] || pRow['ActualShipper']);
           }
 
           currentOrderedData[col] = cVal;
@@ -11055,7 +11082,7 @@
           : '비교할 과거 운임 데이터가 없습니다.';
         tbody.innerHTML = `
           <tr>
-            <td colspan="23" class="edi-empty-state">
+            <td colspan="27" class="edi-empty-state">
               <span class="edi-empty-icon">📊</span>
               ${msg}
             </td>
@@ -11087,10 +11114,14 @@
             <td style="text-align: center; color: #94a3b8;">${idx + 1}</td>
             <td style="font-weight: 700; font-family: monospace; color: #3949ab;">${data['B/L NO']}</td>
             <td><span class="fc-badge ${isNewCompany ? 'fc-badge-warning' : 'fc-badge-danger'}">${data['불일치 내용']}</span></td>
-            ${renderCell('Consignee')}
             ${renderCell('Cargo')}
             ${renderCell('B/T (B/L Type)')}
             ${renderCell('T/S')}
+            ${renderCell('Consignee')}
+            ${renderCell('Consignee Code')}
+            ${renderCell('Notify')}
+            ${renderCell('Actual Shipper')}
+            ${renderCell('A/Shipper Code')}
             ${renderCell("20'", true)}
             ${renderCell("40'", true)}
             ${renderCell("45'", true)}
@@ -11168,7 +11199,7 @@
       if (list.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="15" class="edi-empty-state">
+            <td colspan="19" class="edi-empty-state">
               <span class="edi-empty-icon">🔍</span>
               검색 조건에 일치하는 B/L 데이터가 없습니다.
             </td>
@@ -11185,10 +11216,14 @@
             <td style="text-align: center; color: #94a3b8;">${idx + 1}</td>
             <td style="font-weight: 700; font-family: monospace; color: #3949ab;">${item.blNo}</td>
             <td style="text-align: center;"><span class="fc-badge ${item.statusClass}">${item.statusText}</span></td>
-            <td>${fcNormalizeVal(row['Consignee']) || '-'}</td>
-            <td>${fcNormalizeVal(row['Notify']) || '-'}</td>
             <td style="text-align: center;">${fcNormalizeVal(row['Cargo']) || '-'}</td>
             <td style="text-align: center;">${fcNormalizeVal(row['B/T (B/L Type)'] || row['B/T']) || '-'}</td>
+            <td style="text-align: center;">${fcNormalizeVal(row['T/S']) || '-'}</td>
+            <td>${fcNormalizeVal(row['Consignee']) || '-'}</td>
+            <td>${fcNormalizeVal(row['Consignee Code'] || row['CONSIGNEE CODE']) || '-'}</td>
+            <td>${fcNormalizeVal(row['Notify']) || '-'}</td>
+            <td>${fcNormalizeVal(row['Actual Shipper'] || row['ACTUAL SHIPPER']) || '-'}</td>
+            <td>${fcNormalizeVal(row['A/Shipper Code'] || row['A/SHIPPER CODE']) || '-'}</td>
             <td style="text-align: center; font-family: monospace;">${fcNormalizeVal(row['MSN']) || '-'}</td>
             <td style="text-align: right;">${fcFormatNum(row["20'"])}</td>
             <td style="text-align: right;">${fcFormatNum(row["40'"])}</td>
