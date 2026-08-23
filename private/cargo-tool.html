@@ -2125,7 +2125,7 @@
     .edi-val-container {
       width: 100%;
       max-width: 1280px;
-      margin: 0 auto;
+      margin: 0;
     }
 
     .edi-val-header {
@@ -4101,12 +4101,18 @@
   let g_currentFilter = 'diff';   // 'diff', 'internal', 'match', 'all'
   let g_searchKeyword = '';
 
-  // 전역 브라우저 파일 드롭 기본 동작 방지 (새 탭으로 열림 방지)
+    // 전역 브라우저 파일 드롭 기본 동작 방지 (새 탭으로 열림 방지, 단 input[type="file"]로의 드롭은 정상 허용)
   window.addEventListener('dragover', function(e) {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'file') {
+      return;
+    }
     e.preventDefault();
   }, false);
 
   window.addEventListener('drop', function(e) {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'file') {
+      return;
+    }
     e.preventDefault();
   }, false);
 
@@ -8283,7 +8289,7 @@
     return null;
   }
 
-  const dischargePdfFileInput = document.getElementById('dischargePdfFile');
+    const dischargePdfFileInput = document.getElementById('dischargePdfFile');
   const dischargeEtaTimeInput = document.getElementById('dischargeEtaTime');
   const dischargeContainerListInput = document.getElementById('dischargeContainerList');
   const dischargeResultBody = document.getElementById('dischargeResultBody');
@@ -8510,7 +8516,7 @@
     return 'discharge-badge';
   }
 
-  dischargePdfFileInput.addEventListener('change', async () => {
+    dischargePdfFileInput.addEventListener('change', async () => {
     const file = dischargePdfFileInput.files[0];
     if (!file) {
       dischargeCachedContainerMap = null;
