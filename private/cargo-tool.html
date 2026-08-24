@@ -3498,17 +3498,17 @@
       <g id="particles" filter="url(#glow)"></g>
     </svg>
     <ul class="tab-list">
-      <li class="tab-item active" data-tab="main">메인</li>
-      <li class="tab-item" data-tab="checklist">체크리스트</li>
+      <li class="tab-item active" data-tab="main" title="단축키: Alt + 1">메인</li>
+      <li class="tab-item" data-tab="checklist" title="단축키: Alt + 2">체크리스트</li>
       
       <li class="tab-item" data-tab="todo">To Do <span id="todoDot" class="todo-notification-dot"></span></li>
       <li class="tab-item dropdown-tab" data-tab-group="etc">
         기타
         <div class="dropdown-content" id="etcDropdown">
-                    <div class="dropdown-item" data-tab="discharge">양하 시간 확인</div>
-          <div class="dropdown-item" data-tab="freight">운임 필터</div>
+                    <div class="dropdown-item" data-tab="discharge" title="단축키: Alt + 5">양하 시간 확인</div>
+          <div class="dropdown-item" data-tab="freight" title="단축키: Alt + 3">운임 필터</div>
           <div class="dropdown-item" data-tab="edi-validation">화물 검증 (EDI)</div>
-          <div class="dropdown-item" data-tab="freight-check">운임 체크</div>
+          <div class="dropdown-item" data-tab="freight-check" title="단축키: Alt + 4">운임 체크</div>
           <div class="dropdown-item" data-tab="calendar">캘린더</div>
           <div class="dropdown-item" data-tab="cal">프리타임 계산기</div>
           <div class="dropdown-item" data-tab="memo">메모장</div>
@@ -7658,6 +7658,30 @@
     }
   }
 
+  // ⭐ 탭 전환 단축키 (Alt+1: 메인, Alt+2: 체크리스트, Alt+3: 운임필터, Alt+4: 운임체크, Alt+5: 양하 시간 확인) ⭐
+  window.addEventListener('keydown', (e) => {
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      const app = document.getElementById('mainAppWrapper');
+      if (app && (app.style.display === 'none' || getComputedStyle(app).display === 'none')) return;
+
+      if (e.key === '1' || e.code === 'Digit1' || e.code === 'Numpad1') {
+        e.preventDefault();
+        switchTab('main');
+      } else if (e.key === '2' || e.code === 'Digit2' || e.code === 'Numpad2') {
+        e.preventDefault();
+        switchTab('checklist');
+      } else if (e.key === '3' || e.code === 'Digit3' || e.code === 'Numpad3') {
+        e.preventDefault();
+        switchTab('freight', 'etc');
+      } else if (e.key === '4' || e.code === 'Digit4' || e.code === 'Numpad4') {
+        e.preventDefault();
+        switchTab('freight-check', 'etc');
+      } else if (e.key === '5' || e.code === 'Digit5' || e.code === 'Numpad5') {
+        e.preventDefault();
+        switchTab('discharge', 'etc');
+      }
+    }
+  });
 
   // 전체 초기화 및 실행
   document.addEventListener("DOMContentLoaded", () => {
@@ -8101,6 +8125,7 @@
     { name: "Consignee", key: "consignee", type: "string" },
     { name: "Notify", key: "notify", type: "string" },
     { name: "Actual Shipper", key: "actualShipper", type: "string" },
+    { name: "A/Shipper Code", key: "aShipperCode", type: "string" },
     { name: "SHIPPER", key: "shipper", type: "string" },
     { name: "20'", key: "twenty", type: "number" },
     { name: "40'", key: "forty", type: "number" },
