@@ -717,6 +717,17 @@
       transition: background-color 0.3s ease, box-shadow 0.3s ease;
     }
 
+    /* 안내 문구 카드 내 복사 항목 간 구분선 (기본 운임표 카드와 동일한 1px dashed #ccc) */
+    #noticeGuideArea .sentence-block + .sentence-block {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed #ccc;
+    }
+
+    .dark-mode #noticeGuideArea .sentence-block + .sentence-block {
+      border-top-color: #444;
+    }
+
     .readonly-box {
       background-color: #f1f1f1;
       border: 1px solid #ccc;
@@ -3420,6 +3431,17 @@
       color: #93c5fd;
     }
 
+    /* 당일 환율 입력창 위아래 증감(스피너) 버튼 제거 */
+    #basicFreightExchangeRate::-webkit-outer-spin-button,
+    #basicFreightExchangeRate::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    #basicFreightExchangeRate {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
   </style>
 </head>
 
@@ -3441,17 +3463,17 @@
       <form id="authForm" onsubmit="handleAuthSubmit(event)">
         <div class="auth-form-group">
           <label for="authEmail">이메일 주소</label>
-          <input type="email" id="authEmail" placeholder="name@company.com" required autocomplete="email" />
+          <input type="email" id="authEmail" name="authEmail" placeholder="name@company.com" required autocomplete="email" />
         </div>
 
         <div class="auth-form-group">
           <label for="authPassword">비밀번호</label>
-          <input type="password" id="authPassword" placeholder="6자리 이상 비밀번호" required autocomplete="current-password" />
+          <input type="password" id="authPassword" name="authPassword" placeholder="6자리 이상 비밀번호" required autocomplete="off" />
         </div>
 
         <div class="auth-form-group" id="signupConfirmGroup" style="display: none;">
           <label for="authPasswordConfirm">비밀번호 확인</label>
-          <input type="password" id="authPasswordConfirm" placeholder="비밀번호 다시 입력" autocomplete="new-password" />
+          <input type="password" id="authPasswordConfirm" name="authPasswordConfirm" placeholder="비밀번호 다시 입력" autocomplete="off" />
         </div>
 
         <button type="submit" class="auth-btn" id="authSubmitBtn">로그인</button>
@@ -3675,7 +3697,8 @@
         <p id="result">🔎 데이터 로딩 중입니다...</p>
       </div>
 
-      <div class="card">
+      <!-- 📌 정보를 입력하세요 카드 (숨김 처리: 다시 표시하려면 style="display: none;" 제거) -->
+      <div class="card" style="display: none;">
         <h2>📌 정보를 입력하세요</h2>
         <div class="form-group row">
           <span class="label" style="width: 46px;">항차</span>
@@ -3884,7 +3907,7 @@
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
           <label for="basicFreightExchangeRate" style="font-weight: bold; font-size: 15px;">당일 환율 (USD → KRW):</label>
           <input type="number" id="basicFreightExchangeRate" placeholder="환율 입력 (예: 1480.5)" step="0.1"
-            style="width: 180px; padding: 8px 12px; font-size: 15px;" />
+            onwheel="this.blur();" style="width: 180px; padding: 8px 12px; font-size: 15px;" />
           <span style="font-size: 14px; color: #666;" class="rate-unit-text">원 / $</span>
         </div>
 
@@ -4508,7 +4531,7 @@
 
           <div class="form-group row">
             <span class="label" style="width: 150px;">모선 입항 시간(ETA)</span>
-            <input type="text" id="dischargeEtaTime" placeholder="예: 1430 (숫자만 4자리)" maxlength="5" />
+            <input type="text" id="dischargeEtaTime" placeholder="예: 1430 (숫자만 4자리)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
           </div>
 
           <div class="form-group">
@@ -6031,6 +6054,9 @@
     const exchangeRateInput = document.getElementById("basicFreightExchangeRate");
     if (exchangeRateInput) {
       exchangeRateInput.addEventListener("input", calculateAndRenderBasicFreightTable);
+      exchangeRateInput.addEventListener("wheel", function (e) {
+        this.blur();
+      });
     }
 
     // B/L 다중 컨테이너 수량 변경 이벤트 리스너 바인딩
@@ -6914,7 +6940,9 @@
 입항 예정 시간 ${month}월 ${date}일 **:** 입니다.
 
 업무에 참고 부탁드립니다!`;
-    }
+    },
+    () => `DO는 프리즘3.0에서 이체증을 첨부하신 후 신청 부탁드립니다. 
+감사합니다!`
   ];
 
   function updateSentences() {
@@ -9692,17 +9720,26 @@
     const tabSignup = document.getElementById('tabBtnSignup');
     const confirmGroup = document.getElementById('signupConfirmGroup');
     const submitBtn = document.getElementById('authSubmitBtn');
+    const emailInput = document.getElementById('authEmail');
+    const passwordInput = document.getElementById('authPassword');
+    const confirmInput = document.getElementById('authPasswordConfirm');
 
     if (mode === 'signup') {
       tabSignup.classList.add('active');
       tabLogin.classList.remove('active');
       confirmGroup.style.display = 'block';
       submitBtn.textContent = '회원가입 신청';
+      if (emailInput) emailInput.setAttribute('autocomplete', 'off');
+      if (passwordInput) passwordInput.setAttribute('autocomplete', 'off');
+      if (confirmInput) confirmInput.setAttribute('autocomplete', 'off');
     } else {
       tabLogin.classList.add('active');
       tabSignup.classList.remove('active');
       confirmGroup.style.display = 'none';
       submitBtn.textContent = '로그인';
+      if (emailInput) emailInput.setAttribute('autocomplete', 'email');
+      if (passwordInput) passwordInput.setAttribute('autocomplete', 'off');
+      if (confirmInput) confirmInput.setAttribute('autocomplete', 'off');
     }
   }
 
