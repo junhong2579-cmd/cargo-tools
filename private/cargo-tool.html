@@ -9141,9 +9141,9 @@
         }
       }
 
-      // X축 7~8, Y축 9 예외 조건 추가 (50분 추가)
+      // X축 7~8, Y축 9 예외 조건 추가 (모두 2시간 30분)
       if (yVal === 9) {
-        if (xVal === 7) return { hours: 2, minutes: 20 };
+        if (xVal === 7) return { hours: 2, minutes: 30 };
         if (xVal === 8) return { hours: 2, minutes: 30 };
       }
 
@@ -9177,7 +9177,7 @@
         return { hours: 1, minutes: 20 };
       }
 
-      if (xVal >= 23 && xVal <= 26) return { hours: 0, minutes: 20 };
+      if (xVal >= 23 && xVal <= 26) return { hours: 0, minutes: 30 };
       if (xVal >= 21 && xVal <= 22) return { hours: 0, minutes: 30 };
       if (xVal >= 19 && xVal <= 20) return { hours: 0, minutes: 40 };
       if (xVal >= 17 && xVal <= 18) return { hours: 0, minutes: 50 };
@@ -9197,7 +9197,7 @@
         const xVal = parseInt(xList[0], 10);
         const yVal = parseInt(yValue, 10);
 
-        if (xVal >= 6 && xVal <= 8 && yVal >= 5 && yVal <= 6) return { hours: 1, minutes: 20 };
+        if (xVal >= 6 && xVal <= 8 && yVal >= 5 && yVal <= 6) return { hours: 1, minutes: 30 };
         if (xVal >= 2 && xVal <= 5 && yVal >= 5 && yVal <= 6) return { hours: 1, minutes: 40 };
         if (xVal >= 1 && xVal <= 7 && yVal === 4) return { hours: 2, minutes: 0 };
         if (xVal >= 1 && xVal <= 7 && yVal === 3) return { hours: 2, minutes: 20 };
