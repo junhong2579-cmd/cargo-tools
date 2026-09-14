@@ -5466,21 +5466,30 @@
   function executeCargoValidation() {
     if (!g_ediData || !g_excelData) return;
 
-    const ediMap = {};
-    g_ediData.forEach(r => { if (r['B/L NO']) ediMap[r['B/L NO'].trim()] = r; });
+    const btn = document.getElementById('runValidationBtn');
+    const origText = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ 검증 분석 중...';
+    }
 
-    const excelMap = {};
-    g_excelData.forEach(r => { if (r['B/L NO']) excelMap[r['B/L NO'].trim()] = r; });
+    setTimeout(() => {
+      try {
+        const ediMap = {};
+        g_ediData.forEach(r => { if (r['B/L NO']) ediMap[r['B/L NO'].trim()] = r; });
 
-    const allBls = Array.from(new Set([...Object.keys(ediMap), ...Object.keys(excelMap)]));
-    
-    const internalErrorMap = {};
-    g_excelInternalErrors.forEach(ie => {
-      if (ie['B/L NO']) internalErrorMap[ie['B/L NO'].trim()] = ie['불일치 항목 내역'];
-    });
+        const excelMap = {};
+        g_excelData.forEach(r => { if (r['B/L NO']) excelMap[r['B/L NO'].trim()] = r; });
 
-    g_discrepancies = [];
-    g_validationResults = [];
+        const allBls = Array.from(new Set([...Object.keys(ediMap), ...Object.keys(excelMap)]));
+        
+        const internalErrorMap = {};
+        g_excelInternalErrors.forEach(ie => {
+          if (ie['B/L NO']) internalErrorMap[ie['B/L NO'].trim()] = ie['불일치 항목 내역'];
+        });
+
+        g_discrepancies = [];
+        g_validationResults = [];
 
     allBls.forEach(blNo => {
       const ediRow = ediMap[blNo];
@@ -5591,6 +5600,13 @@
 
     renderValidationSummary();
     renderValidationTable();
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
+      }
+    }, 20);
   }
 
   // 7. 요약 통계 렌더링
@@ -5614,7 +5630,8 @@
     if (fInternal) fInternal.textContent = internalCount;
   }
 
-  // 8. 결과 테이블 렌더링
+  // 8. 결과 테이블 렌더링 (분할 렌더링으로 브라우저 프리징 완전 방지)
+  let g_ediRenderLimit = 100;
   function renderValidationTable() {
     const tbody = document.getElementById('ediValidationResultBody');
     if (!tbody) return;
@@ -5646,8 +5663,9 @@
       return;
     }
 
+    const visibleItems = filtered.slice(0, g_ediRenderLimit);
     let html = '';
-    filtered.forEach((row, idx) => {
+    visibleItems.forEach((row, idx) => {
       const rowClass = row.hasError ? 'has-error' : '';
       
       let diffHtml = '';
@@ -5690,11 +5708,24 @@
       `;
     });
 
+    if (filtered.length > g_ediRenderLimit) {
+      html += `
+        <tr id="ediLoadMoreRow">
+          <td colspan="9" style="text-align: center; padding: 16px; background-color: #f8fafc;">
+            <button type="button" class="edi-btn" onclick="g_ediRenderLimit += 100; renderValidationTable();" style="padding: 9px 24px; font-weight: 600; cursor: pointer; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; border-radius: 8px;">
+              ➕ 더보기 (${visibleItems.length}건 / 총 ${filtered.length}건 표시 중)
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+
     tbody.innerHTML = html;
   }
 
-  // 9. 필터 및 검색
+  // 9. 필터 및 검색 (표시 건수 100건으로 초기화)
   function filterValidationTable(filterType, btn) {
+    g_ediRenderLimit = 100;
     g_currentFilter = filterType;
     document.querySelectorAll('.edi-filter-btn').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
@@ -5702,6 +5733,7 @@
   }
 
   function onValidationSearch(value) {
+    g_ediRenderLimit = 100;
     g_searchKeyword = value.trim();
     renderValidationTable();
   }
@@ -8870,13 +8902,15 @@
       freightEmptyMessage.style.display = "none";
 
       const dataToRender = currentFilteredFreightData.slice(0, FREIGHT_ITEMS_PER_PAGE);
+      const frag = document.createDocumentFragment();
       dataToRender.forEach(item => {
-        freightTableBody.appendChild(renderFreightRow(item));
+        frag.appendChild(renderFreightRow(item));
       });
+      freightTableBody.appendChild(frag);
 
       if (currentFilteredFreightData.length > FREIGHT_ITEMS_PER_PAGE) {
         freightLoadMoreContainer.style.display = "block";
-        freightLoadMoreBtn.textContent = `나머지 더보기 확인 (총 ${currentFilteredFreightData.length}건 중 ${FREIGHT_ITEMS_PER_PAGE}건 표시됨)`;
+        freightLoadMoreBtn.textContent = `더보기 확인 (총 ${currentFilteredFreightData.length}건 중 ${FREIGHT_ITEMS_PER_PAGE}건 표시됨)`;
       }
     } else {
       freightTable.style.display = "none";
@@ -8906,15 +8940,22 @@
   });
 
   freightLoadMoreBtn.addEventListener("click", function () {
-    // 기존 노출 갯수를 제외한 나머지 모두 렌더링
+    // 200건씩 분할 렌더링하여 브라우저 멈춤 방지
     const currentlyDisplayedCount = freightTableBody.children.length;
-    const remainingData = currentFilteredFreightData.slice(currentlyDisplayedCount);
+    const nextChunk = currentFilteredFreightData.slice(currentlyDisplayedCount, currentlyDisplayedCount + 200);
+    const frag = document.createDocumentFragment();
 
-    remainingData.forEach(item => {
-      freightTableBody.appendChild(renderFreightRow(item));
+    nextChunk.forEach(item => {
+      frag.appendChild(renderFreightRow(item));
     });
+    freightTableBody.appendChild(frag);
 
-    freightLoadMoreContainer.style.display = "none";
+    const newCount = freightTableBody.children.length;
+    if (newCount >= currentFilteredFreightData.length) {
+      freightLoadMoreContainer.style.display = "none";
+    } else {
+      freightLoadMoreBtn.textContent = `더보기 확인 (총 ${currentFilteredFreightData.length}건 중 ${newCount}건 표시됨)`;
+    }
   });
 
   // ⭐ 표 셀 하이라이트 & 키보드 이동 로직 ⭐
@@ -9094,15 +9135,23 @@
     }
   });
 
+  let freightColUpdateTimer = null;
   function updateFreightTableColumns() {
-    let cssRules = "";
-    freightColCheckboxesContainer.querySelectorAll("input").forEach(cb => {
-      if (!cb.checked) {
-        const index = parseInt(cb.dataset.index) + 1;
-        cssRules += `#freightTable th:nth-child(${index}), #freightTable td:nth-child(${index}) { display: none !important; }\n`;
+    if (freightColUpdateTimer) cancelAnimationFrame(freightColUpdateTimer);
+    freightColUpdateTimer = requestAnimationFrame(() => {
+      let cssRules = "";
+      const unchecked = [];
+      freightColCheckboxesContainer.querySelectorAll("input").forEach(cb => {
+        if (!cb.checked) {
+          unchecked.push(parseInt(cb.dataset.index) + 1);
+        }
+      });
+      if (unchecked.length > 0) {
+        const selectors = unchecked.map(idx => `#freightTable th:nth-child(${idx}), #freightTable td:nth-child(${idx})`).join(', ');
+        cssRules = `${selectors} { display: none !important; }\n`;
       }
+      freightColStyle.textContent = cssRules;
     });
-    freightColStyle.textContent = cssRules;
   }
 
   // ============================================
@@ -9439,6 +9488,12 @@
 
     dischargePdfFileInput.addEventListener('change', async () => {
     const file = dischargePdfFileInput.files[0];
+    if (dischargePdfDoc) {
+      try {
+        dischargePdfDoc.destroy();
+      } catch (e) {}
+      dischargePdfDoc = null;
+    }
     if (!file) {
       dischargeCachedContainerMap = null;
       dischargeRenderTable();
@@ -9696,7 +9751,12 @@
   let currentAuthMode = 'login'; // 'login' | 'signup'
 
   if (window.supabase) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
   }
 
   function showAuthMessage(text, type = 'error') {
@@ -9975,9 +10035,35 @@
     }
   }
 
-  // 초기 로드 시 세션 확인
+  // 백그라운드 세션 자동 연장 (15분 주기 Silent Refresh)
+  function startSilentSessionRefresh() {
+    if (window.location.protocol === 'file:') return; // 로컬 HTML 단독 실행 시 건너뜀
+
+    async function doRefresh() {
+      try {
+        const res = await fetch('/api/auth/refresh');
+        if (!res.ok) {
+          console.warn('[Session] 세션 갱신 응답 코드:', res.status);
+        } else {
+          const data = await res.json();
+          if (data && data.ok) {
+            console.log('[Session] 세션이 자동 연장되었습니다:', data.refreshedAt);
+          }
+        }
+      } catch (err) {
+        console.warn('[Session] 세션 갱신 통신 알림:', err);
+      }
+    }
+
+    // 로드 1분 후 1회 확인, 이후 15분(900,000ms)마다 백그라운드 자동 갱신
+    setTimeout(doRefresh, 60 * 1000);
+    setInterval(doRefresh, 15 * 60 * 1000);
+  }
+
+  // 초기 로드 시 세션 확인 및 자동 연장 타이머 가동
   document.addEventListener('DOMContentLoaded', () => {
     checkApprovalStatus(false);
+    startSilentSessionRefresh();
   });
 </script>
 </body>
@@ -10932,80 +11018,96 @@
       return;
     }
 
-    if (g_fcUsingCloudPast && (!g_fcPastData || g_fcPastData.length === 0)) {
-      syncFreightMasterFromStorage();
+    const btn = document.getElementById('runFreightCheckBtn');
+    const origText = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ 검증 분석 중...';
     }
 
-    g_fcInternalErrors = fcCheckErrors(g_fcTargetData);
+    setTimeout(() => {
+      try {
+        if (g_fcUsingCloudPast && (!g_fcPastData || g_fcPastData.length === 0)) {
+          syncFreightMasterFromStorage();
+        }
 
-    g_fcDiscrepancies = [];
-    if (g_fcPastData && g_fcPastData.length > 0) {
-      g_fcDiscrepancies = fcCompareHistory(g_fcTargetData, g_fcPastData);
-    }
+        g_fcInternalErrors = fcCheckErrors(g_fcTargetData);
 
-    const extracts = fcExtractTsAndThc(g_fcTargetData);
-    g_fcExtractTsList = extracts.listA;
-    g_fcExtractThcList = extracts.listB;
+        g_fcDiscrepancies = [];
+        if (g_fcPastData && g_fcPastData.length > 0) {
+          g_fcDiscrepancies = fcCompareHistory(g_fcTargetData, g_fcPastData);
+        }
 
-    const internalErrMap = {};
-    g_fcInternalErrors.forEach(err => {
-      if (!internalErrMap[err['B/L NO']]) internalErrMap[err['B/L NO']] = [];
-      internalErrMap[err['B/L NO']].push(`[${err['오류 구분']}] ${err['오류 내용']}`);
-    });
+        const extracts = fcExtractTsAndThc(g_fcTargetData);
+        g_fcExtractTsList = extracts.listA;
+        g_fcExtractThcList = extracts.listB;
 
-    const historyDiscMap = {};
-    g_fcDiscrepancies.forEach(disc => {
-      const bl = disc.data['B/L NO'];
-      historyDiscMap[bl] = disc;
-    });
+        const internalErrMap = {};
+        g_fcInternalErrors.forEach(err => {
+          if (!internalErrMap[err['B/L NO']]) internalErrMap[err['B/L NO']] = [];
+          internalErrMap[err['B/L NO']].push(`[${err['오류 구분']}] ${err['오류 내용']}`);
+        });
 
-    g_fcAllResults = g_fcTargetData.map(row => {
-      const blNo = fcNormalizeVal(row['B/L NO']);
-      const intErrs = internalErrMap[blNo] || [];
-      const histDisc = historyDiscMap[blNo];
+        const historyDiscMap = {};
+        g_fcDiscrepancies.forEach(disc => {
+          const bl = disc.data['B/L NO'];
+          historyDiscMap[bl] = disc;
+        });
 
-      const hasIntErr = intErrs.length > 0;
-      const hasHistDisc = !!histDisc;
+        g_fcAllResults = g_fcTargetData.map(row => {
+          const blNo = fcNormalizeVal(row['B/L NO']);
+          const intErrs = internalErrMap[blNo] || [];
+          const histDisc = historyDiscMap[blNo];
 
-      let statusText = '정상';
-      let statusClass = 'fc-badge-success';
+          const hasIntErr = intErrs.length > 0;
+          const hasHistDisc = !!histDisc;
 
-      if (hasIntErr && hasHistDisc) {
-        statusText = '자체오류+불일치';
-        statusClass = 'fc-badge-danger';
-      } else if (hasIntErr) {
-        statusText = '자체 오류';
-        statusClass = 'fc-badge-danger';
-      } else if (hasHistDisc) {
-        statusText = histDisc.data['불일치 내용'] === '과거 데이터 없음 (신규 업체)' ? '신규 업체' : '과거 불일치';
-        statusClass = 'fc-badge-warning';
+          let statusText = '정상';
+          let statusClass = 'fc-badge-success';
+
+          if (hasIntErr && hasHistDisc) {
+            statusText = '자체오류+불일치';
+            statusClass = 'fc-badge-danger';
+          } else if (hasIntErr) {
+            statusText = '자체 오류';
+            statusClass = 'fc-badge-danger';
+          } else if (hasHistDisc) {
+            statusText = histDisc.data['불일치 내용'] === '과거 데이터 없음 (신규 업체)' ? '신규 업체' : '과거 불일치';
+            statusClass = 'fc-badge-warning';
+          }
+
+          let summaryNotes = [];
+          if (hasIntErr) summaryNotes.push(intErrs.join(' | '));
+          if (hasHistDisc) summaryNotes.push(`[과거불일치] ${histDisc.data['불일치 내용']}`);
+
+          return {
+            row: row,
+            blNo: blNo,
+            statusText: statusText,
+            statusClass: statusClass,
+            hasIntErr: hasIntErr,
+            hasHistDisc: hasHistDisc,
+            summaryNotes: summaryNotes.join(' // ') || '-'
+          };
+        });
+
+        if (g_fcInternalErrors.length > 0) {
+          g_fcCurrentFilter = 'internal';
+        } else if (g_fcDiscrepancies.length > 0) {
+          g_fcCurrentFilter = 'history';
+        } else {
+          g_fcCurrentFilter = 'all';
+        }
+
+        renderFreightCheckSummary();
+        filterFreightCheckView(g_fcCurrentFilter);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
       }
-
-      let summaryNotes = [];
-      if (hasIntErr) summaryNotes.push(intErrs.join(' | '));
-      if (hasHistDisc) summaryNotes.push(`[과거불일치] ${histDisc.data['불일치 내용']}`);
-
-      return {
-        row: row,
-        blNo: blNo,
-        statusText: statusText,
-        statusClass: statusClass,
-        hasIntErr: hasIntErr,
-        hasHistDisc: hasHistDisc,
-        summaryNotes: summaryNotes.join(' // ') || '-'
-      };
-    });
-
-    if (g_fcInternalErrors.length > 0) {
-      g_fcCurrentFilter = 'internal';
-    } else if (g_fcDiscrepancies.length > 0) {
-      g_fcCurrentFilter = 'history';
-    } else {
-      g_fcCurrentFilter = 'all';
-    }
-
-    renderFreightCheckSummary();
-    filterFreightCheckView(g_fcCurrentFilter);
+    }, 20);
   }
 
   // 클라우드 최신 운임 데이터 새로고침 함수
@@ -11079,15 +11181,18 @@
     if (viewExtract) viewExtract.style.display = (viewType === 'extract') ? 'block' : 'none';
     if (viewAll) viewAll.style.display = (viewType === 'all') ? 'block' : 'none';
 
+    g_fcRenderLimit = 100;
     renderCurrentFreightCheckTable();
   }
 
   function onFreightCheckSearch(kw) {
+    g_fcRenderLimit = 100;
     g_fcSearchKeyword = kw.trim();
     renderCurrentFreightCheckTable();
   }
 
-  // 10. 각 테이블 상세 렌더링
+  // 10. 각 테이블 상세 렌더링 (대용량 분할 렌더링 적용)
+  let g_fcRenderLimit = 100;
   function renderCurrentFreightCheckTable() {
     const kw = g_fcSearchKeyword.toLowerCase();
 
@@ -11153,8 +11258,9 @@
         return;
       }
 
+      const visibleList = list.slice(0, g_fcRenderLimit);
       let html = '';
-      list.forEach((disc, idx) => {
+      visibleList.forEach((disc, idx) => {
         const data = disc.data;
         const mismatches = disc.mismatchedCols || [];
         const diffDetails = disc.diffDetails || {};
@@ -11203,6 +11309,19 @@
           </tr>
         `;
       });
+
+      if (list.length > g_fcRenderLimit) {
+        html += `
+          <tr>
+            <td colspan="27" style="text-align: center; padding: 16px; background-color: #f8fafc;">
+              <button type="button" class="edi-btn" onclick="g_fcRenderLimit += 100; renderCurrentFreightCheckTable();" style="padding: 9px 24px; font-weight: 600; cursor: pointer; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; border-radius: 8px;">
+                ➕ 더보기 (${visibleList.length}건 / 총 ${list.length}건 표시 중)
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+
       tbody.innerHTML = html;
     } else if (g_fcCurrentFilter === 'extract') {
       const tbody = document.getElementById('fcExtractTableBody');
@@ -11270,8 +11389,9 @@
         return;
       }
 
+      const visibleList = list.slice(0, g_fcRenderLimit);
       let html = '';
-      list.forEach((item, idx) => {
+      visibleList.forEach((item, idx) => {
         const row = item.row;
         html += `
           <tr>
@@ -11297,6 +11417,19 @@
           </tr>
         `;
       });
+
+      if (list.length > g_fcRenderLimit) {
+        html += `
+          <tr>
+            <td colspan="19" style="text-align: center; padding: 16px; background-color: #f8fafc;">
+              <button type="button" class="edi-btn" onclick="g_fcRenderLimit += 100; renderCurrentFreightCheckTable();" style="padding: 9px 24px; font-weight: 600; cursor: pointer; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; border-radius: 8px;">
+                ➕ 더보기 (${visibleList.length}건 / 총 ${list.length}건 표시 중)
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+
       tbody.innerHTML = html;
     }
   }
