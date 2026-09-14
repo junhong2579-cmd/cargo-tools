@@ -217,10 +217,12 @@ export default function LoginPage() {
                 <label>이메일 주소</label>
                 <input
                   type="email"
+                  name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
                   required
+                  autoComplete={mode === 'signup' ? 'off' : 'email'}
                 />
               </div>
 
@@ -228,10 +230,12 @@ export default function LoginPage() {
                 <label>비밀번호</label>
                 <input
                   type="password"
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="6자리 이상 비밀번호"
                   required
+                  autoComplete="off"
                 />
               </div>
 
@@ -240,10 +244,12 @@ export default function LoginPage() {
                   <label>비밀번호 확인</label>
                   <input
                     type="password"
+                    name="passwordConfirm"
                     value={passwordConfirm}
                     onChange={(e) => setPasswordConfirm(e.target.value)}
                     placeholder="비밀번호 다시 입력"
                     required
+                    autoComplete="off"
                   />
                 </div>
               )}
