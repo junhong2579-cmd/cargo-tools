@@ -22,7 +22,8 @@ export async function getServerSideProps(context) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user || (await supabase.auth.getUser()).data.user;
 
   // 1. 미로그인 시 로그인 페이지로 즉시 리다이렉트
   if (!user) {
@@ -64,6 +65,16 @@ export async function getServerSideProps(context) {
     const filePath = path.join(process.cwd(), 'private', 'cargo-tool.html');
     let htmlContent = fs.readFileSync(filePath, 'utf8');
     htmlContent = htmlContent.replace('__USER_EMAIL__', user.email || '팀원');
+
+    if (session && session.access_token) {
+      const tokensPayload = JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
+      });
+      htmlContent = htmlContent.replace('__SERVER_SESSION_TOKENS__', tokensPayload);
+    } else {
+      htmlContent = htmlContent.replace('__SERVER_SESSION_TOKENS__', 'null');
+    }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.write(htmlContent);
