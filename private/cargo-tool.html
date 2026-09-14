@@ -9751,12 +9751,7 @@
   let currentAuthMode = 'login'; // 'login' | 'signup'
 
   if (window.supabase) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
   function showAuthMessage(text, type = 'error') {
@@ -9883,8 +9878,18 @@
   }
 
   const SERVER_INJECTED_EMAIL = '__USER_EMAIL__';
+  const SERVER_SESSION_TOKENS = __SERVER_SESSION_TOKENS__;
 
   async function checkApprovalStatus(isManualClick = false) {
+    // 0. 서버에서 내려준 세션 토큰 주입 (새 컴퓨터/브라우저에서도 RLS 통과 및 클라우드 데이터 즉시 로드)
+    if (SERVER_SESSION_TOKENS && SERVER_SESSION_TOKENS.access_token && supabaseClient) {
+      try {
+        await supabaseClient.auth.setSession(SERVER_SESSION_TOKENS);
+      } catch (tokenErr) {
+        console.warn('[Auth] 세션 주입 처리:', tokenErr);
+      }
+    }
+
     // 1. Next.js 서버에서 이미 승인 검증 후 내려온 경우 -> 즉시 메인 도구 활성화!
     if (SERVER_INJECTED_EMAIL !== '__USER_EMAIL__' && SERVER_INJECTED_EMAIL.includes('@')) {
       document.getElementById('authOverlay').style.display = 'none';
