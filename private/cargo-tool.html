@@ -3071,6 +3071,104 @@
       color: #ef4444 !important;
     }
 
+    /* ===== 화면 복사 붙여넣기 모드 & 전용 영역 스타일 ===== */
+    .fc-mode-tab-group {
+      display: flex;
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 3px;
+      margin-bottom: 12px;
+      gap: 4px;
+    }
+
+    .dark-mode .fc-mode-tab-group {
+      background: #202024;
+    }
+
+    .fc-mode-tab {
+      flex: 1;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .dark-mode .fc-mode-tab {
+      color: #94a3b8;
+    }
+
+    .fc-mode-tab.active {
+      background: #ffffff;
+      color: #3b82f6;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark-mode .fc-mode-tab.active {
+      background: #2d2d32;
+      color: #60a5fa;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    }
+
+    .fc-paste-zone {
+      border: 1.5px dashed #cbd5e1;
+      border-radius: 12px;
+      padding: 24px 16px;
+      text-align: center;
+      background: #fbfbfc;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 125px;
+      outline: none;
+    }
+
+    .dark-mode .fc-paste-zone {
+      border-color: #383838;
+      background: #18181a;
+    }
+
+    .fc-paste-zone:hover,
+    .fc-paste-zone:focus,
+    .fc-paste-zone.focused {
+      border-color: #94a3b8 !important;
+      background: #f1f5f9 !important;
+      transform: translateY(-1px);
+      box-shadow: none !important;
+    }
+
+    .dark-mode .fc-paste-zone:hover,
+    .dark-mode .fc-paste-zone:focus,
+    .dark-mode .fc-paste-zone.focused {
+      border-color: #64748b !important;
+      background: #242427 !important;
+      box-shadow: none !important;
+    }
+
+    .fc-paste-zone.has-file {
+      border: 1.5px solid #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .dark-mode .fc-paste-zone.has-file {
+      border: 1.5px solid #3f3f46;
+      background: #1e1e22;
+    }
+
+
     .dark-mode .fc-file-remove-btn:hover {
       background: #333338 !important;
       color: #f87171 !important;
@@ -3480,6 +3578,12 @@
       </form>
 
       <div id="authMsg" class="auth-msg"></div>
+
+      <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e2e8f0; text-align: center;">
+        <button type="button" class="auth-btn" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 600; width: 100%; box-shadow: none;" onclick="bypassAuthForTest()">
+          🧪 로그인 없이 바로 테스트 시작 (로컬 테스트 모드)
+        </button>
+      </div>
     </div>
 
     <!-- 2. 승인 대기 중 안내 카드 -->
@@ -4730,27 +4834,51 @@
         <!-- 2. 업로드 카드 그리드 (2-Card Layout) -->
         <div class="fc-upload-grid">
           
-          <!-- 카드 1: 검증 대상 운임 파일 -->
+          <!-- 카드 1: 검증 대상 운임 데이터 (화면 복사 붙여넣기 & 엑셀 업로드) -->
           <div class="fc-upload-card">
             <div class="fc-card-title">
-              <span>📁 1. 검증 대상 운임 파일 (.xlsx / .xls / .csv)</span>
+              <span>📂 1. 검증 대상 운임 데이터</span>
               <span class="edi-badge edi-badge-info" id="fcTargetBadge" style="display: none;">준비 완료</span>
             </div>
 
-            <div class="fc-drop-zone" id="fcTargetDropZone" onclick="document.getElementById('fcTargetFileInput').click()" ondragover="handleFcTargetDragOver(event)" ondragleave="handleFcTargetDragLeave(event)" ondrop="handleFcTargetDrop(event)">
+            <!-- 입력 방식 전환 탭 (화면 복사 붙여넣기 vs 파일 업로드) -->
+            <div class="fc-mode-tab-group">
+              <button type="button" class="fc-mode-tab active" id="fcModePasteBtn" onclick="switchFcInputMode('paste')">
+                📋 화면 복사 붙여넣기 (Ctrl+V)
+              </button>
+              <button type="button" class="fc-mode-tab" id="fcModeFileBtn" onclick="switchFcInputMode('file')">
+                📁 엑셀 파일 업로드
+              </button>
+            </div>
+
+            <!-- 모드 1: 화면 복사 데이터 붙여넣기 전용 영역 (기본 활성화) -->
+            <div class="fc-paste-zone" id="fcTargetPasteZone" tabindex="0"
+                 onfocus="handleFcPasteFocus(event)"
+                 onblur="handleFcPasteBlur(event)"
+                 onpaste="handleFcPasteEvent(event)"
+                 onclick="this.focus()"
+                 title="이 영역을 클릭한 후 키보드의 Ctrl + V를 누르세요">
+              <div class="fc-drop-icon" id="fcPasteIcon">📋</div>
+              <div class="fc-drop-text" id="fcPastePromptText">여기를 클릭한 후 Ctrl + V 를 누르세요</div>
+              <div class="fc-drop-subtext" id="fcPasteSubtext">화물 시스템 화면에서 복사한 B/L 영역을 붙여넣으면 검증 데이터로 자동 인식됩니다</div>
+            </div>
+
+            <!-- 모드 2: 엑셀 파일 드롭존 (탭 전환 시 표시) -->
+            <div class="fc-drop-zone" id="fcTargetDropZone" style="display: none;" onclick="document.getElementById('fcTargetFileInput').click()" ondragover="handleFcTargetDragOver(event)" ondragleave="handleFcTargetDragLeave(event)" ondrop="handleFcTargetDrop(event)">
               <input type="file" id="fcTargetFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleFcTargetFileSelect(event)" />
               <div class="fc-drop-icon">📁</div>
               <div class="fc-drop-text">검증할 운임 엑셀 파일을 드래그하거나 클릭</div>
               <div class="fc-drop-subtext">지원: 다운로드 양식(헤더 자동인식) 및 화면 복사/붙여넣기 양식</div>
             </div>
 
+            <!-- 데이터 로드 정보 표시 박스 -->
             <div id="fcTargetInfoBox" style="display: none;" class="fc-file-info">
               <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                <span style="font-size: 16px;">📊</span>
-                <span id="fcTargetFileName" class="fc-file-name">파일명.xlsx</span>
+                <span style="font-size: 16px;" id="fcTargetInfoIcon">📋</span>
+                <span id="fcTargetFileName" class="fc-file-name">파일명</span>
                 <span id="fcTargetFileStats" class="fc-file-stats">0 B/L</span>
               </div>
-              <button type="button" class="fc-file-remove-btn" onclick="clearFcTargetFile()" title="파일 제거">✕</button>
+              <button type="button" class="fc-file-remove-btn" onclick="clearFcTargetFile()" title="데이터 제거">✕</button>
             </div>
           </div>
 
@@ -9868,8 +9996,8 @@
 
         await checkApprovalStatus(false);
       } catch (err) {
-        console.error(err);
-        showAuthMessage('로그인 처리 중 오류가 발생했습니다.', 'error');
+        console.error('Login submit error:', err);
+        showAuthMessage('로그인 처리 중 오류: ' + (err.message || String(err)), 'error');
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '로그인';
@@ -9877,8 +10005,34 @@
     }
   }
 
-  const SERVER_INJECTED_EMAIL = '__USER_EMAIL__';
-  const SERVER_SESSION_TOKENS = __SERVER_SESSION_TOKENS__;
+  const SERVER_INJECTED_EMAIL = typeof __USER_EMAIL__ !== 'undefined' ? __USER_EMAIL__ : '__USER_EMAIL__';
+  let SERVER_SESSION_TOKENS = null;
+  try {
+    SERVER_SESSION_TOKENS = (typeof __SERVER_SESSION_TOKENS__ !== 'undefined') ? __SERVER_SESSION_TOKENS__ : null;
+  } catch (e) {
+    SERVER_SESSION_TOKENS = null;
+  }
+
+  
+  // 로컬 테스트 모드 (인증 절차 없이 즉시 메인 도구 활성화)
+  function bypassAuthForTest() {
+    const overlay = document.getElementById('authOverlay');
+    const wrapper = document.getElementById('mainAppWrapper');
+    if (overlay) overlay.style.display = 'none';
+    if (wrapper) wrapper.style.display = 'block';
+    const emailEl = document.getElementById('headerUserEmail');
+    if (emailEl) emailEl.textContent = 'junhong2579@gmail.com (테스트 모드)';
+    const roleEl = document.getElementById('headerUserRole');
+    if (roleEl) {
+      roleEl.textContent = '👑 최고 관리자 (테스트)';
+      roleEl.className = 'user-role-badge role-admin';
+    }
+    // 관리자 동기화 버튼 노출
+    const syncBtn = document.getElementById('syncToCloudBtn');
+    const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
+    if (syncBtn) syncBtn.style.display = 'inline-flex';
+    if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
+  }
 
   async function checkApprovalStatus(isManualClick = false) {
     // 0. 서버에서 내려준 세션 토큰 주입 (새 컴퓨터/브라우저에서도 RLS 통과 및 클라우드 데이터 즉시 로드)
@@ -10153,10 +10307,8 @@
     return newCols;
   }
 
-  function fcParseExcelWithAutoHeader(workbook) {
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+  // 2차원 배열(rawRows)을 받아 헤더 자동인식 및 B/L 데이터 객체 배열로 변환하는 공통 파서
+  function fcParseRawRows(rawRows) {
     if (!rawRows || rawRows.length === 0) return [];
 
     const firstRow = rawRows[0].map(v => String(v || '').trim());
@@ -10206,6 +10358,138 @@
     });
 
     return result;
+  }
+
+  function fcParseExcelWithAutoHeader(workbook) {
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+    return fcParseRawRows(rawRows);
+  }
+
+  // ===== 화면 복사 붙여넣기 (Ctrl+V) 관련 로직 =====
+  function switchFcInputMode(mode) {
+    const pasteTab = document.getElementById('fcModePasteBtn');
+    const fileTab = document.getElementById('fcModeFileBtn');
+    const pasteZone = document.getElementById('fcTargetPasteZone');
+    const dropZone = document.getElementById('fcTargetDropZone');
+
+    if (mode === 'paste') {
+      pasteTab?.classList.add('active');
+      fileTab?.classList.remove('active');
+      if (pasteZone) pasteZone.style.display = 'flex';
+      if (dropZone) dropZone.style.display = 'none';
+      pasteZone?.focus();
+    } else {
+      fileTab?.classList.add('active');
+      pasteTab?.classList.remove('active');
+      if (dropZone) dropZone.style.display = 'flex';
+      if (pasteZone) pasteZone.style.display = 'none';
+    }
+  }
+
+  function handleFcPasteFocus(e) {
+    const zone = document.getElementById('fcTargetPasteZone');
+    if (zone) zone.classList.add('focused');
+  }
+
+  function handleFcPasteBlur(e) {
+    const zone = document.getElementById('fcTargetPasteZone');
+    if (zone) zone.classList.remove('focused');
+  }
+
+  function handleFcPasteEvent(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const clipboardData = e.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+    const text = clipboardData.getData('text');
+    if (!text || !text.trim()) {
+      alert('클립보드에 복사된 텍스트 내용이 없습니다.');
+      return;
+    }
+    processFcTargetPastedText(text);
+  }
+
+  async function pasteFromClipboardBtn(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        alert('이 브라우저에서는 클립보드 자동 읽기를 지원하지 않습니다. 영역을 클릭한 후 키보드의 Ctrl + V를 눌러주세요.');
+        document.getElementById('fcTargetPasteZone')?.focus();
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        alert('클립보드가 비어있거나 텍스트 데이터가 없습니다. 화물 시스템 화면에서 비엘 부분을 복사(Ctrl+C)한 후 다시 시도해주세요.');
+        return;
+      }
+      processFcTargetPastedText(text);
+    } catch (err) {
+      console.warn('Clipboard readText failed:', err);
+      alert('클립보드 접근 권한이 없거나 차단되었습니다. 영역을 클릭하신 후 직접 키보드의 Ctrl + V 를 눌러주세요.');
+      document.getElementById('fcTargetPasteZone')?.focus();
+    }
+  }
+
+  function processFcTargetPastedText(text) {
+    try {
+      const lines = text.split(/\r?\n/).map(l => l.trimEnd()).filter(l => l.length > 0);
+      if (lines.length === 0) {
+        alert('붙여넣은 내용에 유효한 데이터가 없습니다.');
+        return;
+      }
+
+      // TSV (탭 구분자)로 분리하여 2차원 배열 생성
+      const rawRows = lines.map(line => line.split('\t').map(c => c.trim()));
+      const parsedData = fcParseRawRows(rawRows);
+
+      if (!parsedData || parsedData.length === 0) {
+        alert('복사된 텍스트에서 유효한 B/L 데이터를 추출하지 못했습니다. 올바른 영역을 복사했는지 확인해주세요.');
+        return;
+      }
+
+      // 데이터 저장
+      const now = new Date();
+      const timeStr = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      g_fcTargetFileName = `화면복사 데이터 (${timeStr})`;
+      g_fcTargetData = parsedData;
+
+      // UI 업데이트
+      const pasteZone = document.getElementById('fcTargetPasteZone');
+      const dropZone = document.getElementById('fcTargetDropZone');
+      const infoBox = document.getElementById('fcTargetInfoBox');
+      const nameSpan = document.getElementById('fcTargetFileName');
+      const statsSpan = document.getElementById('fcTargetFileStats');
+      const badge = document.getElementById('fcTargetBadge');
+      const infoIcon = document.getElementById('fcTargetInfoIcon');
+
+      if (pasteZone) pasteZone.classList.add('has-file');
+      if (dropZone) dropZone.classList.add('has-file');
+      if (infoBox) infoBox.style.display = 'flex';
+      if (nameSpan) nameSpan.textContent = g_fcTargetFileName;
+      if (statsSpan) statsSpan.textContent = `${g_fcTargetData.length.toLocaleString()}건 B/L`;
+      if (infoIcon) infoIcon.textContent = '📋';
+      if (badge) {
+        badge.textContent = '준비 완료';
+        badge.style.display = 'inline-flex';
+      }
+
+      // 검증 버튼 활성화 (즉시 실행하지 않고 사용자가 버튼을 클릭하도록 대기)
+      updateFreightCheckBtnState();
+
+      // 시각적 포커스 해제 및 성공 상태 유지
+      pasteZone?.blur();
+      const prompt = document.getElementById('fcPastePromptText');
+      if (prompt) prompt.textContent = `✅ ${g_fcTargetData.length.toLocaleString()}건의 B/L 데이터가 로드되었습니다!`;
+
+    } catch (err) {
+      console.error('Target Freight Paste Parsing Error:', err);
+      alert('붙여넣은 데이터를 처리하는 중 오류가 발생했습니다: ' + err.message);
+    }
   }
 
   // 드래그 앤 드롭 핸들러
@@ -10294,11 +10578,15 @@
     const input = document.getElementById('fcTargetFileInput');
     if (input) input.value = '';
     const dropZone = document.getElementById('fcTargetDropZone');
+    const pasteZone = document.getElementById('fcTargetPasteZone');
     const infoBox = document.getElementById('fcTargetInfoBox');
     const badge = document.getElementById('fcTargetBadge');
+    const prompt = document.getElementById('fcPastePromptText');
     if (dropZone) dropZone.classList.remove('has-file');
+    if (pasteZone) pasteZone.classList.remove('has-file');
     if (infoBox) infoBox.style.display = 'none';
     if (badge) badge.style.display = 'none';
+    if (prompt) prompt.textContent = '여기를 클릭한 후 Ctrl + V 를 누르세요';
     updateFreightCheckBtnState();
   }
 
