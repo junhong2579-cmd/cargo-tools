@@ -3578,12 +3578,6 @@
       </form>
 
       <div id="authMsg" class="auth-msg"></div>
-
-      <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e2e8f0; text-align: center;">
-        <button type="button" class="auth-btn" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; font-weight: 600; width: 100%; box-shadow: none;" onclick="bypassAuthForTest()">
-          🧪 로그인 없이 바로 테스트 시작 (로컬 테스트 모드)
-        </button>
-      </div>
     </div>
 
     <!-- 2. 승인 대기 중 안내 카드 -->
@@ -9996,8 +9990,8 @@
 
         await checkApprovalStatus(false);
       } catch (err) {
-        console.error('Login submit error:', err);
-        showAuthMessage('로그인 처리 중 오류: ' + (err.message || String(err)), 'error');
+        console.error(err);
+        showAuthMessage('로그인 처리 중 오류가 발생했습니다.', 'error');
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '로그인';
@@ -10005,33 +9999,12 @@
     }
   }
 
-  const SERVER_INJECTED_EMAIL = typeof __USER_EMAIL__ !== 'undefined' ? __USER_EMAIL__ : '__USER_EMAIL__';
+  const SERVER_INJECTED_EMAIL = '__USER_EMAIL__';
   let SERVER_SESSION_TOKENS = null;
   try {
-    SERVER_SESSION_TOKENS = (typeof __SERVER_SESSION_TOKENS__ !== 'undefined') ? __SERVER_SESSION_TOKENS__ : null;
+    SERVER_SESSION_TOKENS = __SERVER_SESSION_TOKENS__;
   } catch (e) {
     SERVER_SESSION_TOKENS = null;
-  }
-
-  
-  // 로컬 테스트 모드 (인증 절차 없이 즉시 메인 도구 활성화)
-  function bypassAuthForTest() {
-    const overlay = document.getElementById('authOverlay');
-    const wrapper = document.getElementById('mainAppWrapper');
-    if (overlay) overlay.style.display = 'none';
-    if (wrapper) wrapper.style.display = 'block';
-    const emailEl = document.getElementById('headerUserEmail');
-    if (emailEl) emailEl.textContent = 'junhong2579@gmail.com (테스트 모드)';
-    const roleEl = document.getElementById('headerUserRole');
-    if (roleEl) {
-      roleEl.textContent = '👑 최고 관리자 (테스트)';
-      roleEl.className = 'user-role-badge role-admin';
-    }
-    // 관리자 동기화 버튼 노출
-    const syncBtn = document.getElementById('syncToCloudBtn');
-    const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
-    if (syncBtn) syncBtn.style.display = 'inline-flex';
-    if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
   }
 
   async function checkApprovalStatus(isManualClick = false) {
@@ -10409,30 +10382,6 @@
       return;
     }
     processFcTargetPastedText(text);
-  }
-
-  async function pasteFromClipboardBtn(e) {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    try {
-      if (!navigator.clipboard || !navigator.clipboard.readText) {
-        alert('이 브라우저에서는 클립보드 자동 읽기를 지원하지 않습니다. 영역을 클릭한 후 키보드의 Ctrl + V를 눌러주세요.');
-        document.getElementById('fcTargetPasteZone')?.focus();
-        return;
-      }
-      const text = await navigator.clipboard.readText();
-      if (!text || !text.trim()) {
-        alert('클립보드가 비어있거나 텍스트 데이터가 없습니다. 화물 시스템 화면에서 비엘 부분을 복사(Ctrl+C)한 후 다시 시도해주세요.');
-        return;
-      }
-      processFcTargetPastedText(text);
-    } catch (err) {
-      console.warn('Clipboard readText failed:', err);
-      alert('클립보드 접근 권한이 없거나 차단되었습니다. 영역을 클릭하신 후 직접 키보드의 Ctrl + V 를 눌러주세요.');
-      document.getElementById('fcTargetPasteZone')?.focus();
-    }
   }
 
   function processFcTargetPastedText(text) {
