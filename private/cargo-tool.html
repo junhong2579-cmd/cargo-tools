@@ -8658,6 +8658,11 @@
   }
 
   freightFileInput.addEventListener("change", function (event) {
+    if (!g_isUserAdmin) {
+      alert('운임 데이터 엑셀 업로드는 최고 관리자만 가능합니다.');
+      event.target.value = '';
+      return;
+    }
     const file = event.target.files[0];
     if (!file) return;
 
@@ -8824,6 +8829,11 @@
   }
 
   async function syncFreightDataToSupabase() {
+    if (!g_isUserAdmin) {
+      alert('운임 데이터 클라우드 동기화는 최고 관리자만 가능합니다.');
+      return;
+    }
+
     if (!supabaseClient) {
       alert('Supabase 연결이 필요합니다.');
       return;
@@ -10320,6 +10330,7 @@
       const syncBtn = document.getElementById('syncToCloudBtn');
       const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
       const adminTh = document.getElementById('freightAdminActionTh');
+      const freightAdminGroup = document.getElementById('freightAdminControlGroup');
 
       if (isUserAdmin) {
         if (roleEl) {
@@ -10328,6 +10339,7 @@
         }
         if (syncBtn) syncBtn.style.display = 'inline-flex';
         if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
+        if (freightAdminGroup) freightAdminGroup.style.display = 'flex';
         if (adminTh) adminTh.style.display = 'table-cell';
       } else {
         if (roleEl) {
@@ -10336,6 +10348,7 @@
         }
         if (syncBtn) syncBtn.style.display = 'none';
         if (syncFreightBtn) syncFreightBtn.style.display = 'none';
+        if (freightAdminGroup) freightAdminGroup.style.display = 'none';
         if (adminTh) adminTh.style.display = 'none';
       }
 
