@@ -5875,6 +5875,7 @@
       const wb = XLSX.utils.book_new();
 
       const wsDiscrepancies = XLSX.utils.json_to_sheet(g_discrepancies);
+      if (typeof autoFitExcelColumns === 'function') autoFitExcelColumns(wsDiscrepancies, g_discrepancies);
       XLSX.utils.book_append_sheet(wb, wsDiscrepancies, '불일치_결과');
 
       const fullExportData = g_validationResults.map(r => ({
@@ -5893,6 +5894,7 @@
         '엑셀 봉인번호': r.EXCEL_Seal_NO
       }));
       const wsFull = XLSX.utils.json_to_sheet(fullExportData);
+      if (typeof autoFitExcelColumns === 'function') autoFitExcelColumns(wsFull, fullExportData);
       XLSX.utils.book_append_sheet(wb, wsFull, '전체_대조_상세');
 
       XLSX.writeFile(wb, '데이터_불일치_결과.xlsx');
@@ -6748,12 +6750,75 @@
     }
   });
 
+  // 엑셀 워크시트 내용에 맞게 열 너비를 자동 계산하는 함수 (한글 2바이트 폭 완벽 지원 및 JSON/2D배열 공용)
+  function autoFitExcelColumns(worksheet, data) {
+    if (!worksheet || !data || data.length === 0) return;
+
+    // 문자열의 시각적 너비 계산 함수 (한글/전각은 2.1, 영문/숫자는 1.15)
+    function calcDisplayWidth(str) {
+      if (str === null || str === undefined) return 0;
+      const s = String(str);
+      let w = 0;
+      for (let i = 0; i < s.length; i++) {
+        const code = s.charCodeAt(i);
+        if ((code >= 0xac00 && code <= 0xd7a3) ||
+            (code >= 0x1100 && code <= 0x11ff) ||
+            (code >= 0x3130 && code <= 0x318f) ||
+            (code >= 0x4e00 && code <= 0x9fff)) {
+          w += 2.1;
+        } else {
+          w += 1.15;
+        }
+      }
+      return w;
+    }
+
+    let colWidths = [];
+
+    // 1. 객체 배열 형태 (json_to_sheet)
+    if (!Array.isArray(data[0]) && typeof data[0] === 'object') {
+      const headers = Object.keys(data[0]);
+      colWidths = headers.map(key => {
+        let maxW = calcDisplayWidth(key); // 헤더명 폭
+        const sampleSize = Math.min(data.length, 3000);
+        for (let i = 0; i < sampleSize; i++) {
+          const val = data[i] ? data[i][key] : '';
+          if (val !== undefined && val !== null) {
+            const valW = calcDisplayWidth(val);
+            if (valW > maxW) maxW = valW;
+          }
+        }
+        return { wch: Math.ceil(Math.max(maxW + 3.5, 12)) };
+      });
+    } 
+    // 2. 2차원 배열 형태 (aoa_to_sheet)
+    else if (Array.isArray(data[0])) {
+      const numCols = data.reduce((max, row) => Math.max(max, row ? row.length : 0), 0);
+      const sampleSize = Math.min(data.length, 3000);
+      for (let c = 0; c < numCols; c++) {
+        let maxW = 0;
+        for (let r = 0; r < sampleSize; r++) {
+          const val = (data[r] && data[r][c] !== undefined) ? data[r][c] : '';
+          const valW = calcDisplayWidth(val);
+          if (valW > maxW) maxW = valW;
+        }
+        colWidths.push({ wch: Math.ceil(Math.max(maxW + 3.5, 12)) });
+      }
+    }
+
+    worksheet['!cols'] = colWidths;
+  }
+  window.autoFitExcelColumns = autoFitExcelColumns;
+
   excelDownloadBtn.addEventListener("click", function () {
     if (bulkSearchExportData.length === 0) {
       alert("다운로드할 데이터가 없습니다.");
       return;
     }
     const worksheet = XLSX.utils.json_to_sheet(bulkSearchExportData);
+    // 열 너비 내용에 맞게 자동 조정 적용
+    autoFitExcelColumns(worksheet, bulkSearchExportData);
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "검색결과");
     XLSX.writeFile(workbook, "컨테이너_검색결과.xlsx");
@@ -11797,6 +11862,7 @@
           }))
         : [{ '메시지': '발견된 자체 오류가 없습니다.' }];
       const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
+      if (typeof autoFitExcelColumns === 'function') autoFitExcelColumns(ws1, sheet1Data);
       XLSX.utils.book_append_sheet(wb, ws1, 'MSN등_오류결과');
 
       // 시트 2: 과거데이터_불일치건
@@ -11804,6 +11870,7 @@
         ? g_fcDiscrepancies.map(d => d.data)
         : [{ '메시지': (g_fcPastData && g_fcPastData.length > 0) ? '과거 데이터와 불일치하는 건이 없습니다.' : '이전항차데이터가 없어 비교를 생략했습니다.' }];
       const ws2 = XLSX.utils.json_to_sheet(sheet2Data);
+      if (typeof autoFitExcelColumns === 'function') autoFitExcelColumns(ws2, sheet2Data);
       XLSX.utils.book_append_sheet(wb, ws2, '과거데이터_불일치건');
 
       // 시트 3: TS_THC21 추출결과 (2열 헤더 없는 형태)
@@ -11815,10 +11882,14 @@
           g_fcExtractThcList[i] !== undefined ? g_fcExtractThcList[i] : ''
         ]);
       }
-      const ws3 = XLSX.utils.aoa_to_sheet(sheet3Rows.length > 0 ? sheet3Rows : [['', '']]);
+      const sheet3Data = sheet3Rows.length > 0 ? sheet3Rows : [['', '']];
+      const ws3 = XLSX.utils.aoa_to_sheet(sheet3Data);
+      if (typeof autoFitExcelColumns === 'function') autoFitExcelColumns(ws3, sheet3Data);
       XLSX.utils.book_append_sheet(wb, ws3, 'TS_THC21 추출결과');
 
-      const fileName = `오류체크결과_${g_fcTargetFileName || '운임데이터.xlsx'}`;
+      // 확장자 누락/중복 없이 무조건 .xlsx 엑셀 파일 형식으로 저장
+      let baseName = (g_fcTargetFileName || '운임데이터').replace(/\.(xlsx|xls)$/i, '');
+      const fileName = `오류체크결과_${baseName}.xlsx`;
       XLSX.writeFile(wb, fileName);
     } catch (err) {
       console.error('Excel Export Error:', err);
