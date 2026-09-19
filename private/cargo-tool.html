@@ -678,6 +678,37 @@
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
+    /* 운임 목록 관리자 행 삭제 버튼 (무채색 스타일) */
+    .freight-row-del-btn {
+      background-color: #f1f3f5 !important;
+      color: #495057 !important;
+      border: 1px solid #ced4da !important;
+      border-radius: 6px !important;
+      padding: 4px 12px !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: all 0.2s ease !important;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+      transform: none !important;
+    }
+    .freight-row-del-btn:hover {
+      background-color: #e2e6ea !important;
+      border-color: #adb5bd !important;
+      color: #212529 !important;
+      transform: scale(1.02) !important;
+    }
+    .dark-mode .freight-row-del-btn {
+      background-color: #2c2c2e !important;
+      color: #d1d1d6 !important;
+      border-color: #48484a !important;
+    }
+    .dark-mode .freight-row-del-btn:hover {
+      background-color: #3a3a3c !important;
+      border-color: #636366 !important;
+      color: #ffffff !important;
+    }
+
     /* 캘린더 nav 버튼 스타일 */
     .calendar-nav button {
       /* 수정됨: border-radius: 8px로 변경 */
@@ -4141,21 +4172,11 @@
 
       <div class="card" style="max-width: 100%;">
         <h2>🚚 운임 필터</h2>
-        <div class="file-input-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-          <input type="file" id="freightExcelFile" accept=".xlsx, .xls" />
+        <!-- 👑 최고 관리자 전용 엑셀 업로드 및 클라우드 동기화 컨트롤 (일반 사용자에게는 숨김) -->
+        <div class="file-input-group" id="freightAdminControlGroup" style="display: none; align-items: center; gap: 8px; margin-bottom: 6px;">
+          <input type="file" id="freightExcelFile" accept=".xlsx, .xls" title="새로운 운임 엑셀 파일 선택" />
 
-          <!-- 🔄 운임 클라우드 최신 데이터 새로고침 버튼 (모든 팀원 공통) -->
-          <button type="button" id="reloadFreightFromCloudBtn" class="icon-btn" title="클라우드 최신 운임 데이터 새로고침"
-            onclick="initLoadFreightData(true)"
-            style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-          </button>
-
-          <!-- ☁️⬆️ 운임 클라우드 동기화 업로드 버튼 (관리자 전용) -->
+          <!-- ☁️⬆️ 운임 클라우드 동기화 업로드 버튼 (최고 관리자 전용) -->
           <button type="button" id="syncFreightToCloudBtn" class="icon-btn" title="현재 운임 엑셀 데이터를 클라우드에 동기화 (관리자 전용)"
             onclick="syncFreightDataToSupabase()"
             style="width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
@@ -4175,6 +4196,7 @@
           style="margin-bottom: 15px; width: 100%; display: flex; gap: 10px; align-items: flex-start;">
           <select id="freightSearchFilter" class="freight-select">
             <option value="consignee" selected>Consignee</option>
+            <option value="blNo">B/L NO</option>
             <option value="consigneeCode">Consignee Code</option>
             <option value="actualShipper">Actual Shipper</option>
             <option value="aShipperCode">A/Shipper Code</option>
@@ -4260,6 +4282,7 @@
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">EBS</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">CFS</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Collect TTL</th>
+                <th id="freightAdminActionTh" style="display: none; border: 1px solid #ddd; padding: 10px; text-align: center; width: 80px;">관리</th>
               </tr>
             </thead>
             <tbody id="freightTableBody">
@@ -4880,29 +4903,20 @@
           <div class="fc-upload-card">
             <div class="fc-card-title">
               <span>☁️ 2. 비교 대상 운임 데이터 (이전항차)</span>
-              <button type="button" id="reloadFcPastFromCloudBtn" class="icon-btn" title="클라우드 최신 운임 데이터 새로고침"
-                onclick="reloadFcPastFromCloud()"
-                style="width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="23 4 23 10 17 10"></polyline>
-                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-              </button>
             </div>
 
             <div class="fc-drop-zone" id="fcPastDropZone" onclick="document.getElementById('fcPastFileInput').click()" ondragover="handleFcPastDragOver(event)" ondragleave="handleFcPastDragLeave(event)" ondrop="handleFcPastDrop(event)">
               <input type="file" id="fcPastFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleFcPastFileSelect(event)" />
               <div class="fc-drop-icon">☁️</div>
-              <div class="fc-drop-text" id="fcPastDropText">운임 필터 클라우드 데이터가 자동 사용됩니다</div>
+              <div class="fc-drop-text" id="fcPastDropText">Supabase 클라우드 실시간 연동 (검증 시 자동 조회)</div>
               <div class="fc-drop-subtext" id="fcPastDropSubtext">다른 이전항차 엑셀로 비교하려면 여기를 클릭하거나 드래그하세요</div>
             </div>
 
             <div id="fcPastInfoBox" style="display: flex;" class="fc-file-info">
               <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                 <span style="font-size: 16px;">🏢</span>
-                <span id="fcPastFileName" class="fc-file-name">클라우드 운임 마스터</span>
-                <span id="fcPastFileStats" class="fc-file-stats">0 건 (대기중)</span>
+                <span id="fcPastFileName" class="fc-file-name">Supabase 클라우드 운임 DB</span>
+                <span id="fcPastFileStats" class="fc-file-stats">실시간 자동 연동 (준비 완료)</span>
               </div>
               <button type="button" class="fc-file-remove-btn" id="fcPastResetBtn" onclick="resetFcPastToCloud()" title="클라우드 기본값으로 복구" style="display: none;">↺</button>
             </div>
@@ -8752,96 +8766,61 @@
 
   const FREIGHT_STORAGE_KEY = 'freightDataCache';
 
-  function saveFreightDataToStorage() {
+  // 🧹 운임 데이터 로컬 캐시 완전 청소 (로컬 저장소 항상 0MB 유지)
+  function clearFreightStorage() {
     try {
-      const dataToSave = {
-        freightDataList: freightDataList,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(FREIGHT_STORAGE_KEY, JSON.stringify(dataToSave));
-      if (typeof syncFreightMasterFromStorage === 'function') {
-        syncFreightMasterFromStorage();
-      }
-    } catch (e) {
-      console.warn("운임 데이터 로컬 스토리지 캐시 오류:", e);
+      localStorage.removeItem(FREIGHT_STORAGE_KEY);
+      localStorage.removeItem('cargo_freight_data');
+    } catch (e) {}
+  }
+
+  // 새로고침 또는 웹페이지 접속 시 즉시 로컬 저장소 0MB 청소
+  clearFreightStorage();
+
+  function saveFreightDataToStorage() {
+    // 로컬 스토리지에 무거운 엑셀 데이터를 보관하지 않고 항상 0MB 유지 (메모리 freightDataList에만 유지)
+    clearFreightStorage();
+    if (typeof syncFreightMasterFromStorage === 'function') {
+      syncFreightMasterFromStorage();
     }
   }
 
   function loadFreightDataFromStorage() {
-    const data = localStorage.getItem(FREIGHT_STORAGE_KEY);
-    if (data) {
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.freightDataList?.length > 0) {
-          freightDataList = parsed.freightDataList;
-          const formattedTime = formatTimestamp(parsed.timestamp);
-          freightFileStatus.textContent = `☁️ 클라우드 데이터 (${formattedTime})`;
-          freightFileStatus.classList.remove('error');
-
-          const selectedFilterText = document.getElementById("freightSearchFilter") ? document.getElementById("freightSearchFilter").options[document.getElementById("freightSearchFilter").selectedIndex].text : "Consignee";
-          freightEmptyMessage.textContent = `✅ 클라우드 운임 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
-          initFreightHeaders();
-          resetAllFreightFiltersAndSort();
-          return true;
-        }
-      } catch (e) {
-        console.error("Freight local storage error:", e);
-      }
-    }
+    // 인터넷 의존 원칙에 따라 로컬 안전망 캐시를 사용하지 않음 (항상 0MB 유지)
+    clearFreightStorage();
     return false;
   }
 
   async function loadFreightDataFromSupabase(isManual = false) {
     if (!supabaseClient) return false;
     try {
+      clearFreightStorage();
+      freightDataList = []; // 전체 데이터를 브라우저로 내려받지 않음 (다운로드 0MB, 메모리 0MB)
+
       if (isManual) {
-        freightFileStatus.textContent = "☁️ 클라우드 운임 데이터 가져오는 중...";
-        freightEmptyMessage.textContent = "⏳ Supabase 클라우드에서 최신 운임 데이터를 불러오고 있습니다...";
+        freightFileStatus.textContent = "☁️ 클라우드 정규 DB 연결 중...";
+        freightEmptyMessage.textContent = "⏳ Supabase 클라우드 실시간 정규 DB를 준비하고 있습니다...";
       }
 
-      const { data, error } = await supabaseClient
-        .from('freight_cache')
-        .select('*')
-        .eq('id', 'latest')
-        .single();
-
-      if (error || !data) {
-        console.log('운임 클라우드 캐시 데이터 없음:', error);
-        return false;
-      }
-
-      freightDataList = data.freight_data_list || [];
-      if (typeof syncFreightMasterFromStorage === 'function') {
-        syncFreightMasterFromStorage();
-      }
-      saveFreightDataToStorage();
-
-      const formattedTime = formatTimestamp(data.updated_at || Date.now());
-      freightFileStatus.textContent = `☁️ 클라우드 동기화됨 (${formattedTime})`;
+      freightFileStatus.textContent = "☁️ 클라우드 정규 DB 실시간 검색 모드 (로컬 0MB)";
       freightFileStatus.classList.remove('error');
 
       const selectedFilterText = document.getElementById("freightSearchFilter") ? document.getElementById("freightSearchFilter").options[document.getElementById("freightSearchFilter").selectedIndex].text : "Consignee";
-      freightEmptyMessage.textContent = `✅ 클라우드 운임 데이터 로드 완료! (${freightDataList.length.toLocaleString()}개 항목) ${selectedFilterText} 검색을 시작하세요.`;
+      freightEmptyMessage.textContent = `🔍 ${selectedFilterText} 또는 B/L NO를 검색창에 입력하여 실시간 조회하세요.`;
 
       initFreightHeaders();
       resetAllFreightFiltersAndSort();
       return true;
     } catch (err) {
-      console.error('Supabase 운임 로드 에러:', err);
+      console.error('Supabase 운임 상태 확인 에러:', err);
       return false;
     }
   }
 
   async function initLoadFreightData(isManualReload = false) {
-    const cloudLoaded = await loadFreightDataFromSupabase(isManualReload);
-    if (cloudLoaded) return true;
-
-    const storageLoaded = loadFreightDataFromStorage();
-    if (storageLoaded) return true;
-
-    freightEmptyMessage.textContent = "🔎 엑셀 파일을 업로드해주세요.";
-    freightFileStatus.textContent = "";
-    return false;
+    clearFreightStorage();
+    freightDataList = [];
+    return await loadFreightDataFromSupabase(isManualReload);
   }
 
   async function syncFreightDataToSupabase() {
@@ -8863,24 +8842,84 @@
 
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
+
+      // 1. 기존 백업 캐시(freight_cache)에도 최신 스냅샷 저장
       const payload = {
         id: 'latest',
         freight_data_list: freightDataList,
         updated_at: new Date().toISOString(),
         updated_by: user ? user.email : '관리자'
       };
+      await supabaseClient.from('freight_cache').upsert(payload, { onConflict: 'id' });
 
-      const { error } = await supabaseClient
-        .from('freight_cache')
-        .upsert(payload, { onConflict: 'id' });
+      // 2. 대용량 정규 DB(freight_records)에 UPSERT (신규 B/L 추가 + 적하목록 정정 B/L 최신 데이터 덮어쓰기)
+      const validRecords = freightDataList
+        .filter(item => item.blNo && String(item.blNo).trim() !== "")
+        .map(item => ({
+          io_date: String(item.ioDate || '').trim(),
+          bl_no: String(item.blNo).trim(),
+          cargo: String(item.cargo || '').trim(),
+          voyage: String(item.voyage || '').trim(),
+          description: String(item.description || '').trim(),
+          bt: String(item.bt || '').trim(),
+          consignee_code: String(item.consigneeCode || '').trim(),
+          consignee: String(item.consignee || '').trim(),
+          notify: String(item.notify || '').trim(),
+          actual_shipper: String(item.actualShipper || '').trim(),
+          a_shipper_code: String(item.aShipperCode || '').trim(),
+          shipper: String(item.shipper || '').trim(),
+          twenty: String(item.twenty || '0').trim(),
+          forty: String(item.forty || '0').trim(),
+          forty_five: String(item.fortyFive || '0').trim(),
+          ts: String(item.ts || '').trim(),
+          item: String(item.item || '').trim(),
+          remark: String(item.remark || '').trim(),
+          crs_c: String(item.crsC || '0').trim(),
+          lss_c: String(item.lssC || '0').trim(),
+          pss_c: String(item.pssC || '0').trim(),
+          frt_c: String(item.frtC || '0').trim(),
+          esc: String(item.esc || '').trim(),
+          caf: String(item.caf || '').trim(),
+          baf_c: String(item.bafC || '0').trim(),
+          thc: String(item.thc || '').trim(),
+          ccf: String(item.ccf || '').trim(),
+          doc: String(item.doc || '').trim(),
+          wfg: String(item.wfg || '').trim(),
+          tsf: String(item.tsf || '').trim(),
+          psc: String(item.psc || '').trim(),
+          ebs_c: String(item.ebsC || '0').trim(),
+          cfs: String(item.cfs || '').trim(),
+          collect_ttl: String(item.collectTtl || '').trim(),
+          updated_at: new Date().toISOString(),
+          updated_by: user ? user.email : '관리자'
+        }));
 
-      if (error) {
-        console.error('Supabase freight upsert error:', error);
-        alert('클라우드 저장 중 오류: ' + error.message + '\n\n(Supabase SQL Editor에서 freight_cache 테이블을 생성해주세요.)');
-      } else {
-        alert('🎉 최신 운임 데이터가 Supabase 클라우드에 성공적으로 저장되었습니다!\n이제 모든 팀원이 엑셀 파일 없이 즉시 최신 운임을 조회할 수 있습니다.');
-        freightFileStatus.textContent = `☁️ 클라우드 동기화됨 (${formatTimestamp(Date.now())})`;
+      // 동일 엑셀 내 중복 B/L 정리 (마지막 행 우선 반영)
+      const uniqueMap = new Map();
+      validRecords.forEach(r => uniqueMap.set(r.bl_no, r));
+      const cleanRecords = Array.from(uniqueMap.values());
+
+      // 500건씩 청크 단위로 안전하게 고속 UPSERT 실행
+      const chunkSize = 500;
+      let upsertError = null;
+      for (let i = 0; i < cleanRecords.length; i += chunkSize) {
+        const chunk = cleanRecords.slice(i, i + chunkSize);
+        const { error: chunkErr } = await supabaseClient
+          .from('freight_records')
+          .upsert(chunk, { onConflict: 'bl_no' });
+
+        if (chunkErr) {
+          console.error('[Supabase] freight_records upsert chunk error:', chunkErr);
+          upsertError = chunkErr;
+        }
       }
+
+      if (upsertError) {
+        alert(`⚠️ 캐시는 저장되었으나 정규 DB 저장 중 일부 오류가 발생했습니다:\n${upsertError.message}`);
+      } else {
+        alert(`🎉 최신 운임 데이터가 Supabase 정규 DB에 성공적으로 동기화되었습니다!\n\n• 총 ${cleanRecords.length.toLocaleString()}건 처리 완료\n• 신규 B/L: 자동 누적 추가\n• 정정 B/L: 최신 데이터로 자동 덮어쓰기 완료`);
+      }
+      freightFileStatus.textContent = `☁️ 클라우드 동기화됨 (${formatTimestamp(Date.now())})`;
     } catch (err) {
       console.error(err);
       alert('운임 클라우드 동기화 처리 중 오류가 발생했습니다.');
@@ -8889,6 +8928,58 @@
         syncBtn.disabled = false;
         syncBtn.style.opacity = '1';
       }
+    }
+  }
+
+  // 관리자 전용 단건 B/L 영구 삭제 함수
+  async function deleteFreightRecord(blNo) {
+    if (!blNo) return;
+    if (!supabaseClient) {
+      alert('Supabase 연결이 필요합니다.');
+      return;
+    }
+
+    if (!confirm(`정말 B/L [${blNo}] 건을 데이터베이스에서 완전히 삭제하시겠습니까?\n\n이 작업은 취소할 수 없으며 클라우드 DB에서 즉시 삭제됩니다.`)) {
+      return;
+    }
+
+    try {
+      // 1. Supabase freight_records 정규 테이블에서 삭제
+      const { error: dbErr } = await supabaseClient
+        .from('freight_records')
+        .delete()
+        .eq('bl_no', blNo);
+
+      if (dbErr) {
+        console.error('DB 삭제 오류:', dbErr);
+        alert('클라우드 DB 삭제 중 오류가 발생했습니다: ' + dbErr.message);
+        return;
+      }
+
+      // 2. 현재 메모리 및 로컬 캐시에서도 제거
+      freightDataList = freightDataList.filter(item => item.blNo !== blNo);
+      saveFreightDataToStorage();
+
+      // 3. 백업 캐시(freight_cache)에서도 갱신 저장
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        await supabaseClient.from('freight_cache').upsert({
+          id: 'latest',
+          freight_data_list: freightDataList,
+          updated_at: new Date().toISOString(),
+          updated_by: user ? user.email : '관리자'
+        }, { onConflict: 'id' });
+      } catch (cacheErr) {
+        console.warn('캐시 갱신 경고:', cacheErr);
+      }
+
+      // 4. 화면 즉시 다시 필터링/렌더링
+      applyFreightFiltersAndSort();
+
+      alert(`🗑️ B/L [${blNo}] 데이터가 정상적으로 영구 삭제되었습니다.`);
+    } catch (err) {
+      console.error('삭제 처리 예외:', err);
+      alert('삭제 처리 중 오류가 발생했습니다.');
     }
   }
 
@@ -8972,13 +9063,170 @@
     tr.appendChild(createTd(item.cfs, 'fee'));
     tr.appendChild(createTd(item.collectTtl, 'number'));
 
+    // 관리자(junhong2579@gmail.com) 전용 삭제 액션 열 추가
+    if (g_isUserAdmin) {
+      const actionTd = document.createElement("td");
+      actionTd.style.border = "1px solid #ddd";
+      actionTd.style.padding = "4px 8px";
+      actionTd.style.textAlign = "center";
+      actionTd.innerHTML = `
+        <button type="button" class="freight-row-del-btn" title="B/L [${item.blNo}] 영구 삭제 (관리자 전용)"
+          onclick="event.stopPropagation(); deleteFreightRecord('${item.blNo}');">
+          삭제
+        </button>
+      `;
+      tr.appendChild(actionTd);
+    }
+
     return tr;
   }
 
   const freightSearchFilter = document.getElementById("freightSearchFilter");
 
+  const FREIGHT_FILTER_TO_DB_COL = {
+    consignee: 'consignee',
+    blNo: 'bl_no',
+    consigneeCode: 'consignee_code',
+    actualShipper: 'actual_shipper',
+    aShipperCode: 'a_shipper_code',
+    ioDate: 'io_date',
+    voyage: 'voyage',
+    notify: 'notify',
+    remark: 'remark',
+    item: 'item',
+    description: 'description',
+    shipper: 'shipper'
+  };
+
+  function mapFreightDbToClient(r) {
+    return {
+      ioDate: r.io_date || '',
+      blNo: r.bl_no || '',
+      cargo: r.cargo || '',
+      voyage: r.voyage || '',
+      description: r.description || '',
+      bt: r.bt || '',
+      consigneeCode: r.consignee_code || '',
+      consignee: r.consignee || '',
+      notify: r.notify || '',
+      actualShipper: r.actual_shipper || '',
+      aShipperCode: r.a_shipper_code || '',
+      shipper: r.shipper || '',
+      twenty: r.twenty || '0',
+      forty: r.forty || '0',
+      fortyFive: r.forty_five || '0',
+      ts: r.ts || '',
+      item: r.item || '',
+      remark: r.remark || '',
+      crsC: r.crs_c || '0',
+      lssC: r.lss_c || '0',
+      pssC: r.pss_c || '0',
+      frtC: r.frt_c || '0',
+      esc: r.esc || '',
+      caf: r.caf || '',
+      bafC: r.baf_c || '0',
+      thc: r.thc || '',
+      ccf: r.ccf || '',
+      doc: r.doc || '',
+      wfg: r.wfg || '',
+      tsf: r.tsf || '',
+      psc: r.psc || '',
+      ebsC: r.ebs_c || '0',
+      cfs: r.cfs || '',
+      collectTtl: r.collect_ttl || ''
+    };
+  }
+
+  let freightSearchDebounceTimer = null;
+
   function performFreightSearch() {
+    clearTimeout(freightSearchDebounceTimer);
+    const input = freightSearchInput.value.trim();
+
+    if (input === "") {
+      applyFreightFiltersAndSort();
+      return;
+    }
+
+    // 250ms 디바운스: 입력 완료 시 1회만 초고속 서버 쿼리 실행
+    freightSearchDebounceTimer = setTimeout(() => {
+      executeFreightSearch(input);
+    }, 250);
+  }
+
+  async function executeFreightSearch(input) {
+    const filterKey = freightSearchFilter ? freightSearchFilter.value : 'consignee';
+    const dbCol = FREIGHT_FILTER_TO_DB_COL[filterKey] || 'consignee';
+
+    // 1. Supabase 정규 DB 연결 시: 인덱스 기반 실시간 서버 쿼리
+    if (supabaseClient) {
+      freightTableBody.innerHTML = "";
+      freightTable.style.display = "none";
+      freightEmptyMessage.style.display = "block";
+      freightEmptyMessage.textContent = `⏳ Supabase 클라우드 DB에서 실시간 검색 중...`;
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('freight_records')
+          .select('*')
+          .ilike(dbCol, `%${input}%`)
+          .order('io_date', { ascending: false })
+          .limit(500);
+
+        if (!error && data && data.length > 0) {
+          const mappedList = data.map(mapFreightDbToClient);
+          displayFreightDataList(mappedList, input);
+          return;
+        } else if (!error && data && data.length === 0) {
+          freightTable.style.display = "none";
+          freightEmptyMessage.style.display = "block";
+          freightEmptyMessage.textContent = `❌ "${input}" 에 대한 검색 결과가 없습니다. (클라우드 DB 기준)`;
+          return;
+        } else if (error) {
+          console.error('[Supabase] DB 실시간 검색 오류:', error);
+          freightTable.style.display = "none";
+          freightEmptyMessage.style.display = "block";
+          freightEmptyMessage.textContent = `❌ 클라우드 DB 검색 오류: ${error.message}`;
+          return;
+        }
+      } catch (dbErr) {
+        console.warn('[Supabase] DB 실시간 검색 예외:', dbErr);
+        freightTable.style.display = "none";
+        freightEmptyMessage.style.display = "block";
+        freightEmptyMessage.textContent = `❌ 클라우드 DB 검색 실패: ${dbErr.message}`;
+        return;
+      }
+    }
+
+    // 2. 오프라인 또는 폴백: 로컬 인메모리 필터링
     applyFreightFiltersAndSort();
+  }
+
+  function displayFreightDataList(list, input) {
+    freightTableBody.innerHTML = "";
+    freightLoadMoreContainer.style.display = "none";
+    currentFilteredFreightData = list;
+
+    if (list.length > 0) {
+      freightTable.style.display = "table";
+      freightEmptyMessage.style.display = "none";
+
+      const dataToRender = list.slice(0, FREIGHT_ITEMS_PER_PAGE);
+      const frag = document.createDocumentFragment();
+      dataToRender.forEach(item => {
+        frag.appendChild(renderFreightRow(item));
+      });
+      freightTableBody.appendChild(frag);
+
+      if (list.length > FREIGHT_ITEMS_PER_PAGE) {
+        freightLoadMoreContainer.style.display = "block";
+        freightLoadMoreBtn.textContent = `더보기 확인 (총 ${list.length}건 중 ${FREIGHT_ITEMS_PER_PAGE}건 표시됨)`;
+      }
+    } else {
+      freightTable.style.display = "none";
+      freightEmptyMessage.style.display = "block";
+      freightEmptyMessage.textContent = `❌ "${input}" 에 대한 검색 결과가 없습니다.`;
+    }
   }
 
   function applyFreightFiltersAndSort() {
@@ -9081,33 +9329,8 @@
       });
     }
 
-    currentFilteredFreightData = filtered;
-
     // 4단계: 화면 렌더링
-    if (currentFilteredFreightData.length > 0) {
-      freightTable.style.display = "table";
-      freightEmptyMessage.style.display = "none";
-
-      const dataToRender = currentFilteredFreightData.slice(0, FREIGHT_ITEMS_PER_PAGE);
-      const frag = document.createDocumentFragment();
-      dataToRender.forEach(item => {
-        frag.appendChild(renderFreightRow(item));
-      });
-      freightTableBody.appendChild(frag);
-
-      if (currentFilteredFreightData.length > FREIGHT_ITEMS_PER_PAGE) {
-        freightLoadMoreContainer.style.display = "block";
-        freightLoadMoreBtn.textContent = `더보기 확인 (총 ${currentFilteredFreightData.length}건 중 ${FREIGHT_ITEMS_PER_PAGE}건 표시됨)`;
-      }
-    } else {
-      freightTable.style.display = "none";
-      freightEmptyMessage.style.display = "block";
-      if (input !== "") {
-        freightEmptyMessage.textContent = `❌ "${input}" 에 대한 검색 결과가 없습니다.`;
-      } else {
-        freightEmptyMessage.textContent = `❌ 필터 조건에 부합하는 데이터가 없습니다.`;
-      }
-    }
+    displayFreightDataList(filtered, input);
   }
 
   freightSearchInput.addEventListener("input", performFreightSearch);
@@ -10072,6 +10295,8 @@
     SERVER_SESSION_TOKENS = null;
   }
 
+  let g_isUserAdmin = false;
+
   async function checkApprovalStatus(isManualClick = false) {
     // 0. 서버에서 내려준 세션 토큰 주입 (새 컴퓨터/브라우저에서도 RLS 통과 및 클라우드 데이터 즉시 로드)
     if (SERVER_SESSION_TOKENS && SERVER_SESSION_TOKENS.access_token && supabaseClient) {
@@ -10089,9 +10314,12 @@
       document.getElementById('headerUserEmail').textContent = SERVER_INJECTED_EMAIL;
 
       const isUserAdmin = SERVER_INJECTED_EMAIL.toLowerCase() === 'junhong2579@gmail.com';
+      g_isUserAdmin = isUserAdmin;
+
       const roleEl = document.getElementById('headerUserRole');
       const syncBtn = document.getElementById('syncToCloudBtn');
       const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
+      const adminTh = document.getElementById('freightAdminActionTh');
 
       if (isUserAdmin) {
         if (roleEl) {
@@ -10100,6 +10328,7 @@
         }
         if (syncBtn) syncBtn.style.display = 'inline-flex';
         if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
+        if (adminTh) adminTh.style.display = 'table-cell';
       } else {
         if (roleEl) {
           roleEl.textContent = '👤 일반 사용자';
@@ -10107,6 +10336,7 @@
         }
         if (syncBtn) syncBtn.style.display = 'none';
         if (syncFreightBtn) syncFreightBtn.style.display = 'none';
+        if (adminTh) adminTh.style.display = 'none';
       }
 
       // 1. 컨테이너 실시간 검색 최신 클라우드 데이터 로드
@@ -10159,6 +10389,10 @@
         const roleEl = document.getElementById('headerUserRole');
         const syncBtn = document.getElementById('syncToCloudBtn');
         const syncFreightBtn = document.getElementById('syncFreightToCloudBtn');
+        const adminTh = document.getElementById('freightAdminActionTh');
+        const freightAdminGroup = document.getElementById('freightAdminControlGroup');
+
+        g_isUserAdmin = isUserAdmin;
 
         if (isUserAdmin) {
           if (roleEl) {
@@ -10167,6 +10401,8 @@
           }
           if (syncBtn) syncBtn.style.display = 'inline-flex';
           if (syncFreightBtn) syncFreightBtn.style.display = 'inline-flex';
+          if (freightAdminGroup) freightAdminGroup.style.display = 'flex';
+          if (adminTh) adminTh.style.display = 'table-cell';
         } else {
           if (roleEl) {
             roleEl.textContent = '👤 일반 사용자';
@@ -10174,6 +10410,8 @@
           }
           if (syncBtn) syncBtn.style.display = 'none';
           if (syncFreightBtn) syncFreightBtn.style.display = 'none';
+          if (freightAdminGroup) freightAdminGroup.style.display = 'none';
+          if (adminTh) adminTh.style.display = 'none';
         }
 
         // 1. 컨테이너 실시간 검색 최신 클라우드 데이터 로드
@@ -10732,80 +10970,95 @@
 
     if (dropZone) dropZone.classList.remove('has-file');
     if (resetBtn) resetBtn.style.display = 'none';
-    if (sourceText) sourceText.textContent = '클라우드 동기화 데이터 연동';
-    if (dropText) dropText.textContent = '운임 필터 클라우드 데이터가 자동 사용됩니다';
+    if (sourceText) sourceText.textContent = '클라우드 실시간 연동';
+    if (dropText) dropText.textContent = 'Supabase 클라우드 실시간 연동 (검증 시 자동 조회)';
     if (dropSubtext) dropSubtext.textContent = '다른 이전항차 엑셀로 비교하려면 여기를 클릭하거나 드래그하세요';
 
     updateFreightCheckBtnState();
   }
 
-  // 운임 필터 탭의 클라우드/로컬 데이터 동기화 가져오기
+  // Supabase RPC를 통해 검증 대상 화주들의 모든 과거 기록 핀포인트 실시간 조회 (로컬 다운로드 0MB 유지)
+  async function fetchTargetPastDataFromSupabase(consignees) {
+    if (!supabaseClient) {
+      throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+    }
+    if (!consignees || consignees.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await supabaseClient.rpc('get_past_freight_by_consignees', {
+      p_consignees: consignees
+    });
+
+    if (error) {
+      console.error('[Supabase RPC Error]', error);
+      throw error;
+    }
+
+    let rawList = [];
+    if (Array.isArray(data)) {
+      rawList = data;
+    } else if (typeof data === 'string') {
+      try {
+        rawList = JSON.parse(data);
+      } catch (e) {
+        rawList = [];
+      }
+    } else if (data && typeof data === 'object') {
+      rawList = [data];
+    }
+
+    if (!rawList || rawList.length === 0) {
+      return [];
+    }
+
+    return rawList.map(item => ({
+      'I/O Date': item.io_date || '',
+      'B/L NO': item.bl_no || '',
+      'Cargo': item.cargo || '',
+      'VOYAGE': item.voyage || '',
+      'DESCRIPTION': item.description || '',
+      'B/T (B/L Type)': item.bt || '',
+      'B/T': item.bt || '',
+      'Consignee Code': item.consignee_code || '',
+      'Consignee': item.consignee || '',
+      'Notify': item.notify || '',
+      'Actual Shipper': item.actual_shipper || '',
+      'A/Shipper Code': item.a_shipper_code || '',
+      'SHIPPER': item.shipper || '',
+      "20'": String(item.twenty ?? '0'),
+      "40'": String(item.forty ?? '0'),
+      "45'": String(item.forty_five ?? '0'),
+      'T/S': item.ts || '',
+      'ITEM': item.item || '',
+      'REMARK': item.remark || '',
+      'CRS($) C': String(item.crs_c ?? '0'),
+      'LSS($) C': String(item.lss_c ?? '0'),
+      'PSS($) C': String(item.pss_c ?? '0'),
+      'FRT(＄) C (COLLECT)': String(item.frt_c ?? '0'),
+      'ESC': String(item.esc ?? '0'),
+      'CAF': String(item.caf ?? '0'),
+      'BAF(＄) C (COLLECT)': String(item.baf_c ?? '0'),
+      'THC': String(item.thc ?? '0'),
+      'CCF': String(item.ccf ?? '0'),
+      'DOC': String(item.doc ?? '0'),
+      'WFG': String(item.wfg ?? '0'),
+      'TSF': String(item.tsf ?? '0'),
+      'PSC': String(item.psc ?? '0'),
+      'EBS($) C': String(item.ebs_c ?? '0'),
+      'CFS': String(item.cfs ?? '0'),
+      'Collect TTL': String(item.collect_ttl ?? '0')
+    }));
+  }
+
+  // 운임 필터 탭의 클라우드/로컬 상태 UI 반영 (로컬에 전체 데이터를 보관하지 않음)
   function syncFreightMasterFromStorage() {
     if (!g_fcUsingCloudPast) return;
 
-    let pastList = [];
-    if (typeof freightDataList !== 'undefined' && Array.isArray(freightDataList) && freightDataList.length > 0) {
-      pastList = freightDataList;
-    } else {
-      const storageData = localStorage.getItem('freightDataCache');
-      if (storageData) {
-        try {
-          const parsed = JSON.parse(storageData);
-          if (parsed.freightDataList && parsed.freightDataList.length > 0) {
-            pastList = parsed.freightDataList;
-          }
-        } catch (e) {}
-      }
-    }
-
-    if (pastList.length > 0) {
-      g_fcPastData = pastList.map(item => ({
-        'I/O Date': item.ioDate || '',
-        'B/L NO': item.blNo || '',
-        'Cargo': item.cargo || '',
-        'VOYAGE': item.voyage || '',
-        'DESCRIPTION': item.description || '',
-        'B/T (B/L Type)': item.bt || '',
-        'B/T': item.bt || '',
-        'Consignee Code': item.consigneeCode || '',
-        'Consignee': item.consignee || '',
-        'Notify': item.notify || '',
-        'Actual Shipper': item.actualShipper || '',
-        'A/Shipper Code': item.aShipperCode || '',
-        'SHIPPER': item.shipper || '',
-        "20'": item.twenty || '0',
-        "40'": item.forty || '0',
-        "45'": item.fortyFive || '0',
-        'T/S': item.ts || '',
-        'ITEM': item.item || '',
-        'REMARK': item.remark || '',
-        'CRS($) C': item.crsC || '0',
-        'LSS($) C': item.lssC || '0',
-        'PSS($) C': item.pssC || '0',
-        'FRT(＄) C (COLLECT)': item.frtC || '0',
-        'ESC': item.esc || '0',
-        'CAF': item.caf || '0',
-        'BAF(＄) C (COLLECT)': item.bafC || '0',
-        'THC': item.thc || '0',
-        'CCF': item.ccf || '0',
-        'DOC': item.doc || '0',
-        'WFG': item.wfg || '0',
-        'TSF': item.tsf || '0',
-        'PSC': item.psc || '0',
-        'EBS($) C': item.ebsC || '0',
-        'CFS': item.cfs || '0',
-        'Collect TTL': item.collectTtl || '0'
-      }));
-
-      const nameSpan = document.getElementById('fcPastFileName');
-      const statsSpan = document.getElementById('fcPastFileStats');
-      if (nameSpan) nameSpan.textContent = '클라우드 운임 마스터 (이전항차)';
-      if (statsSpan) statsSpan.textContent = `${g_fcPastData.length.toLocaleString()}건 (연동됨)`;
-    } else {
-      g_fcPastData = null;
-      const statsSpan = document.getElementById('fcPastFileStats');
-      if (statsSpan) statsSpan.textContent = '0건 (운임 필터 데이터 대기)';
-    }
+    const nameSpan = document.getElementById('fcPastFileName');
+    const statsSpan = document.getElementById('fcPastFileStats');
+    if (nameSpan) nameSpan.textContent = 'Supabase 클라우드 운임 DB';
+    if (statsSpan) statsSpan.textContent = '실시간 자동 연동 (준비 완료)';
 
     updateFreightCheckBtnState();
   }
@@ -11387,9 +11640,9 @@
   }
 
   // ==========================================================================
-  //  7. 운임 검증 실행 진입점
+  //  7. 운임 검증 실행 진입점 (클라우드 운임 마스터 전체 정밀 대조)
   // ==========================================================================
-  function executeFreightCheck() {
+  async function executeFreightCheck() {
     if (!g_fcTargetData || g_fcTargetData.length === 0) {
       alert('검증할 운임 파일을 먼저 업로드해주세요.');
       return;
@@ -11402,89 +11655,110 @@
       btn.innerHTML = '⏳ 검증 분석 중...';
     }
 
-    setTimeout(() => {
-      try {
-        if (g_fcUsingCloudPast && (!g_fcPastData || g_fcPastData.length === 0)) {
-          syncFreightMasterFromStorage();
-        }
+    try {
+      if (g_fcUsingCloudPast) {
+        if (btn) btn.innerHTML = '⏳ 클라우드 DB 타겟 화주 대조 중...';
 
-        g_fcInternalErrors = fcCheckErrors(g_fcTargetData);
+        // 1. 검증 대상 엑셀에서 고유 화주명(Consignee) 추출
+        const targetConsignees = Array.from(new Set(
+          g_fcTargetData.map(r => fcNormalizeVal(r['Consignee'])).filter(c => c && c.length > 0)
+        ));
 
-        g_fcDiscrepancies = [];
-        if (g_fcPastData && g_fcPastData.length > 0) {
-          g_fcDiscrepancies = fcCompareHistory(g_fcTargetData, g_fcPastData);
-        }
+        if (targetConsignees.length > 0) {
+          // 2. Supabase RPC로 해당 화주들의 모든 과거 기록 핀포인트 쿼리 (로컬 다운로드 0MB)
+          const pastData = await fetchTargetPastDataFromSupabase(targetConsignees);
+          g_fcPastData = pastData;
 
-        const extracts = fcExtractTsAndThc(g_fcTargetData);
-        g_fcExtractTsList = extracts.listA;
-        g_fcExtractThcList = extracts.listB;
-
-        const internalErrMap = {};
-        g_fcInternalErrors.forEach(err => {
-          if (!internalErrMap[err['B/L NO']]) internalErrMap[err['B/L NO']] = [];
-          internalErrMap[err['B/L NO']].push(`[${err['오류 구분']}] ${err['오류 내용']}`);
-        });
-
-        const historyDiscMap = {};
-        g_fcDiscrepancies.forEach(disc => {
-          const bl = disc.data['B/L NO'];
-          historyDiscMap[bl] = disc;
-        });
-
-        g_fcAllResults = g_fcTargetData.map(row => {
-          const blNo = fcNormalizeVal(row['B/L NO']);
-          const intErrs = internalErrMap[blNo] || [];
-          const histDisc = historyDiscMap[blNo];
-
-          const hasIntErr = intErrs.length > 0;
-          const hasHistDisc = !!histDisc;
-
-          let statusText = '정상';
-          let statusClass = 'fc-badge-success';
-
-          if (hasIntErr && hasHistDisc) {
-            statusText = '자체오류+불일치';
-            statusClass = 'fc-badge-danger';
-          } else if (hasIntErr) {
-            statusText = '자체 오류';
-            statusClass = 'fc-badge-danger';
-          } else if (hasHistDisc) {
-            statusText = histDisc.data['불일치 내용'] === '과거 데이터 없음 (신규 업체)' ? '신규 업체' : '과거 불일치';
-            statusClass = 'fc-badge-warning';
+          const statsSpan = document.getElementById('fcPastFileStats');
+          if (statsSpan) {
+            statsSpan.textContent = `${pastData.length.toLocaleString()}건 (타겟 화주 ${targetConsignees.length}개사 연동)`;
           }
-
-          let summaryNotes = [];
-          if (hasIntErr) summaryNotes.push(intErrs.join(' | '));
-          if (hasHistDisc) summaryNotes.push(`[과거불일치] ${histDisc.data['불일치 내용']}`);
-
-          return {
-            row: row,
-            blNo: blNo,
-            statusText: statusText,
-            statusClass: statusClass,
-            hasIntErr: hasIntErr,
-            hasHistDisc: hasHistDisc,
-            summaryNotes: summaryNotes.join(' // ') || '-'
-          };
-        });
-
-        if (g_fcInternalErrors.length > 0) {
-          g_fcCurrentFilter = 'internal';
-        } else if (g_fcDiscrepancies.length > 0) {
-          g_fcCurrentFilter = 'history';
         } else {
-          g_fcCurrentFilter = 'all';
-        }
-
-        renderFreightCheckSummary();
-        filterFreightCheckView(g_fcCurrentFilter);
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = origText;
+          g_fcPastData = [];
         }
       }
-    }, 20);
+
+      await new Promise(resolve => setTimeout(resolve, 30));
+
+      g_fcInternalErrors = fcCheckErrors(g_fcTargetData);
+
+      g_fcDiscrepancies = [];
+      if (g_fcPastData && g_fcPastData.length > 0) {
+        g_fcDiscrepancies = fcCompareHistory(g_fcTargetData, g_fcPastData);
+      }
+
+      const extracts = fcExtractTsAndThc(g_fcTargetData);
+      g_fcExtractTsList = extracts.listA;
+      g_fcExtractThcList = extracts.listB;
+
+      const internalErrMap = {};
+      g_fcInternalErrors.forEach(err => {
+        if (!internalErrMap[err['B/L NO']]) internalErrMap[err['B/L NO']] = [];
+        internalErrMap[err['B/L NO']].push(`[${err['오류 구분']}] ${err['오류 내용']}`);
+      });
+
+      const historyDiscMap = {};
+      g_fcDiscrepancies.forEach(disc => {
+        const bl = disc.data['B/L NO'];
+        historyDiscMap[bl] = disc;
+      });
+
+      g_fcAllResults = g_fcTargetData.map(row => {
+        const blNo = fcNormalizeVal(row['B/L NO']);
+        const intErrs = internalErrMap[blNo] || [];
+        const histDisc = historyDiscMap[blNo];
+
+        const hasIntErr = intErrs.length > 0;
+        const hasHistDisc = !!histDisc;
+
+        let statusText = '정상';
+        let statusClass = 'fc-badge-success';
+
+        if (hasIntErr && hasHistDisc) {
+          statusText = '자체오류+불일치';
+          statusClass = 'fc-badge-danger';
+        } else if (hasIntErr) {
+          statusText = '자체 오류';
+          statusClass = 'fc-badge-danger';
+        } else if (hasHistDisc) {
+          statusText = histDisc.data['불일치 내용'] === '과거 데이터 없음 (신규 업체)' ? '신규 업체' : '과거 불일치';
+          statusClass = 'fc-badge-warning';
+        }
+
+        let summaryNotes = [];
+        if (hasIntErr) summaryNotes.push(intErrs.join(' | '));
+        if (hasHistDisc) summaryNotes.push(`[과거불일치] ${histDisc.data['불일치 내용']}`);
+
+        return {
+          row: row,
+          blNo: blNo,
+          statusText: statusText,
+          statusClass: statusClass,
+          hasIntErr: hasIntErr,
+          hasHistDisc: hasHistDisc,
+          summaryNotes: summaryNotes.join(' // ') || '-'
+        };
+      });
+
+      if (g_fcInternalErrors.length > 0) {
+        g_fcCurrentFilter = 'internal';
+      } else if (g_fcDiscrepancies.length > 0) {
+        g_fcCurrentFilter = 'history';
+      } else {
+        g_fcCurrentFilter = 'all';
+      }
+
+      renderFreightCheckSummary();
+      filterFreightCheckView(g_fcCurrentFilter);
+    } catch (err) {
+      console.error('검증 실행 중 오류:', err);
+      alert('운임 검증 중 오류가 발생했습니다: ' + err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+      }
+    }
   }
 
   // 클라우드 최신 운임 데이터 새로고침 함수
@@ -11502,7 +11776,7 @@
         console.error('Error reloading freight data:', err);
       }
     }
-    
+
     syncFreightMasterFromStorage();
     
     setTimeout(() => {
@@ -11914,17 +12188,12 @@
     if (searchInput) searchInput.value = '';
   }
 
-  // 페이지 로드 시 클라우드 최신 데이터 자동 연동 (컨테이너, 운임필터, 운임체크)
+  // 페이지 로드 시 클라우드 최신 데이터 자동 연동 (컨테이너 연동 및 운임 실시간 준비)
   document.addEventListener('DOMContentLoaded', () => {
-    // 백그라운드에서 즉시 클라우드 최신 운임 및 컨테이너 데이터 자동 동기화
     setTimeout(() => {
       if (typeof initLoadContainerData === 'function') initLoadContainerData(false);
-      if (typeof initLoadFreightData === 'function') {
-        initLoadFreightData(false).then(() => {
-          if (typeof syncFreightMasterFromStorage === 'function') {
-            syncFreightMasterFromStorage();
-          }
-        });
+      if (typeof syncFreightMasterFromStorage === 'function') {
+        syncFreightMasterFromStorage();
       }
     }, 100);
   });
