@@ -34,6 +34,16 @@ export default async function handler(req, res) {
   );
 
   try {
+    // 3시간 비활동 검사
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+    const lastActiveCookie = req.cookies?.cargo_last_active;
+    if (lastActiveCookie) {
+      const lastActiveTime = parseInt(lastActiveCookie, 10);
+      if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime > THREE_HOURS_MS)) {
+        return res.status(401).json({ ok: false, error: 'Session timeout (3 hours inactive)' });
+      }
+    }
+
     // 세션 조회 및 토큰 자동 갱신 트리거
     const { data: { user }, error } = await supabase.auth.getUser();
 
