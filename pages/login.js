@@ -20,7 +20,20 @@ export default function LoginPage() {
     if (router.query.status === 'pending') {
       setIsPending(true);
     }
-    checkSession();
+    if (router.query.reason === 'timeout') {
+      setMessage({
+        text: '3시간 동안 활동이 없어 안전을 위해 자동 로그아웃되었습니다. 다시 로그인해 주세요.',
+        type: 'info'
+      });
+      // 타임아웃 시 남아있는 브라우저 세션 정리
+      supabase.auth.signOut().catch(() => {});
+      try {
+        localStorage.removeItem('cargo_last_active');
+        document.cookie = 'cargo_last_active=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      } catch (e) {}
+    } else {
+      checkSession();
+    }
   }, [router.query]);
 
   async function checkSession() {
@@ -126,6 +139,12 @@ export default function LoginPage() {
         }
 
         if (isApproved) {
+          const now = Date.now();
+          try {
+            localStorage.setItem('cargo_last_active', String(now));
+            document.cookie = `cargo_last_active=${now}; path=/; max-age=86400; SameSite=Lax`;
+          } catch (e) {}
+
           setMessage({ text: '로그인 성공! 메인 도구로 이동 중...', type: 'info' });
           // 쿠키가 브라우저에 안전하게 저장될 수 있도록 250ms 대기 후 이동
           setTimeout(() => {
@@ -160,6 +179,11 @@ export default function LoginPage() {
 
     setLoading(false);
     if (profile && profile.is_approved === true) {
+      const now = Date.now();
+      try {
+        localStorage.setItem('cargo_last_active', String(now));
+        document.cookie = `cargo_last_active=${now}; path=/; max-age=86400; SameSite=Lax`;
+      } catch (e) {}
       window.location.replace('/');
     } else {
       alert('아직 관리자 승인 대기 중입니다.\n관리자 승인 후 다시 확인해 주세요.');
@@ -168,6 +192,10 @@ export default function LoginPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
+    try {
+      localStorage.removeItem('cargo_last_active');
+      document.cookie = 'cargo_last_active=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    } catch (e) {}
     setIsPending(false);
     setEmail('');
     setPassword('');

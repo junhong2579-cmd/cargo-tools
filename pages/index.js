@@ -35,6 +35,27 @@ export async function getServerSideProps(context) {
     };
   }
 
+  // 1-1. 3시간 비활동/미접속 검증 (마지막 활동으로부터 3시간 초과 시 로그아웃)
+  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+  const lastActiveCookie = req.cookies ? req.cookies['cargo_last_active'] : null;
+  if (lastActiveCookie) {
+    const lastActiveTime = parseInt(lastActiveCookie, 10);
+    if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime > THREE_HOURS_MS)) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
+
+      // 타임아웃 쿠키 제거
+      res.setHeader('Set-Cookie', 'cargo_last_active=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+      return {
+        redirect: {
+          destination: '/login?reason=timeout',
+          permanent: false,
+        },
+      };
+    }
+  }
+
   // 2. 승인 여부 확인
   const isManager = user.email && user.email.toLowerCase() === 'junhong2579@gmail.com';
   let isApproved = isManager;
