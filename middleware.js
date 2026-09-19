@@ -51,6 +51,19 @@ export async function middleware(request) {
     return response;
   }
 
+  // 1-1. 3시간 비활동/미접속 검증 (마지막 활동으로부터 3시간 초과 시 로그아웃)
+  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+  const lastActiveCookie = request.cookies.get('cargo_last_active')?.value;
+  if (user && lastActiveCookie) {
+    const lastActiveTime = parseInt(lastActiveCookie, 10);
+    if (!isNaN(lastActiveTime) && (Date.now() - lastActiveTime > THREE_HOURS_MS)) {
+      const timeoutUrl = new URL('/login?reason=timeout', request.url);
+      const redirectRes = NextResponse.redirect(timeoutUrl);
+      redirectRes.cookies.delete('cargo_last_active');
+      return redirectRes;
+    }
+  }
+
   // 2. 로그인된 사용자 -> profiles 승인 상태 조회
   const isManager = user.email && user.email.toLowerCase() === 'junhong2579@gmail.com';
   let isApproved = isManager;
