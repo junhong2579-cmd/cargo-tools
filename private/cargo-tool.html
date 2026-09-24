@@ -8376,10 +8376,150 @@
   let freightSortState = { key: null, order: 'none' }; // 'none', 'asc', 'desc'
   let freightActiveFilters = {}; // key: string -> Array of string (selected values)
 
+  // 📅 I/O Date 날짜 파싱 헬퍼 (M/D/YY, YYYY-MM-DD, 엑셀 시리얼 등 지원)
+  function parseFreightIoDate(dateStr) {
+    if (!dateStr) return 0;
+    const s = String(dateStr).trim();
+    if (!s || s === "-" || s === "(공백)") return 0;
+
+    // 1. 슬래시(/), 대시(-), 점(.) 기반 분리
+    const parts = s.split(/[\/\-\.\s]+/);
+    if (parts.length >= 3) {
+      let p0 = parseInt(parts[0], 10);
+      let p1 = parseInt(parts[1], 10);
+      let p2 = parseInt(parts[2], 10);
+
+      if (!isNaN(p0) && !isNaN(p1) && !isNaN(p2)) {
+        let year, month, day;
+
+        if (p0 >= 1900 && p0 <= 2100) {
+          // YYYY-MM-DD 또는 YYYY/MM/DD
+          year = p0;
+          month = p1;
+          day = p2;
+        } else {
+          // 세 번째 자리가 연도 (M/D/YY 또는 D/M/YY)
+          if (p2 < 100) {
+            year = p2 >= 70 ? 1900 + p2 : 2000 + p2;
+          } else {
+            year = p2;
+          }
+
+          if (p0 > 12 && p1 <= 12) {
+            // DD/MM/YY
+            day = p0;
+            month = p1;
+          } else {
+            // M/D/YY (해운 표준 포맷: 9/8/26 -> 2026-09-08)
+            month = p0;
+            day = p1;
+          }
+        }
+
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return new Date(year, month - 1, day).getTime();
+        }
+      }
+    }
+
+    // 2. 엑셀 날짜 일련번호 지원
+    const num = parseFloat(s.replace(/,/g, ''));
+    if (!isNaN(num) && num > 20000 && num < 70000) {
+      return (num - 25569) * 86400 * 1000;
+    }
+
+    // 3. 브라우저 기본 Date.parse
+    const parsed = Date.parse(s);
+    if (!isNaN(parsed)) return parsed;
+
+    return 0;
+  }
+
+  // 🚢 B/L NO 파싱 헬퍼 (항차 순번 및 뒷 4자리 번호 분리 추출)
+  // 예: JDSNGP1157E1092 -> voyage: 1157, seq: 1092
+  function parseFreightBlNo(blStr) {
+    if (!blStr) return { voyage: 0, seq: 0, raw: "" };
+    const str = String(blStr).trim().toUpperCase();
+
+    // 영문 접두사(선사) + 항차(숫자) + 방향(영문) + 뒷자리(숫자)
+    const match = str.match(/([A-Z]*)(\d+)([A-Z]+)(\d+)/);
+    if (match) {
+      return {
+        voyage: parseInt(match[2], 10) || 0,
+        seq: parseInt(match[4], 10) || 0,
+        raw: str
+      };
+    }
+
+    // 기타 포맷에서 숫자 그룹 추출
+    const numbers = str.match(/\d+/g);
+    if (numbers && numbers.length >= 2) {
+      return {
+        voyage: parseInt(numbers[0], 10) || 0,
+        seq: parseInt(numbers[1], 10) || 0,
+        raw: str
+      };
+    } else if (numbers && numbers.length === 1) {
+      return {
+        voyage: parseInt(numbers[0], 10) || 0,
+        seq: 0,
+        raw: str
+      };
+    }
+
+    return { voyage: 0, seq: 0, raw: str };
+  }
+
+  // ⭐ 운임 레코드 최신순 복합 정렬 함수 ⭐
+  // 1순위: I/O Date 날짜 최신순
+  // 2순위: B/L NO 항차 번호 높은 순 (예: 1158 > 1157 > 1156)
+  // 3순위: B/L NO 뒷 4자리 번호 높은 순 (예: 1255 > 1253 > 1092)
+  // 4순위: B/L NO 전체 자연 정렬
+  function compareFreightLatest(a, b, desc = true) {
+    const timeA = parseFreightIoDate(a.ioDate);
+    const timeB = parseFreightIoDate(b.ioDate);
+    if (timeA !== timeB) {
+      return desc ? (timeB - timeA) : (timeA - timeB);
+    }
+
+    const blA = parseFreightBlNo(a.blNo);
+    const blB = parseFreightBlNo(b.blNo);
+    if (blA.voyage !== blB.voyage) {
+      return desc ? (blB.voyage - blA.voyage) : (blA.voyage - blB.voyage);
+    }
+
+    if (blA.seq !== blB.seq) {
+      return desc ? (blB.seq - blA.seq) : (blA.seq - blB.seq);
+    }
+
+    const rawA = String(a.blNo || "").trim();
+    const rawB = String(b.blNo || "").trim();
+    return desc
+      ? rawB.localeCompare(rawA, 'ko-KR', { numeric: true })
+      : rawA.localeCompare(rawB, 'ko-KR', { numeric: true });
+  }
+
+  // B/L NO 컬럼 전용 정렬 (항차 높은 순 -> 뒷자리 번호 높은 순)
+  function compareFreightByBlNo(a, b, desc = true) {
+    const blA = parseFreightBlNo(a.blNo);
+    const blB = parseFreightBlNo(b.blNo);
+    if (blA.voyage !== blB.voyage) {
+      return desc ? (blB.voyage - blA.voyage) : (blA.voyage - blB.voyage);
+    }
+    if (blA.seq !== blB.seq) {
+      return desc ? (blB.seq - blA.seq) : (blA.seq - blB.seq);
+    }
+    const rawA = String(a.blNo || "").trim();
+    const rawB = String(b.blNo || "").trim();
+    return desc
+      ? rawB.localeCompare(rawA, 'ko-KR', { numeric: true })
+      : rawA.localeCompare(rawB, 'ko-KR', { numeric: true });
+  }
+
   // 표 머리글 th와 freightDataList 객체의 key 간 맵핑 정의
   const freightColumns = [
-    { name: "I/O Date", key: "ioDate", type: "string" },
-    { name: "B/L NO", key: "blNo", type: "string" },
+    { name: "I/O Date", key: "ioDate", type: "date" },
+    { name: "B/L NO", key: "blNo", type: "bl" },
     { name: "Cargo", key: "cargo", type: "string" },
     { name: "B/T", key: "bt", type: "string" },
     { name: "Consignee Code", key: "consigneeCode", type: "string" },
@@ -9180,11 +9320,14 @@
           .from('freight_records')
           .select('*')
           .ilike(dbCol, `%${input}%`)
-          .order('io_date', { ascending: false })
+          .order('bl_no', { ascending: false })
           .limit(500);
 
         if (!error && data && data.length > 0) {
           const mappedList = data.map(mapFreightDbToClient);
+          // ⭐ [정렬 기준] 1순위: I/O Date 최신순 -> 2순위: B/L 항차 높은 순 -> 3순위: B/L 뒷자리 높은 순
+          mappedList.sort((a, b) => compareFreightLatest(a, b, true));
+          freightDataList = mappedList; // 컬럼별 드롭다운 필터 및 헤더 클릭 정렬과 연동
           displayFreightDataList(mappedList, input);
           return;
         } else if (!error && data && data.length === 0) {
@@ -9290,8 +9433,10 @@
       return;
     }
 
-    // 1단계: 검색창 입력값 필터링 및 역순(아래 데이터 우선) 적용
-    let filtered = [...freightDataList].reverse();
+    // 1단계: 검색창 입력값 필터링 및 최신순 기본 정렬 적용
+    let filtered = [...freightDataList];
+    filtered.sort((a, b) => compareFreightLatest(a, b, true));
+
     if (input !== "") {
       filtered = filtered.filter(item => {
         const targetValue = item[filterKey];
@@ -9309,18 +9454,23 @@
       });
     }
 
-    // 3단계: 정렬 적용
+    // 3단계: 표 헤더 클릭에 의한 명시적 정렬 적용
     if (freightSortState.key && freightSortState.order !== "none") {
       const colKey = freightSortState.key;
       const order = freightSortState.order;
       const colMeta = freightColumns.find(c => c.key === colKey);
       const isNumber = colMeta && colMeta.type === "number";
+      const isDate = colKey === "ioDate" || (colMeta && colMeta.type === "date");
+      const isBl = colKey === "blNo" || (colMeta && colMeta.type === "bl");
 
       filtered.sort((a, b) => {
-        let valA = String(a[colKey] || "").trim();
-        let valB = String(b[colKey] || "").trim();
-
-        if (isNumber) {
+        if (isDate) {
+          return compareFreightLatest(a, b, order === "desc");
+        } else if (isBl) {
+          return compareFreightByBlNo(a, b, order === "desc");
+        } else if (isNumber) {
+          let valA = String(a[colKey] || "").trim();
+          let valB = String(b[colKey] || "").trim();
           const numA = parseFloat(valA.replace(/,/g, ''));
           const numB = parseFloat(valB.replace(/,/g, ''));
           const isNaN_A = isNaN(numA);
@@ -9331,6 +9481,8 @@
           if (isNaN_B) return order === "asc" ? -1 : 1;
           return order === "asc" ? numA - numB : numB - numA;
         } else {
+          let valA = String(a[colKey] || "").trim();
+          let valB = String(b[colKey] || "").trim();
           if (valA === "" && valB === "") return 0;
           if (valA === "") return order === "asc" ? 1 : -1;
           if (valB === "") return order === "asc" ? -1 : 1;
