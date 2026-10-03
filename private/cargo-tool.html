@@ -11288,7 +11288,46 @@
       });
     }
 
+    // 📅 검증 대상 파일의 I/O Date 기준 타임스탬프 산출 (행별 우선, 없으면 파일 전체 기준)
+    function getRowIoTimestamp(r) {
+      if (!r) return 0;
+      const dStr = r['I/O Date'] || r['I/O DATE'] || r['Issue Date'] || '';
+      return parseFreightIoDate(dStr);
+    }
+
+    let defaultDfTimestamp = 0;
+    for (const r of df) {
+      const ts = getRowIoTimestamp(r);
+      if (ts > 0) {
+        defaultDfTimestamp = ts;
+        break;
+      }
+    }
+
+    function isOct2OrLater(timestamp) {
+      if (!timestamp || timestamp <= 0) return true; // 날짜 누락 시 최신 데이터로 간주
+      const d = new Date(timestamp);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+
+      if (year > 2026) return true;
+      if (year === 2026) {
+        if (month > 10) return true;
+        if (month === 10 && day >= 2) return true;
+        return false;
+      }
+      if (year >= 2024 && year <= 2025) {
+        if (month > 10) return true;
+        if (month === 10 && day >= 2) return true;
+        return false;
+      }
+      return false;
+    }
+
     df.forEach((row, index) => {
+      const rowIoTs = getRowIoTimestamp(row) || defaultDfTimestamp;
+      const isCurrentRowOct2OrLater = isOct2OrLater(rowIoTs);
       const bt = fcNormalizeVal(row['B/T (B/L Type)'] || row['B/T']);
       let msn = fcNormalizeVal(row['MSN']);
       const blNo = fcNormalizeVal(row['B/L NO']);
@@ -11420,6 +11459,44 @@
             }
           }
         } catch (e) {}
+      }
+
+      // 3-1. 45' THC 34.5만원 요율 오류 체크 (컨테이너 건만 해당, 10월 2일 이후 적용)
+      if (isCurrentRowOct2OrLater && isPartOf[index] === undefined && cargo !== "B" && !isNoCostBl) {
+        let totalQty20 = fcNormalizeVal(row["20'"], true);
+        let totalQty40 = fcNormalizeVal(row["40'"], true);
+        let totalQty45 = fcNormalizeVal(row["45'"], true);
+        let actualThcSum = fcNormalizeVal(row['THC'], true);
+
+        if (families[index]) {
+          families[index].forEach(pIdx => {
+            if (pIdx === index) return;
+            const pRow = df[pIdx];
+            totalQty20 += fcNormalizeVal(pRow["20'"], true);
+            totalQty40 += fcNormalizeVal(pRow["40'"], true);
+            totalQty45 += fcNormalizeVal(pRow["45'"], true);
+            actualThcSum += fcNormalizeVal(pRow['THC'], true);
+          });
+        }
+
+        if (totalQty45 > 0) {
+          // 45' 정상 단가: 345,000원, 과거 할인 단가: 210,000원
+          // 20' 정상 단가: 150,000원, 40' 정상 단가: 210,000원
+          const expectedThc = (totalQty20 * 150000) + (totalQty40 * 210000) + (totalQty45 * 345000);
+          const discountedThc = (totalQty20 * 150000) + (totalQty40 * 210000) + (totalQty45 * 210000);
+
+          if (Math.abs(actualThcSum - expectedThc) > 0.01) {
+            let errorMsg = `45' THC가 345,000원이 아님 (예상: ${fcFormatNum(expectedThc)}, 현재: ${fcFormatNum(actualThcSum)})`;
+            if (Math.abs(actualThcSum - discountedThc) <= 0.01) {
+              errorMsg = `45' THC가 345,000원이 아님 (과거 할인가 210,000원 적용됨, 예상: ${fcFormatNum(expectedThc)}, 현재: ${fcFormatNum(actualThcSum)})`;
+            }
+            errors.push({
+              'B/L NO': blNo,
+              '오류 구분': "45' THC 오류",
+              '오류 내용': errorMsg
+            });
+          }
+        }
       }
 
       // 4. 파트비엘 컨테이너 수량 체크
@@ -11559,10 +11636,50 @@
       { name: 'PSC', type: 'fixed' }
     ];
 
+    // 📅 검증 대상 파일의 I/O Date 기준 타임스탬프 산출 (행별 우선, 없으면 파일 전체 기준)
+    function getRowIoTimestamp(r) {
+      if (!r) return 0;
+      const dStr = r['I/O Date'] || r['I/O DATE'] || r['Issue Date'] || '';
+      return parseFreightIoDate(dStr);
+    }
+
+    let defaultDfTimestamp = 0;
+    for (const r of df) {
+      const ts = getRowIoTimestamp(r);
+      if (ts > 0) {
+        defaultDfTimestamp = ts;
+        break;
+      }
+    }
+
+    // 10월 2일 이후 여부 판별 (2026년 또는 연도 무관 10월 2일 이후 항차)
+    function isOct2OrLater(timestamp) {
+      if (!timestamp || timestamp <= 0) return true; // 날짜 컬럼 누락 시 최신 데이터로 간주하여 보정 적용
+      const d = new Date(timestamp);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+
+      if (year > 2026) return true;
+      if (year === 2026) {
+        if (month > 10) return true;
+        if (month === 10 && day >= 2) return true;
+        return false;
+      }
+      if (year >= 2024 && year <= 2025) {
+        if (month > 10) return true;
+        if (month === 10 && day >= 2) return true;
+        return false;
+      }
+      return false;
+    }
+
     df.forEach(row => {
       const consignee = fcNormalizeVal(row['Consignee']);
       const blNo = fcNormalizeVal(row['B/L NO']);
       const notify = fcNormalizeVal(row['Notify']);
+      const rowIoTs = getRowIoTimestamp(row) || defaultDfTimestamp;
+      const isCurrentRowOct2OrLater = isOct2OrLater(rowIoTs);
 
       if (!consignee || !blNo) return;
 
@@ -11691,6 +11808,29 @@
             }
 
             currentOrderedData[colName] = cVal;
+
+            // THC 45피트 요율 정상화(21만 -> 34.5만) 보정 적용 (10월 2일 이후 건)
+            if (colName === 'THC') {
+              const cQty45 = fcNormalizeVal(row["45'"], true);
+              const pQty45 = fcNormalizeVal(pRow["45'"], true);
+
+              // 10월 2일 이후 건이며, 45피트 컨테이너가 존재하고 수량이 일치하는 경우
+              if (isCurrentRowOct2OrLater && pQty45 > 0 && cQty45 === pQty45) {
+                const diffPerUnit = 135000; // 345,000(정상가) - 210,000(할인가) = 135,000원
+                const normalizedPastThc = pValOriginal + (pQty45 * diffPerUnit);
+
+                // 현재 행(cVal)이 과거 할인가에서 45피트 정상가로 보정된 금액과 일치하는 경우 일치 처리
+                if (Math.abs(cVal - normalizedPastThc) <= 0.01) {
+                  pVal = normalizedPastThc;
+                }
+              }
+
+              if (Math.abs(cVal - pVal) > 0.01) {
+                diffCount++;
+                currentDiffDetails[colName] = `과거: ${fcFormatNum(pValOriginal)}`;
+              }
+              return;
+            }
 
             // TSF 신규 요율 인상 강제 반영
             if (colName === 'TSF') {
