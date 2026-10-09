@@ -37,6 +37,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 작업 방식 (안전하게)
 
+- 사용자용 수정 · 배포 절차(테스트 주소, Supabase SQL 실행법, 요청 문구, 변경 기록)는 `작업가이드.md`에 있습니다. 배포할 때마다 9장 변경 기록과 6장 이름표 표를 갱신합니다.
+
 - **`main` = 운영(푸시하면 Vercel 이 바로 배포합니다).** 기능 · 디자인 작업은 `dev` 같은 브랜치에서 하고, Vercel 미리보기 주소에서 확인한 뒤 main 에 합칩니다.
 - 올리는 방법은 git 하나로 통일합니다(GitHub 웹 업로드와 섞으면 로컬과 GitHub 이 어긋납니다). 커밋 · 푸시는 사용자가 요청할 때만 합니다.
 - 큰 작업이 끝나면 이름표(태그)를 답니다: `git tag -a dashboard-v2 -m "..." && git push origin dashboard-v2`.
