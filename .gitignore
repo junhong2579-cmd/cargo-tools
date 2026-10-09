@@ -1,0 +1,15 @@
+node_modules
+.next
+.env.local
+.env*.local
+*.log
+
+# 실제 업체 정보가 든 엑셀 · CSV 백업은 저장소에 올리지 않는다
+*.xlsx
+*.xls
+*.csv
+
+# 로컬 검증 도구(scripts/dash-test)가 만드는 테스트 DB · 스크린샷
+scripts/dash-test/pgdata/
+scripts/dash-test/pgrb/
+scripts/dash-test/shots/

@@ -1,0 +1,11 @@
+{
+  "name": "dash-test",
+  "private": true,
+  "type": "module",
+  "description": "대시보드 SQL·화면 로컬 검증 (PGlite = 브라우저/Node용 Postgres). 배포에는 쓰이지 않음.",
+  "dependencies": {
+    "@electric-sql/pglite": "0.2.17",
+    "puppeteer-core": "23.11.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}
