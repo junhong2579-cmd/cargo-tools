@@ -1002,6 +1002,41 @@
       display: none;
     }
 
+    /* 📊 대시보드 탭 (iframe: /dash/index.html) */
+    .dashboard-frame-wrap {
+      background: #fff;
+      border: 1px solid #dbe1e8;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .dashboard-frame-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1f3a5f;
+      border-bottom: 1px solid #dbe1e8;
+      background: #f6f8fa;
+    }
+
+    .dashboard-frame-bar a {
+      color: #456789;
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    #dashboardFrame {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 170px);
+      min-height: 640px;
+      border: 0;
+    }
+
     .tab-content.active {
       display: block;
       animation: fadeInSlideUp 0.4s ease-out forwards;
@@ -3656,13 +3691,14 @@
       <li class="tab-item dropdown-tab" data-tab-group="etc">
         기타
         <div class="dropdown-content" id="etcDropdown">
-                    <div class="dropdown-item" data-tab="discharge" title="단축키: Alt + 5">양하 시간 확인</div>
+          <div class="dropdown-item" data-tab="discharge" title="단축키: Alt + 5">양하 시간 확인</div>
           <div class="dropdown-item" data-tab="freight" title="단축키: Alt + 3">운임 필터</div>
           <div class="dropdown-item" data-tab="edi-validation">화물 검증 (EDI)</div>
           <div class="dropdown-item" data-tab="freight-check" title="단축키: Alt + 4">운임 체크</div>
           <div class="dropdown-item" data-tab="calendar">캘린더</div>
           <div class="dropdown-item" data-tab="cal">프리타임 계산기</div>
           <div class="dropdown-item" data-tab="memo">메모장</div>
+          <div class="dropdown-item" data-tab="dashboard">대시보드</div>
           <div class="dropdown-item" data-tab="links" style="display: none;">LINK</div>
         </div>
       </li>
@@ -4323,6 +4359,16 @@
       <div class="card">
         <h2>📝 메모장</h2>
         <textarea id="memo" placeholder="여기에 메모를 작성하세요..." spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div id="tab-content-dashboard" class="tab-content">
+      <div class="dashboard-frame-wrap">
+        <div class="dashboard-frame-bar">
+          <span>📊 물류 대시보드</span>
+          <a href="/dash/index.html" target="_blank" rel="noopener">새 창으로 열기 ↗</a>
+        </div>
+        <iframe id="dashboardFrame" title="물류 대시보드" data-src="/dash/index.html"></iframe>
       </div>
     </div>
 
@@ -5108,10 +5154,6 @@
 
 
 <script>
-  // ==========================================================================
-  //  📑 화물 데이터 교차 검증 (EDI vs 화물시스템) 스크립트
-  // ==========================================================================
-
   let g_ediData = null;           // 파싱된 EDI 데이터
   let g_excelData = null;         // 파싱된 엑셀 데이터
   let g_excelInternalErrors = []; // 엑셀 내부 오류 목록
@@ -7871,7 +7913,7 @@
       if (e.target.classList.contains('dropdown-tab')) {
         // 기타 탭이 눌렸을 때, 현재 활성화된 탭이 '기타' 그룹 내의 탭이 아니라면
         const activeContentId = document.querySelector('.tab-content.active').id;
-        const subTabs = ['edi-validation', 'freight-check', 'discharge', 'freight', 'cal', 'memo', 'links', 'calendar'];
+        const subTabs = ['edi-validation', 'freight-check', 'discharge', 'freight', 'cal', 'memo', 'links', 'calendar', 'dashboard'];
         const currentActiveTab = activeContentId.replace('tab-content-', '');
 
         if (!subTabs.includes(currentActiveTab)) {
@@ -7890,7 +7932,7 @@
     document.querySelectorAll('.tab-circle').forEach(b => b.classList.remove('active'));
 
     // ⭐ 'etc-group'을 기타 그룹으로 처리하도록 추가 ⭐
-    const isEtcGroup = group === 'etc' || ['edi-validation', 'freight-check', 'discharge', 'freight', 'cal', 'memo', 'links', 'calendar'].includes(target) || target === 'etc-group';
+    const isEtcGroup = group === 'etc' || ['edi-validation', 'freight-check', 'discharge', 'freight', 'cal', 'memo', 'links', 'calendar', 'dashboard'].includes(target) || target === 'etc-group';
     const etcGroupTab = document.querySelector('.tab-item[data-tab-group="etc"]');
 
     // '기타' 그룹 탭 및 원 활성화 처리
@@ -7913,8 +7955,14 @@
     // 콘텐츠 전환
     document.getElementById(`tab-content-${target}`)?.classList.add('active');
 
+    // 📊 대시보드는 처음 열 때만 불러옴 (다른 탭 사용 시 부담 없음)
+    if (target === 'dashboard') {
+      const frame = document.getElementById('dashboardFrame');
+      if (frame && !frame.getAttribute('src')) frame.setAttribute('src', frame.dataset.src);
+    }
+
     // 기타 그룹 내 탭(freight, cal, memo, links, calendar)이 클릭된 경우, '기타' 원을 활성화
-    if (['edi-validation', 'freight-check', 'discharge', 'freight', 'cal', 'memo', 'links', 'calendar'].includes(target)) {
+    if (['edi-validation', 'freight-check', 'discharge', 'freight', 'cal', 'memo', 'links', 'calendar', 'dashboard'].includes(target)) {
       document.querySelector(`.tab-circle[data-tab="etc-group"]`)?.classList.add('active');
     }
   }
@@ -8879,7 +8927,15 @@
             psc: getVal(["PSC"]),
             ebsC: getVal(["EBS($) C", "EBS($)C", "EBS($)", "EBS"]),
             cfs: getVal(["CFS"]),
-            collectTtl: getVal(["COLLECT TTL", "C TTL", "COLLECT TOTAL"])
+            collectTtl: getVal(["COLLECT TTL", "C TTL", "COLLECT TOTAL"]),
+            // 📊 대시보드용 컬럼 (supabase/dashboard.sql)
+            vsl: getVal(["VSL"]),
+            issueDate: getVal(["ISSUE DATE"]),
+            ft: getVal(["F/T (FREIGHT TYPE)", "F/T"]),
+            pkg: getVal(["PKG"]),
+            weight: getVal(["WEIGHT"]),
+            measure: getVal(["MEASURE"]),
+            place: getVal(["배정장소 명", "배정장소명"])
           };
         });
 
@@ -9040,9 +9096,21 @@
           ebs_c: String(item.ebsC || '0').trim(),
           cfs: String(item.cfs || '').trim(),
           collect_ttl: String(item.collectTtl || '').trim(),
+          vsl: String(item.vsl || '').trim(),
+          issue_date: String(item.issueDate || '').trim(),
+          ft: String(item.ft || '').trim(),
+          pkg: String(item.pkg || '').trim(),
+          weight: String(item.weight || '').trim(),
+          measure: String(item.measure || '').trim(),
+          place: String(item.place || '').trim(),
           updated_at: new Date().toISOString(),
           updated_by: user ? user.email : '관리자'
         }));
+
+      // 대시보드 컬럼이 아직 DB에 없으면(supabase/dashboard.sql 미실행) 기존 컬럼만 저장
+      const DASH_COLS = ['vsl', 'issue_date', 'ft', 'pkg', 'weight', 'measure', 'place'];
+      const stripDashCols = r => { const c = { ...r }; DASH_COLS.forEach(k => delete c[k]); return c; };
+      let withDashCols = true;
 
       // 동일 엑셀 내 중복 B/L 정리 (마지막 행 우선 반영)
       const uniqueMap = new Map();
@@ -9053,10 +9121,20 @@
       const chunkSize = 500;
       let upsertError = null;
       for (let i = 0; i < cleanRecords.length; i += chunkSize) {
-        const chunk = cleanRecords.slice(i, i + chunkSize);
-        const { error: chunkErr } = await supabaseClient
+        let chunk = cleanRecords.slice(i, i + chunkSize);
+        if (!withDashCols) chunk = chunk.map(stripDashCols);
+        let { error: chunkErr } = await supabaseClient
           .from('freight_records')
           .upsert(chunk, { onConflict: 'bl_no' });
+
+        if (chunkErr && withDashCols && chunkErr.code === 'PGRST204') {
+          console.warn('[Supabase] 대시보드 컬럼 없음 → 기존 컬럼만 저장합니다. supabase/dashboard.sql 을 실행하세요.');
+          withDashCols = false;
+          chunk = chunk.map(stripDashCols);
+          ({ error: chunkErr } = await supabaseClient
+            .from('freight_records')
+            .upsert(chunk, { onConflict: 'bl_no' }));
+        }
 
         if (chunkErr) {
           console.error('[Supabase] freight_records upsert chunk error:', chunkErr);
