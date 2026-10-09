@@ -488,20 +488,20 @@
       const groups = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
       const zoom = !opts.static && groups.length > 40; // 항차가 많으면 최근 40개를 보여 주고 스크롤
       const labels = mode === 'voyage' ? groups.map((g) => g.key) : monthTicks(groups.map((g) => g.key));
-      // 막대 = 지표 값, 금색 선 = 누적 평균(조회된 첫 월·항차부터 해당 월·항차까지의 평균), 점선 = 조회 기간 전체 평균
+      // 막대 = 지표 값, 금색 선 = 직전 월·항차 대비 증감률(%, 보조축), 점선 = 조회 기간 전체 평균
       const vals = groups.map((g) => m.get(g));
-      let run = 0;
-      const cum = vals.map((v, i) => { run += v; return run / (i + 1); });
-      const avg = vals.length ? run / vals.length : 0;
-      const unitWord = mode === 'voyage' ? '항차' : '월';
+      const rates = vals.map((v, i) => (i && vals[i - 1] ? ((v - vals[i - 1]) / vals[i - 1]) * 100 : null));
+      const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      const rateName = `증감률 (${mode === 'voyage' ? '직전 항차' : '전월'} 대비)`;
+      const pct = (v) => (v == null ? '–' : `${v > 0 ? '+' : ''}${nf1.format(v)}%`);
       const vx = mode === 'voyage' ? voyageAxes(groups, labels, (opts.width || 700) / Math.max(zoom ? 40 : groups.length, 1), zoom ? groups.length - 40 : 0) : null;
       return {
         ...baseOption(),
         animation: !opts.static,
         grid: mode === 'voyage'
-          ? { left: 48, right: 8, top: 40, bottom: vx.height + (zoom ? 28 : 2) }
+          ? { left: 48, right: 48, top: 40, bottom: vx.height + (zoom ? 28 : 2) }
           : { left: 8, right: 8, top: 40, bottom: zoom ? 34 : 4, containLabel: true },
-        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: [`${m.label} (${m.unit})`, `누적 평균 (${unitWord})`, `기간 평균 ${m.fmt(avg)}`] },
+        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: [`${m.label} (${m.unit})`, rateName, `기간 평균 ${m.fmt(avg)}`] },
         tooltip: {
           ...baseOption().tooltip, trigger: 'axis', axisPointer: { type: 'shadow' },
           formatter: (ps) => {
@@ -509,7 +509,7 @@
             const head = mode === 'voyage' ? `${esc(g.key)} · ${g.date || '-'}` : monthLabel(g.key);
             const i = ps[0].dataIndex;
             return `<b>${head}</b><br>B/L ${fmt.int(g.bl)}건 · ${fmt.int(g.teu)} TEU<br>중량 ${fmt.ton(g.weight)}톤<br>총 청구액 ${fmt.mil(g.total)}백만원` +
-              `<br><span style="color:${COLORS.gold}">누적 평균 ${fmt.one(cum[i])} ${m.unit}</span> · 기간 평균 ${fmt.one(avg)} ${m.unit}`;
+              `<br><span style="color:${COLORS.gold}">${rateName} ${pct(rates[i])}</span><br>기간 평균 ${fmt.one(avg)} ${m.unit}`;
           },
         },
         ...(zoom ? { dataZoom: [
@@ -517,10 +517,13 @@
           { type: 'slider', xAxisIndex: vx.index, height: 16, bottom: 6, startValue: groups.length - 40, endValue: groups.length - 1, showDetail: false, borderColor: COLORS.line },
         ] } : {}),
         xAxis: mode === 'voyage' ? vx.axes : { type: 'category', data: labels, ...axisCommon },
-        yAxis: { type: 'value', name: m.unit, ...axisCommon },
+        yAxis: [
+          { type: 'value', name: m.unit, ...axisCommon },
+          { type: 'value', name: '증감률', ...axisCommon, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, formatter: (v) => `${v}%` } },
+        ],
         series: [
           { type: 'bar', name: `${m.label} (${m.unit})`, data: vals.map((v) => +v.toFixed(1)), barMaxWidth: 34, itemStyle: { color: COLORS.navy700, borderRadius: [2, 2, 0, 0] } },
-          { type: 'line', name: `누적 평균 (${unitWord})`, data: cum.map((v) => +v.toFixed(1)), symbol: 'circle', symbolSize: 5, lineStyle: { color: COLORS.gold, width: 2 }, itemStyle: { color: COLORS.gold }, z: 3 },
+          { type: 'line', name: rateName, yAxisIndex: 1, data: rates.map((v) => (v == null ? null : +v.toFixed(1))), symbol: 'circle', symbolSize: 5, lineStyle: { color: COLORS.gold, width: 2 }, itemStyle: { color: COLORS.gold }, z: 3 },
           { type: 'line', name: `기간 평균 ${m.fmt(avg)}`, data: vals.map(() => +avg.toFixed(1)), symbol: 'none', lineStyle: { color: COLORS.navy300, width: 1.5, type: 'dashed' }, itemStyle: { color: COLORS.navy300 }, z: 2 },
           // 막대 값 표시: 선에 가리지 않도록 보이지 않는 점 계열에 흰 바탕 레이블로 맨 위에 그린다
           {
@@ -619,6 +622,44 @@
       .map((g) => ({ ...g, full: companyName(basis, g.key), label: shortName(companyName(basis, g.key)) }));
   }
 
+  /** 추이 차트 아래 표: 월(또는 항차)별 컨테이너 · TEU · 직전 월(항차) 대비 TEU 증감률 · 총 청구액 */
+  function renderTrendTable(groupRows, mode, t) {
+    const rows = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
+    const prevWord = mode === 'voyage' ? '직전 항차' : '전월';
+    const rate = (cur, prev) => {
+      if (prev == null) return '<span class="delta">–</span>';
+      if (!prev) return '<span class="delta">–</span>';
+      const d = ((cur - prev) / prev) * 100;
+      const cls = Math.abs(d) < 0.05 ? '' : d > 0 ? 'up' : 'down';
+      return `<span class="delta ${cls}">${cls === 'up' ? '▲' : cls === 'down' ? '▼' : ''} ${nf1.format(Math.abs(d))}%</span>`;
+    };
+    $('trend-table').innerHTML = `<table class="data">
+      <thead><tr>
+        <th>${mode === 'voyage' ? '항차' : '월'}</th><th class="r">20'</th><th class="r">40'</th><th class="r">45'</th><th class="r">TEU</th>
+        <th class="r" title="TEU 기준, ${prevWord} 대비">증감률 <small>(${prevWord} 대비)</small></th><th class="r">총 청구액 <small>(백만원)</small></th>
+      </tr></thead>
+      <tbody>${rows.map((g, i) => `<tr>
+        <td>${mode === 'voyage' ? esc(g.key) : monthLabel(g.key)}</td>
+        <td class="r">${fmt.int(g.c20)}</td><td class="r">${fmt.int(g.c40)}</td><td class="r">${fmt.int(g.c45)}</td>
+        <td class="r"><b>${fmt.int(g.teu)}</b></td>
+        <td class="r">${rate(g.teu, i ? rows[i - 1].teu : null)}</td>
+        <td class="r">${fmt.mil(g.total)}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr>
+        <td>합계 (${fmt.int(rows.length)}${mode === 'voyage' ? '항차' : '개월'})</td>
+        <td class="r">${fmt.int(t.c20)}</td><td class="r">${fmt.int(t.c40)}</td><td class="r">${fmt.int(t.c45)}</td>
+        <td class="r">${fmt.int(t.teu)}</td><td class="r"></td><td class="r">${fmt.mil(t.total)}</td>
+      </tr></tfoot>
+    </table>`;
+    const wrap = $('trend-table');
+    const limit = mode === 'voyage' ? 14 : 12;
+    const trs = wrap.querySelectorAll('tbody tr');
+    wrap.style.maxHeight = trs.length > limit
+      ? `${wrap.querySelector('thead').offsetHeight + wrap.querySelector('tfoot').offsetHeight + [...trs].slice(0, limit).reduce((h, r) => h + r.offsetHeight, 0) + 1}px`
+      : '';
+    wrap.scrollTop = 0;
+  }
+
   function renderCharts(S) {
     const { t, groups } = S;
     const m = METRICS[state.metric];
@@ -631,6 +672,7 @@
     $('ch-trend').classList.toggle('voyage-axis', state.trend === 'voyage');
     ct.resize();
     ct.setOption(trendChartOpt, true);
+    renderTrendTable(state.trend === 'voyage' ? groups.voyage : groups.month, state.trend, t);
     ct.off('click');
     ct.off('datazoom');
     // 항차를 스크롤하면 보이는 범위에 맞춰 월 이름 위치를 다시 잡는다

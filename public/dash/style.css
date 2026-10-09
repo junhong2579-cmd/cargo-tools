@@ -158,6 +158,11 @@ main { padding: 20px 24px 48px; min-width: 0; display: grid; grid-template-colum
 .chart.tall { height: 340px; }
 .chart.short { height: 210px; }
 .chart.voyage-axis { height: 380px; } /* 항차별 추이: 항차 · 일 · 월 3단 축 */
+/* 추이 차트 아래 표: 항차별 14행 · 월별 12행까지 보이고 나머지는 스크롤 (높이는 app.js 가 행 높이로 계산, 머리글 · 합계 고정) */
+.trend-table { overflow: auto; }
+.trend-table table.data th, .trend-table table.data td { padding: 7px 12px; }
+.trend-table table.data tfoot td { position: sticky; bottom: 0; }
+.trend-table .delta { font-size: 12.5px; }
 .chart-note { font-size: 11.5px; color: var(--faint); padding: 0 16px 10px; margin: 0; }
 .ratios { display: grid; gap: 10px; padding: 4px 16px 16px; }
 .ratio { display: grid; gap: 4px; }
