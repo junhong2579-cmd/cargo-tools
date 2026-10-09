@@ -82,7 +82,7 @@ document.addEventListener('dash:ready', () => {
   });
 
   // ── 범위 계산 ────────────────────────────────
-  const EMPTY_FILTER = { consignee: [], notify: [], companyMode: 'and', items: [], cargo: [], ts: 'all', ft: 'all' };
+  const EMPTY_FILTER = { consignee: [], notify: [], companyMode: 'and', items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all' };
 
   function reportScope() {
     let s, title, kind;
@@ -236,7 +236,7 @@ document.addEventListener('dash:ready', () => {
       html.push(`<section class="rpt-sec">${H('배정 장소 · 운영 지표')}<div class="rpt-two">
         ${table([{ l: '배정 장소', v: (g) => esc(X.placeName(g.key)) }, n('B/L', 'bl'), n('TEU', 'teu'), share(t, 'bl', 'B/L 비중')], pg)}
         ${table([{ l: '구분', v: (x) => x[0] }, { l: '건수', r: true, v: (x) => fmt.int(x[1]) }, { l: '비율', r: true, v: (x) => fmt.pct(x[1], t.bl) }], [
-          ['환적 (T/S)', t.ts], ['비환적', t.bl - t.ts], ['운임 Prepaid', t.prepaid], ['운임 Collect', t.bl - t.prepaid],
+          ['환적 (T/S)', t.ts], ['비환적', t.bl - t.ts], ['특송', t.ex], ['비특송', t.bl - t.ex], ['운임 Prepaid', t.prepaid], ['운임 Collect', t.bl - t.prepaid],
           ['Notify 지정', t.withNotify],
         ])}</div></section>`);
 

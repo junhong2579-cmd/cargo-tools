@@ -98,7 +98,7 @@ create table if not exists public.dash_rows (
   a_shipper   text,
   item        text,
   cargo       text,            -- F=FCL, L=LCL, E=Empty, B=Bulk
-  bt          text,
+  bt          text,            -- B/L Type (X = 특송)
   ts          numeric,
   ft          text,            -- P / C
   c20 numeric, c40 numeric, c45 numeric, teu numeric, cntr numeric,
@@ -136,7 +136,7 @@ begin
   o.a_shipper  := public.dash_text(r.actual_shipper::text);
   o.item       := upper(public.dash_text(r.item::text));
   o.cargo      := upper(public.dash_text(r.cargo::text));
-  o.bt         := public.dash_text(r.bt::text);
+  o.bt         := upper(public.dash_text(r.bt::text));
   o.ts         := public.dash_num(r.ts::text);
   o.ft         := upper(public.dash_text(r.ft::text));
   o.c20        := public.dash_num(r.twenty::text);
@@ -241,7 +241,8 @@ create policy dash_rows_read on public.dash_rows
 -- ---------------------------------------------------------------------
 -- 5) 조회 조건 · 점검 항목
 --    f (조회 조건 JSON) = { from, to, consignee:[사업자번호], notify:[이름, ''=(Notify 없음)],
---                          companyMode:'and'|'or', items:[], cargo:[], ts:'all'|'1'|'0', ft:'all'|'P'|'C' }
+--                          companyMode:'and'|'or', items:[], cargo:[], bt:[], ts:'all'|'1'|'0', ex:'all'|'1'|'0',
+--                          ft:'all'|'P'|'C' }   (ex = 특송: B/L Type 이 X 인 B/L)
 -- ---------------------------------------------------------------------
 create or replace function public.dash_filter(f jsonb) returns setof public.dash_rows
 language sql stable set search_path = public as $$
@@ -253,7 +254,9 @@ language sql stable set search_path = public as $$
            coalesce(f ->> 'companyMode', 'and') = 'or' as any_company,
            array(select jsonb_array_elements_text(coalesce(f -> 'items', '[]')))     as its,
            array(select jsonb_array_elements_text(coalesce(f -> 'cargo', '[]')))     as cg,
+           array(select jsonb_array_elements_text(coalesce(f -> 'bt', '[]')))        as bts,
            coalesce(f ->> 'ts', 'all') as ts,
+           coalesce(f ->> 'ex', 'all') as ex,
            coalesce(f ->> 'ft', 'all') as ft
   )
   select r.*
@@ -271,7 +274,9 @@ language sql stable set search_path = public as $$
         end
     and (cardinality(p.its) = 0 or coalesce(r.item, '') = any(p.its))
     and (cardinality(p.cg) = 0 or coalesce(r.cargo, '') = any(p.cg))
+    and (cardinality(p.bts) = 0 or coalesce(r.bt, '') = any(p.bts))
     and (p.ts = 'all' or (p.ts = '1' and r.ts > 0) or (p.ts = '0' and r.ts = 0))
+    and (p.ex = 'all' or (p.ex = '1') = (r.bt is not distinct from 'X'))
     and (p.ft = 'all' or r.ft = p.ft)
 $$;
 
@@ -295,7 +300,7 @@ $$;
 -- 6) 대시보드 RPC
 -- ---------------------------------------------------------------------
 
--- 데이터 범위 · 기간 · ITEM/Cargo 목록 (화면을 처음 열 때 1회)
+-- 데이터 범위 · 기간 · ITEM/Cargo/B/L Type 목록 (화면을 처음 열 때 1회)
 create or replace function public.dash_meta() returns jsonb
 language plpgsql stable set search_path = public as $$
 declare
@@ -315,7 +320,9 @@ begin
     'items',    (select coalesce(jsonb_agg(jsonb_build_array(k, n) order by n desc), '[]'::jsonb)
                  from (select coalesce(item, '') as k, count(*) as n from public.dash_rows group by 1) t),
     'cargos',   (select coalesce(jsonb_agg(jsonb_build_array(k, n) order by n desc), '[]'::jsonb)
-                 from (select coalesce(cargo, '') as k, count(*) as n from public.dash_rows group by 1) t)
+                 from (select coalesce(cargo, '') as k, count(*) as n from public.dash_rows group by 1) t),
+    'bts',      (select coalesce(jsonb_agg(jsonb_build_array(k, n) order by n desc), '[]'::jsonb)
+                 from (select coalesce(bt, '') as k, count(*) as n from public.dash_rows group by 1) t)
   ) into res
   from public.dash_rows;
   return res;
@@ -353,6 +360,7 @@ begin
     'pkg', coalesce(sum(pkg), 0), 'weight', coalesce(sum(weight), 0), 'cbm', coalesce(sum(cbm), 0),
     'krw', coalesce(sum(krw), 0), 'usd', coalesce(sum(usd), 0), 'total', coalesce(sum(total), 0),
     'ts', coalesce(sum(ts), 0),
+    'ex', count(*) filter (where bt = 'X'),
     'THC', coalesce(sum(thc), 0), 'DOC', coalesce(sum(doc), 0), 'WFG', coalesce(sum(wfg), 0),
     'CCF', coalesce(sum(ccf), 0), 'TSF', coalesce(sum(tsf), 0), 'PSC', coalesce(sum(psc), 0),
     'ESC', coalesce(sum(esc), 0),
@@ -404,13 +412,13 @@ begin
                       else place end, ''),
         count(*), sum(c20), sum(c40), sum(c45), sum(teu), sum(cntr),
         sum(pkg), sum(weight), sum(cbm), sum(krw), sum(usd), sum(total),
-        sum(ts), count(*) filter (where ft = 'P'), count(notify), count(distinct ckey), min(d)::text
+        sum(ts), count(*) filter (where bt = 'X'), count(*) filter (where ft = 'P'), count(notify), count(distinct ckey), min(d)::text
       ) as a
     from r
     group by grouping sets ((m), (voyage), (ckey), (notify), (item), (cargo), (place))
   )
   select jsonb_build_object(
-    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","prepaid","withNotify","companies","date"]'::jsonb,
+    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date"]'::jsonb,
     'groups', coalesce((select jsonb_object_agg(dim, rows) from (select dim, jsonb_agg(a) as rows from g group by dim) x), '{}'::jsonb)
   ) into res;
   return res || jsonb_build_object('totals', public.dash_totals(f));

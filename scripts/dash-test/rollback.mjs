@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 // dashboard_rollback.sql → dashboard.sql 재적용을 검증한다 (원본 freight_records 가 바뀌지 않는지). 사용: node rollback.mjs
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TOOL = path.resolve(HERE, '../..'); // 저장소 루트
-fs.rmSync(path.join(HERE, 'pgrb'), { recursive: true, force: true }); fs.cpSync(path.join(HERE, 'pgdata'), path.join(HERE, 'pgrb'), { recursive: true });
+await fs.promises.rm(path.join(HERE, 'pgrb'), { recursive: true, force: true }); await fs.promises.cp(path.join(HERE, 'pgdata'), path.join(HERE, 'pgrb'), { recursive: true }); // Node 24 의 rmSync · cpSync 는 한글 경로에서 멈춤
 const db = new PGlite(path.join(HERE, 'pgrb'));
 const state = async (l) => {
   const q = async (s) => (await db.query(s)).rows[0];

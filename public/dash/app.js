@@ -9,10 +9,11 @@
 
   // ── 상수 · 코드표 ─────────────────────────────
   const CARGO = { F: 'FCL', L: 'LCL', E: 'Empty', B: 'Bulk' };
+  const BT = { C: '콘솔', S: '심플', X: '특송', E: '엠티' }; // B/L Type
   // Collect TTL = 원화 항목 + USD 항목 × 적용환율 (ESC 는 USD 항목)
   const KRW_CHARGES = ['THC', 'DOC', 'WFG', 'CCF', 'TSF', 'PSC'];
   const USD_CHARGES = ['FRT', 'BAF', 'CAF', 'CRS', 'LSS', 'PSS', 'ESC'];
-  const SUM_KEYS = ['bl', 'c20', 'c40', 'c45', 'teu', 'cntr', 'pkg', 'weight', 'cbm', 'krw', 'usd', 'total', 'ts', 'prepaid', 'withNotify'];
+  const SUM_KEYS = ['bl', 'c20', 'c40', 'c45', 'teu', 'cntr', 'pkg', 'weight', 'cbm', 'krw', 'usd', 'total', 'ts', 'ex', 'prepaid', 'withNotify'];
   const GROUP_DIMS = ['month', 'voyage', 'consignee', 'notify', 'item', 'cargo', 'place'];
   const NONE = ''; // 값 없음: (Notify 없음) · (미지정) 등
   const COLORS = {
@@ -34,6 +35,7 @@
   const companyName = (basis, k) => (basis === 'notify' ? notifyName(k) : consigneeName(k));
   const shortName = (n) => n.replace(/주식회사|\(주\)|㈜/g, '').replace(/\s+/g, ' ').trim() || n;
   const placeName = (k) => (k === NONE ? '(미지정)' : k);
+  const btName = (k) => (k === NONE ? '(없음)' : BT[k] ? `${k} (${BT[k]})` : k);
   const vesselLabel = () => (META.vessels.length ? META.vessels.join(', ') : '선사');
 
   // ── 포맷 ────────────────────────────────────
@@ -106,7 +108,7 @@
   // ── 상태 ────────────────────────────────────
   const DEFAULT_STATE = {
     from: '', to: '', consignee: [], notify: [], companyMode: 'and',
-    items: [], cargo: [], ts: 'all', ft: 'all',
+    items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all',
     groupBy: 'consignee', metric: 'teu', trend: 'month', charge: 'krw', tab: 'company',
   };
   const state = loadHash();
@@ -141,7 +143,7 @@
     return {
       from: range ? range.from : s.from, to: range ? range.to : s.to,
       consignee: s.consignee, notify: s.notify, companyMode: s.companyMode,
-      items: s.items, cargo: s.cargo, ts: s.ts, ft: s.ft,
+      items: s.items, cargo: s.cargo, bt: s.bt, ts: s.ts, ex: s.ex, ft: s.ft,
     };
   }
   const zip = (fields, a) => { const o = {}; fields.forEach((f, i) => { o[f] = a[i]; }); return o; };
@@ -305,8 +307,10 @@
     };
     chips($('f-items'), META.items, 'items', (v) => v || '(없음)');
     chips($('f-cargo'), META.cargos, 'cargo', (v) => (v ? `${CARGO[v] || v} (${v})` : '(없음)'));
+    chips($('f-bt'), META.bts || [], 'bt', btName);
 
     syncers.push(seg($('f-ts'), [['all', '전체'], ['1', '환적'], ['0', '비환적']], () => state.ts, (v) => { state.ts = v; update(); }));
+    syncers.push(seg($('f-ex'), [['all', '전체'], ['1', '특송'], ['0', '비특송']], () => state.ex, (v) => { state.ex = v; update(); }));
     syncers.push(seg($('f-ft'), [['all', '전체'], ['P', 'Prepaid'], ['C', 'Collect']], () => state.ft, (v) => { state.ft = v; update(); }));
 
     // 보기 옵션
@@ -336,7 +340,7 @@
 
   function activeFilterCount() {
     return (state.from || state.to ? 1 : 0) + state.consignee.length + state.notify.length +
-      state.items.length + state.cargo.length + (state.ts !== 'all') + (state.ft !== 'all');
+      state.items.length + state.cargo.length + state.bt.length + (state.ts !== 'all') + (state.ex !== 'all') + (state.ft !== 'all');
   }
 
   function describeFilters(s = state) {
@@ -346,7 +350,9 @@
     if (s.consignee.length && s.notify.length) parts.push(['업체 조건', s.companyMode === 'or' ? '하나라도 충족' : '두 조건 모두 충족']);
     if (s.items.length) parts.push(['ITEM', s.items.join(', ')]);
     if (s.cargo.length) parts.push(['화물 종류', s.cargo.map((c) => CARGO[c] || c).join(', ')]);
+    if (s.bt.length) parts.push(['B/L 타입', s.bt.map(btName).join(', ')]);
     if (s.ts !== 'all') parts.push(['환적', s.ts === '1' ? '환적만' : '비환적만']);
+    if (s.ex !== 'all') parts.push(['특송', s.ex === '1' ? '특송만' : '비특송만']);
     if (s.ft !== 'all') parts.push(['운임 지불', s.ft === 'P' ? 'Prepaid' : 'Collect']);
     return parts;
   }
@@ -358,7 +364,9 @@
     state.notify.forEach((v) => chips.push({ label: 'Notify', text: notifyName(v), clear: () => toggleIn(state.notify, v) }));
     state.items.forEach((v) => chips.push({ label: 'ITEM', text: v, clear: () => toggleIn(state.items, v) }));
     state.cargo.forEach((v) => chips.push({ label: '화물', text: CARGO[v] || v, clear: () => toggleIn(state.cargo, v) }));
+    state.bt.forEach((v) => chips.push({ label: 'B/L 타입', text: btName(v), clear: () => toggleIn(state.bt, v) }));
     if (state.ts !== 'all') chips.push({ label: '환적', text: state.ts === '1' ? '환적' : '비환적', clear: () => { state.ts = 'all'; } });
+    if (state.ex !== 'all') chips.push({ label: '특송', text: state.ex === '1' ? '특송' : '비특송', clear: () => { state.ex = 'all'; } });
     if (state.ft !== 'all') chips.push({ label: '운임', text: state.ft === 'P' ? 'Prepaid' : 'Collect', clear: () => { state.ft = 'all'; } });
     const el = $('active-chips');
     el.innerHTML = chips.length
@@ -594,7 +602,7 @@
         <div class="r-head"><span>${label}</span><span>${aL} ${fmt.pct(a, t.bl)} · ${bL} ${fmt.pct(t.bl - a, t.bl)}</span></div>
         <div class="r-bar"><span style="width:${t.bl ? (a / t.bl) * 100 : 0}%"></span><span style="flex:1"></span></div>
       </div>`;
-    $('ratios').innerHTML = ratio('환적 (T/S)', t.ts, '환적', '비환적') + ratio('운임 지불 (F/T)', t.prepaid, 'Prepaid', 'Collect') + ratio('Notify 지정', t.withNotify, '지정', '미지정');
+    $('ratios').innerHTML = ratio('환적 (T/S)', t.ts, '환적', '비환적') + ratio('특송 (B/L Type X)', t.ex, '특송', '비특송') + ratio('운임 지불 (F/T)', t.prepaid, 'Prepaid', 'Collect') + ratio('Notify 지정', t.withNotify, '지정', '미지정');
   }
 
   // ── 표 ──────────────────────────────────────

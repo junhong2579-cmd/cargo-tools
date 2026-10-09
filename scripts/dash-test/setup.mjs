@@ -30,7 +30,7 @@ console.log('excel rows', jsonData.length, 'records', records.length);
 console.log('sample', JSON.stringify(records[0]).slice(0, 400));
 
 const dir = path.join(HERE, 'pgdata');
-fs.rmSync(dir, { recursive: true, force: true });
+await fs.promises.rm(dir, { recursive: true, force: true }); // Node 24 의 rmSync 는 한글 경로(바탕 화면)에서 멈춤
 const db = new PGlite(dir);
 
 await db.exec(`
