@@ -72,7 +72,7 @@ button { cursor: pointer; }
 .layout { display: grid; grid-template-columns: 292px minmax(0, 1fr); align-items: start; }
 .filters {
   position: sticky; top: var(--header-h); height: calc(100vh - var(--header-h));
-  overflow-y: auto; background: var(--surface); border-right: 1px solid var(--line);
+  overflow-y: auto; overscroll-behavior: contain; background: var(--surface); border-right: 1px solid var(--line);
   padding: 18px 18px 40px;
 }
 .filters-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
