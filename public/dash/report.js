@@ -131,6 +131,7 @@ document.addEventListener('dash:ready', () => {
     el.style.height = height + 'px';
     const c = echarts.init(el, null, { renderer: 'svg', width: el.clientWidth || 680, height });
     delete option._keys;
+    delete option._monthInterval;
     c.setOption({ ...option, animation: false });
     reportCharts.push(c);
   }
@@ -184,9 +185,9 @@ document.addEventListener('dash:ready', () => {
       html.push('<section class="rpt-sec"><p>선택한 조건에 해당하는 B/L이 없습니다.</p></section>');
     } else {
       // 1. 요약
-      html.push(`<section class="rpt-sec">${H('실적 요약')}<div class="rpt-kpis">${X.kpiList(t).map((k) => `
+      html.push(`<section class="rpt-sec">${H('실적 요약')}<div class="rpt-kpis">${X.kpiList(t, trendMode).map((k) => `
         <div class="rpt-kpi"><div class="l">${k.label}</div><div class="v">${k.value}${k.unit ? `<small>${k.unit}</small>` : ''}</div>
-        ${deltaCell(k.raw, prev ? prev[k.key] : null, cmp)}<div class="d">${k.sub}</div></div>`).join('')}</div>
+        ${deltaCell(k.raw, prev ? k.get(prev) : null, cmp)}<div class="d">${k.sub}</div></div>`).join('')}</div>
         ${cmp && !cmp.available ? `<p class="rpt-note">${esc(cmp.label)} 비교: 비교 기간의 데이터가 없어 증감을 표시하지 않았습니다.</p>` : ''}</section>`);
 
       // 2. 추이
@@ -264,7 +265,7 @@ document.addEventListener('dash:ready', () => {
     document.title = `${title} (${X.periodLabel(s.from, s.to).replace(/[()]/g, '')})`; // PDF 기본 파일명
 
     if (t.bl) {
-      mountChart('rc-trend', X.chartOptions.trend(trendMode === 'month' ? groups.month : groups.voyage, trendMode, 'teu', { static: true }), 230);
+      mountChart('rc-trend', X.chartOptions.trend(trendMode === 'month' ? groups.month : groups.voyage, trendMode, 'teu', { static: true }), trendMode === 'voyage' ? 300 : 230);
       const cargo = [...groups.cargo].sort((a, b) => b.bl - a.bl).map((g) => ({ name: `${X.CARGO[g.key] || g.key || '(없음)'}`, value: g.bl }));
       mountChart('rc-cargo', X.chartOptions.donut(cargo, { static: true }), 150);
     }

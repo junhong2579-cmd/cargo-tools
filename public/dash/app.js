@@ -388,15 +388,21 @@
     return `<span class="delta ${cls}">${arrow} ${nf1.format(Math.abs(d))}%<em>${esc(cmp.label)}</em></span>`;
   }
 
-  function kpiList(t) {
+  /** KPI 카드. get(합계) 으로 값을 구하므로 비교 기간 합계에도 같은 식을 쓴다. trend: 'month' → 월 평균, 'voyage' → 항차 평균 */
+  function kpiList(t, trend = state.trend) {
+    const byVoyage = trend === 'voyage';
+    const avg = (x) => { const n = byVoyage ? x.voyages : x.months; return n ? x.teu / n : 0; };
+    const share = (v) => (t.teu ? ` · 비중 ${fmt.pct(v, t.teu)}` : '');
     return [
-      { label: 'B/L 건수', value: fmt.int(t.bl), unit: '건', raw: t.bl, key: 'bl', sub: `Consignee ${fmt.int(t.companies)}곳` },
-      { label: '물동량', value: fmt.int(t.teu), unit: 'TEU', raw: t.teu, key: 'teu', sub: `20' ${fmt.int(t.c20)} · 40' ${fmt.int(t.c40)} · 45' ${fmt.int(t.c45)}` },
-      { label: '총 중량', value: fmt.ton(t.weight), unit: '톤', raw: t.weight, key: 'weight', sub: `포장 ${fmt.int(t.pkg)}개` },
-      { label: '총 용적', value: fmt.one(t.cbm), unit: 'CBM', raw: t.cbm, key: 'cbm', sub: `B/L당 평균 ${t.bl ? fmt.one(t.cbm / t.bl) : '–'} CBM` },
-      { label: '총 청구액', value: fmt.mil(t.total), unit: '백만원', raw: t.total, key: 'total', sub: '원화 + 외화(원 환산), Collect' },
-      { label: '외화 청구액', value: fmt.usd(t.usd), unit: '', raw: t.usd, key: 'usd', sub: `원화 청구액 ${fmt.mil(t.krw)} 백만원` },
-    ];
+      { label: '물동량', unit: 'TEU', get: (x) => x.teu, f: fmt.int, sub: `20' ${fmt.int(t.c20)} · 40' ${fmt.int(t.c40)} · 45' ${fmt.int(t.c45)}` },
+      byVoyage
+        ? { label: '항차 평균', unit: 'TEU', get: avg, f: fmt.one, sub: `${fmt.int(t.voyages)}개 항차 기준` }
+        : { label: '월 평균', unit: 'TEU', get: avg, f: fmt.one, sub: `${fmt.int(t.months)}개월 기준` },
+      { label: 'B/L 건수', unit: '건', get: (x) => x.bl, f: fmt.int, sub: `Consignee ${fmt.int(t.companies)}곳` },
+      { label: '특송', unit: 'TEU', get: (x) => x.exTeu, f: fmt.int, sub: `B/L ${fmt.int(t.ex)}건${share(t.exTeu)}` },
+      { label: '환적', unit: 'TEU', get: (x) => x.tsTeu, f: fmt.int, sub: `B/L ${fmt.int(t.ts)}건${share(t.tsTeu)}` },
+      { label: '총 청구액', unit: '백만원', get: (x) => x.total, f: fmt.mil, sub: '원화 + 외화(원 환산), Collect' },
+    ].map((k) => ({ ...k, raw: k.get(t), value: k.f(k.get(t)) }));
   }
 
   function renderKpis(t, prev, cmp) {
@@ -404,7 +410,7 @@
       <div class="kpi">
         <span class="k-label">${k.label}</span>
         <span class="k-value">${k.value}${k.unit ? `<small>${k.unit}</small>` : ''}</span>
-        ${deltaHtml(k.raw, prev ? prev[k.key] : null, cmp)}
+        ${deltaHtml(k.raw, prev ? k.get(prev) : null, cmp)}
         <span class="k-sub">${k.sub}</span>
       </div>`).join('');
   }
@@ -434,42 +440,98 @@
   const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
 
+  /** 항차별 차트의 3단 가로축(위→아래: 항차 · 입항일 · 월). 같은 달의 항차는 월 칸 하나로 묶고 달 경계에 세로선을 긋는다.
+      band = 막대 한 칸의 폭(px). 좁으면 항차 이름을 세로로 세운다. first = 처음 보이는 칸.
+      반환: { axes, index, height, monthInterval(start, end) } */
+  function voyageAxes(groups, labels, band, first = 0) {
+    const dates = groups.map((g) => g.date || '');
+    const ym = dates.map((d) => d.slice(0, 7));
+    const years = new Set(ym.filter(Boolean).map((v) => v.slice(0, 4)));
+    const monthText = (v) => (!v ? '' : years.size > 1 ? `${v.slice(2, 4)}년 ${+v.slice(5)}월` : `${+v.slice(5)}월`);
+    // 달이 바뀌는 칸(경계)과 각 달의 가운데 칸
+    const starts = ym.map((v, i) => i === 0 || v !== ym[i - 1]);
+    // 화면에 보이는 칸(start~end) 안에서 각 달의 가운데 칸에만 월 이름을 쓴다(스크롤하면 다시 계산)
+    const monthInterval = (start = 0, end = ym.length - 1) => {
+      const mids = new Set();
+      for (let i = Math.max(start, 0); i <= end;) {
+        let j = i; while (j + 1 <= end && ym[j + 1] === ym[i]) j++;
+        mids.add(Math.floor((i + j) / 2)); i = j + 1;
+      }
+      return (i) => mids.has(i);
+    };
+    const upright = band < 36;
+    const h0 = upright ? 36 : 12;      // 항차 줄 높이
+    const off1 = h0 + 10;              // 일 줄 위치
+    const off2 = off1 + 20;            // 월 줄 위치(구분선 시작)
+    const base = { type: 'category', position: 'bottom', axisTick: { show: false }, axisLine: { show: false }, splitLine: { show: false } };
+    const lbl = { color: COLORS.muted, fontSize: 10, interval: 0 };
+    return {
+      index: [0, 1, 2],
+      height: off2 + 22,
+      monthInterval,
+      axes: [
+        { ...base, data: labels, axisLine: { show: true, lineStyle: { color: COLORS.line } },
+          axisLabel: { ...lbl, color: COLORS.ink, rotate: upright ? 90 : 0, margin: 6 } },
+        { ...base, data: dates.map((d) => d.slice(8)), offset: off1, axisLabel: { ...lbl, margin: 4 } },
+        { ...base, data: ym.map(monthText), offset: off2,
+          axisLine: { show: true, lineStyle: { color: COLORS.line } },
+          axisTick: { show: true, inside: true, length: off2, interval: (i) => starts[i], lineStyle: { color: COLORS.line } },
+          axisLabel: { ...lbl, color: COLORS.ink, fontSize: 11, fontWeight: 600, margin: 6, interval: monthInterval(first) } },
+      ],
+    };
+  }
+
   /** 다른 화면(보고서)에서도 쓰는 차트 옵션 생성기. 인자는 dash_summary 의 그룹 배열. */
   const chartOptions = {
     trend(groupRows, mode, metricKey, opts = {}) {
       const m = METRICS[metricKey];
       const groups = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
-      const labels = mode === 'voyage' ? groups.map((g) => g.key) : monthTicks(groups.map((g) => g.key));
-      const lineKey = metricKey === 'bl' ? 'teu' : 'bl';
-      const lm = METRICS[lineKey];
       const zoom = !opts.static && groups.length > 40; // 항차가 많으면 최근 40개를 보여 주고 스크롤
+      const labels = mode === 'voyage' ? groups.map((g) => g.key) : monthTicks(groups.map((g) => g.key));
+      // 막대 = 지표 값, 금색 선 = 누적 평균(조회된 첫 월·항차부터 해당 월·항차까지의 평균), 점선 = 조회 기간 전체 평균
+      const vals = groups.map((g) => m.get(g));
+      let run = 0;
+      const cum = vals.map((v, i) => { run += v; return run / (i + 1); });
+      const avg = vals.length ? run / vals.length : 0;
+      const unitWord = mode === 'voyage' ? '항차' : '월';
+      const vx = mode === 'voyage' ? voyageAxes(groups, labels, (opts.width || 700) / Math.max(zoom ? 40 : groups.length, 1), zoom ? groups.length - 40 : 0) : null;
       return {
         ...baseOption(),
         animation: !opts.static,
-        grid: { left: 8, right: 8, top: 40, bottom: zoom ? 34 : mode === 'voyage' ? 8 : 4, containLabel: true },
-        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 } },
+        grid: mode === 'voyage'
+          ? { left: 48, right: 8, top: 40, bottom: vx.height + (zoom ? 28 : 2) }
+          : { left: 8, right: 8, top: 40, bottom: zoom ? 34 : 4, containLabel: true },
+        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: [`${m.label} (${m.unit})`, `누적 평균 (${unitWord})`, `기간 평균 ${m.fmt(avg)}`] },
         tooltip: {
           ...baseOption().tooltip, trigger: 'axis', axisPointer: { type: 'shadow' },
           formatter: (ps) => {
             const g = groups[ps[0].dataIndex];
             const head = mode === 'voyage' ? `${esc(g.key)} · ${g.date || '-'}` : monthLabel(g.key);
-            return `<b>${head}</b><br>B/L ${fmt.int(g.bl)}건 · ${fmt.int(g.teu)} TEU<br>중량 ${fmt.ton(g.weight)}톤<br>총 청구액 ${fmt.mil(g.total)}백만원`;
+            const i = ps[0].dataIndex;
+            return `<b>${head}</b><br>B/L ${fmt.int(g.bl)}건 · ${fmt.int(g.teu)} TEU<br>중량 ${fmt.ton(g.weight)}톤<br>총 청구액 ${fmt.mil(g.total)}백만원` +
+              `<br><span style="color:${COLORS.gold}">누적 평균 ${fmt.one(cum[i])} ${m.unit}</span> · 기간 평균 ${fmt.one(avg)} ${m.unit}`;
           },
         },
         ...(zoom ? { dataZoom: [
-          { type: 'inside', startValue: groups.length - 40, endValue: groups.length - 1 },
-          { type: 'slider', height: 16, bottom: 6, startValue: groups.length - 40, endValue: groups.length - 1, showDetail: false, borderColor: COLORS.line },
+          { type: 'inside', xAxisIndex: vx.index, startValue: groups.length - 40, endValue: groups.length - 1 },
+          { type: 'slider', xAxisIndex: vx.index, height: 16, bottom: 6, startValue: groups.length - 40, endValue: groups.length - 1, showDetail: false, borderColor: COLORS.line },
         ] } : {}),
-        xAxis: { type: 'category', data: labels, ...axisCommon, axisLabel: { ...axisCommon.axisLabel, rotate: mode === 'voyage' ? 60 : 0, fontSize: mode === 'voyage' ? 10 : 11 } },
-        yAxis: [
-          { type: 'value', name: m.unit, ...axisCommon },
-          { type: 'value', name: lm.unit, ...axisCommon, splitLine: { show: false } },
-        ],
+        xAxis: mode === 'voyage' ? vx.axes : { type: 'category', data: labels, ...axisCommon },
+        yAxis: { type: 'value', name: m.unit, ...axisCommon },
         series: [
-          { type: 'bar', name: `${m.label} (${m.unit})`, data: groups.map((g) => +m.get(g).toFixed(1)), barMaxWidth: 34, itemStyle: { color: COLORS.navy700, borderRadius: [2, 2, 0, 0] } },
-          { type: 'line', name: `${lm.label} (${lm.unit})`, yAxisIndex: 1, data: groups.map((g) => lm.get(g)), symbol: 'circle', symbolSize: 5, lineStyle: { color: COLORS.gold, width: 2 }, itemStyle: { color: COLORS.gold } },
+          { type: 'bar', name: `${m.label} (${m.unit})`, data: vals.map((v) => +v.toFixed(1)), barMaxWidth: 34, itemStyle: { color: COLORS.navy700, borderRadius: [2, 2, 0, 0] } },
+          { type: 'line', name: `누적 평균 (${unitWord})`, data: cum.map((v) => +v.toFixed(1)), symbol: 'circle', symbolSize: 5, lineStyle: { color: COLORS.gold, width: 2 }, itemStyle: { color: COLORS.gold }, z: 3 },
+          { type: 'line', name: `기간 평균 ${m.fmt(avg)}`, data: vals.map(() => +avg.toFixed(1)), symbol: 'none', lineStyle: { color: COLORS.navy300, width: 1.5, type: 'dashed' }, itemStyle: { color: COLORS.navy300 }, z: 2 },
+          // 막대 값 표시: 선에 가리지 않도록 보이지 않는 점 계열에 흰 바탕 레이블로 맨 위에 그린다
+          {
+            type: 'scatter', name: '', data: vals.map((v) => +v.toFixed(1)), symbolSize: 0, silent: true, tooltip: { show: false }, zlevel: 1,
+            label: { show: true, position: 'top', distance: 4, color: COLORS.ink, fontSize: mode === 'voyage' ? 9 : 11, formatter: (p) => m.fmt(p.value),
+              backgroundColor: '#fff', padding: [1, 2], borderRadius: 2 },
+            labelLayout: { hideOverlap: true },
+          },
         ],
         _keys: groups.map((g) => g.key),
+        _monthInterval: vx && vx.monthInterval,
       };
     },
 
@@ -563,11 +625,19 @@
     const bn = state.groupBy === 'notify' ? 'Notify' : 'Consignee';
 
     $('trend-title').textContent = `물동량 추이 · ${state.trend === 'voyage' ? '항차별' : '월별'}`;
-    const trendOpt = chartOptions.trend(state.trend === 'voyage' ? groups.voyage : groups.month, state.trend, state.metric);
+    const trendOpt = chartOptions.trend(state.trend === 'voyage' ? groups.voyage : groups.month, state.trend, state.metric, { width: $('ch-trend').clientWidth });
     const ct = chart('ch-trend');
-    const { _keys: trendKeys, ...trendChartOpt } = trendOpt;
+    const { _keys: trendKeys, _monthInterval, ...trendChartOpt } = trendOpt;
+    $('ch-trend').classList.toggle('voyage-axis', state.trend === 'voyage');
+    ct.resize();
     ct.setOption(trendChartOpt, true);
     ct.off('click');
+    ct.off('datazoom');
+    // 항차를 스크롤하면 보이는 범위에 맞춰 월 이름 위치를 다시 잡는다
+    if (_monthInterval) ct.on('datazoom', () => {
+      const z = ct.getOption().dataZoom?.[0];
+      if (z) ct.setOption({ xAxis: [{}, {}, { axisLabel: { interval: _monthInterval(Math.round(z.startValue), Math.round(z.endValue)) } }] });
+    });
     if (state.trend === 'month') ct.on('click', (p) => { const r = monthRange(trendKeys[p.dataIndex]); state.from = r.from; state.to = r.to; update(); });
 
     $('top-title').innerHTML = `${bn} 상위 10 <small>${m.label} 기준</small>`;

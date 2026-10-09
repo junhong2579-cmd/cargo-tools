@@ -361,6 +361,10 @@ begin
     'krw', coalesce(sum(krw), 0), 'usd', coalesce(sum(usd), 0), 'total', coalesce(sum(total), 0),
     'ts', coalesce(sum(ts), 0),
     'ex', count(*) filter (where bt = 'X'),
+    'tsTeu', coalesce(sum(teu) filter (where ts > 0), 0),
+    'exTeu', coalesce(sum(teu) filter (where bt = 'X'), 0),
+    'months',  count(distinct to_char(d, 'YYYY-MM')),   -- 월 평균 · 항차 평균 KPI 의 분모
+    'voyages', count(distinct voyage),
     'THC', coalesce(sum(thc), 0), 'DOC', coalesce(sum(doc), 0), 'WFG', coalesce(sum(wfg), 0),
     'CCF', coalesce(sum(ccf), 0), 'TSF', coalesce(sum(tsf), 0), 'PSC', coalesce(sum(psc), 0),
     'ESC', coalesce(sum(esc), 0),
