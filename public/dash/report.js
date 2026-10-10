@@ -82,7 +82,7 @@ document.addEventListener('dash:ready', () => {
   });
 
   // ── 범위 계산 ────────────────────────────────
-  const EMPTY_FILTER = { consignee: [], notify: [], companyMode: 'and', items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all' };
+  const EMPTY_FILTER = { consignee: [], notify: [], companyMode: 'and', items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all', rf: 'all' };
 
   function reportScope() {
     let s, title, kind;
@@ -224,6 +224,25 @@ document.addEventListener('dash:ready', () => {
         <div>${table([{ l: '화물 종류', v: (g) => `${X.CARGO[g.key] || g.key || '(없음)'} (${esc(g.key)})` }, n('B/L', 'bl'), n('TEU', 'teu'), share(t, 'bl', 'B/L 비중')], cg, t)}
         ${chartBlock('rc-cargo')}</div></div></section>`);
 
+      // 냉동 (선어 · 활어 포함): 구성 + Consignee 상위 10
+      const rfT = X.reeferSummary(S, 'teu'), rfB = X.reeferSummary(S, 'bl');
+      const rfTop = X.reeferTop(S);
+      if (rfB.reefer) {
+        const rfRows = rfT.parts.map((p) => ({ name: p.name, bl: p.bl, teu: p.teu }));
+        const rfSum = { bl: rfB.reefer, teu: rfT.reefer };
+        html.push(`<section class="rpt-sec">${H('냉동 화물 (선어 · 활어 포함)')}<div class="rpt-two">
+          <div>${table([{ l: '구분', v: (g) => g.name }, n('B/L', 'bl'), share(rfSum, 'bl', 'B/L 비중'), n('TEU', 'teu'), share(rfSum, 'teu', 'TEU 비중')], rfRows, rfSum)}
+          <p class="rpt-note">전체 대비 냉동 비중: TEU ${fmt.int(rfT.reefer)} / ${fmt.int(t.teu)} (${fmt.pct(rfT.reefer, t.teu)}) · B/L ${fmt.int(rfB.reefer)} / ${fmt.int(t.bl)}건 (${fmt.pct(rfB.reefer, t.bl)}).
+          B/L 번호에 E12 가 있으면 냉동, 그중 REMARK 에 선어 · 활어가 있으면 선어 · 활어로 나눴습니다.</p></div>
+          ${chartBlock('rc-reefer')}</div></section>`);
+        html.push(`<section class="rpt-sec">${H('냉동 Consignee 상위 10 (TEU 기준)')}${chartBlock('rc-reefer-top')}
+          ${table([{ l: '순위', r: true, v: (g, i) => i + 1 }, { l: 'Consignee', v: (g) => esc(g.full) }, { l: '사업자번호', v: (g) => esc(X.consigneeCode(g.key)) },
+            n('B/L', 'bl'), n('TEU', 'teu'), share(rfSum, 'teu', '냉동 TEU 비중')], rfTop)}
+          <p class="rpt-note">냉동 Consignee ${fmt.int((S.groups.reeferConsignee || []).length)}곳 중 상위 10곳. 상위 10곳 합계 냉동 TEU 비중 ${fmt.pct(rfTop.reduce((a, g) => a + g.teu, 0), rfT.reefer)}.</p></section>`);
+      } else {
+        html.push(`<section class="rpt-sec">${H('냉동 화물 (선어 · 활어 포함)')}<p class="rpt-note">선택한 조건에 해당하는 냉동 B/L 이 없습니다.</p></section>`);
+      }
+
       // 5. 청구 항목
       const krw = X.KRW_CHARGES.map((k) => ({ k, v: t[k] })).sort((a, b) => b.v - a.v);
       const usd = X.USD_CHARGES.map((k) => ({ k, v: t[k] })).sort((a, b) => b.v - a.v);
@@ -268,6 +287,11 @@ document.addEventListener('dash:ready', () => {
       mountChart('rc-trend', X.chartOptions.trend(trendMode === 'month' ? groups.month : groups.voyage, trendMode, 'teu', { static: true }), trendMode === 'voyage' ? 300 : 230);
       const cargo = [...groups.cargo].sort((a, b) => b.bl - a.bl).map((g) => ({ name: `${X.CARGO[g.key] || g.key || '(없음)'}`, value: g.bl }));
       mountChart('rc-cargo', X.chartOptions.donut(cargo, { static: true }), 150);
+      const rfT = X.reeferSummary(S, 'teu');
+      if (X.reeferSummary(S, 'bl').reefer) {
+        mountChart('rc-reefer', X.chartOptions.donut(rfT.parts.filter((p) => p.value > 0), { static: true, unit: 'TEU' }), 170);
+        mountChart('rc-reefer-top', X.chartOptions.rankBar(X.reeferTop(S), 'teu', { static: true, labelWidth: 180 }), 260);
+      }
     }
     $('report-root').scrollTop = 0;
   }

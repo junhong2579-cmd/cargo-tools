@@ -30,6 +30,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **TEU** = 20'×1 + 40'×2 + **45'×2**. **Cargo**: F=FCL, L=LCL, E=Empty, B=Bulk. **ITEM** 은 코드(RA, EL 등)를 그대로 표시합니다.
 - 금액은 모두 Collect 기준입니다. **원화** = THC+DOC+WFG+CCF+TSF+PSC, **USD** = FRT+BAF+CAF+CRS+LSS+PSS+**ESC**(ESC 는 달러 항목).
   `Collect TTL` = 원화 + USD × 적용환율이며 전 건에서 이 식이 맞습니다. 엑셀의 `원화발생금액(C)` 컬럼은 일부 행에서 0이라 쓰지 않습니다.
+- **냉동** = B/L 번호에 `E12` 가 있는 B/L(선어 · 활어 포함). 그중 REMARK 에 `선어`가 있으면 선어, `활어`가 있으면 활어(둘 다면 선어 우선), 나머지는 냉동입니다(`dash_rows.rf` = R/S/L). REMARK 의 "냉동 컨테이너"는 Bulk 로 컨테이너를 들여오는 건이라 냉동이 아닙니다.
 - 업체는 Consignee(사업자번호로 구분)와 Notify(이름) 두 축입니다. AND/OR 조건을 지원하며, Notify 가 없으면 `''`입니다.
 - 기간은 `I/O Date`(입항일) 기준입니다. 비교 기간은 달 단위로 골랐으면 직전 같은 개월 수, 아니면 직전 같은 일수입니다.
 - 엑셀 헤더의 `FRT(＄)`, `BAF(＄)`는 전각 `＄`(U+FF04)입니다. 배정장소 `동방 cfs`는 `동방 CFS`로 합칩니다.

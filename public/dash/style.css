@@ -189,6 +189,8 @@ table.data th .arrow { color: var(--faint); font-size: 10px; margin-left: 3px; }
 table.data .r { text-align: right; }
 table.data td.wrap { white-space: normal; min-width: 220px; max-width: 360px; }
 table.data td.trunc { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+table.data td.trunc.w-m { max-width: 190px; } /* 업체별 집계: 업체명 */
+table.data td.trunc.w-s { max-width: 140px; } /* 업체별 집계: Notify */
 table.data tbody tr:hover { background: var(--navy-50); }
 table.data tfoot td { font-weight: 700; background: var(--navy-50); border-top: 1px solid var(--line-strong); }
 table.data td.muted { color: var(--faint); }

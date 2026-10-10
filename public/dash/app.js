@@ -10,11 +10,12 @@
   // ── 상수 · 코드표 ─────────────────────────────
   const CARGO = { F: 'FCL', L: 'LCL', E: 'Empty', B: 'Bulk' };
   const BT = { C: '콘솔', S: '심플', X: '특송', E: '엠티' }; // B/L Type
+  const RF = { R: '냉동', S: '선어', L: '활어' }; // 냉동 구분 (B/L 번호 E12, REMARK 선어 · 활어)
   // Collect TTL = 원화 항목 + USD 항목 × 적용환율 (ESC 는 USD 항목)
   const KRW_CHARGES = ['THC', 'DOC', 'WFG', 'CCF', 'TSF', 'PSC'];
   const USD_CHARGES = ['FRT', 'BAF', 'CAF', 'CRS', 'LSS', 'PSS', 'ESC'];
   const SUM_KEYS = ['bl', 'c20', 'c40', 'c45', 'teu', 'cntr', 'pkg', 'weight', 'cbm', 'krw', 'usd', 'total', 'ts', 'ex', 'prepaid', 'withNotify'];
-  const GROUP_DIMS = ['month', 'voyage', 'consignee', 'notify', 'item', 'cargo', 'place'];
+  const GROUP_DIMS = ['month', 'voyage', 'consignee', 'notify', 'item', 'cargo', 'place', 'reefer', 'reeferConsignee'];
   const NONE = ''; // 값 없음: (Notify 없음) · (미지정) 등
   const COLORS = {
     navy900: '#13243b', navy700: '#1f3a5f', navy500: '#456789', navy300: '#9fb3c8', navy100: '#e5ecf3',
@@ -108,8 +109,8 @@
   // ── 상태 ────────────────────────────────────
   const DEFAULT_STATE = {
     from: '', to: '', consignee: [], notify: [], companyMode: 'and',
-    items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all',
-    groupBy: 'consignee', metric: 'teu', trend: 'month', charge: 'krw', tab: 'company',
+    items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all', rf: 'all',
+    groupBy: 'consignee', metric: 'teu', trend: 'month', charge: 'krw', rfMetric: 'teu', tab: 'company',
   };
   const state = loadHash();
   const view = { search: '', page: 1, sort: {}, qc: null };
@@ -143,14 +144,14 @@
     return {
       from: range ? range.from : s.from, to: range ? range.to : s.to,
       consignee: s.consignee, notify: s.notify, companyMode: s.companyMode,
-      items: s.items, cargo: s.cargo, bt: s.bt, ts: s.ts, ex: s.ex, ft: s.ft,
+      items: s.items, cargo: s.cargo, bt: s.bt, ts: s.ts, ex: s.ex, ft: s.ft, rf: s.rf || 'all',
     };
   }
   const zip = (fields, a) => { const o = {}; fields.forEach((f, i) => { o[f] = a[i]; }); return o; };
   function expandSummary(res) {
     const groups = {};
     GROUP_DIMS.forEach((d) => { groups[d] = (res.groups[d] || []).map((a) => zip(res.fields, a)); });
-    return { t: res.totals, groups };
+    return { t: res.totals, groups, notifyOf: res.notifyOf || {} };
   }
   // 같은 조건을 다시 고르면(필터 해제 · 보고서) 서버에 다시 묻지 않는다.
   const cache = new Map();
@@ -311,6 +312,7 @@
 
     syncers.push(seg($('f-ts'), [['all', '전체'], ['1', '환적'], ['0', '비환적']], () => state.ts, (v) => { state.ts = v; update(); }));
     syncers.push(seg($('f-ex'), [['all', '전체'], ['1', '특송'], ['0', '비특송']], () => state.ex, (v) => { state.ex = v; update(); }));
+    syncers.push(seg($('f-rf'), [['all', '전체'], ['1', '냉동'], ['0', '비냉동']], () => state.rf, (v) => { state.rf = v; update(); }));
     syncers.push(seg($('f-ft'), [['all', '전체'], ['P', 'Prepaid'], ['C', 'Collect']], () => state.ft, (v) => { state.ft = v; update(); }));
 
     // 보기 옵션
@@ -318,9 +320,10 @@
     syncers.push(seg($('metric'), Object.entries(METRICS).map(([k, m]) => [k, m.label]), () => state.metric, (v) => { state.metric = v; update(); }));
     syncers.push(seg($('trend-mode'), [['month', '월별'], ['voyage', '항차별']], () => state.trend, (v) => { state.trend = v; update(); }));
     syncers.push(seg($('charge-cur'), [['krw', '원화 (KRW)'], ['usd', '외화 (USD)']], () => state.charge, (v) => { state.charge = v; update(); }));
+    syncers.push(seg($('rf-metric'), [['teu', 'TEU'], ['bl', 'B/L 건수']], () => state.rfMetric, (v) => { state.rfMetric = v; update(); }));
 
     $('btn-reset').addEventListener('click', () => {
-      Object.assign(state, structuredClone(DEFAULT_STATE), { groupBy: state.groupBy, metric: state.metric, trend: state.trend, charge: state.charge, tab: state.tab });
+      Object.assign(state, structuredClone(DEFAULT_STATE), { groupBy: state.groupBy, metric: state.metric, trend: state.trend, charge: state.charge, rfMetric: state.rfMetric, tab: state.tab });
       view.qc = null; view.page = 1; update();
     });
 
@@ -340,7 +343,7 @@
 
   function activeFilterCount() {
     return (state.from || state.to ? 1 : 0) + state.consignee.length + state.notify.length +
-      state.items.length + state.cargo.length + state.bt.length + (state.ts !== 'all') + (state.ex !== 'all') + (state.ft !== 'all');
+      state.items.length + state.cargo.length + state.bt.length + (state.ts !== 'all') + (state.ex !== 'all') + (state.ft !== 'all') + (state.rf !== 'all');
   }
 
   function describeFilters(s = state) {
@@ -354,6 +357,7 @@
     if (s.ts !== 'all') parts.push(['환적', s.ts === '1' ? '환적만' : '비환적만']);
     if (s.ex !== 'all') parts.push(['특송', s.ex === '1' ? '특송만' : '비특송만']);
     if (s.ft !== 'all') parts.push(['운임 지불', s.ft === 'P' ? 'Prepaid' : 'Collect']);
+    if (s.rf && s.rf !== 'all') parts.push(['냉동', s.rf === '1' ? '냉동만 (선어 · 활어 포함)' : '비냉동만']);
     return parts;
   }
 
@@ -368,6 +372,7 @@
     if (state.ts !== 'all') chips.push({ label: '환적', text: state.ts === '1' ? '환적' : '비환적', clear: () => { state.ts = 'all'; } });
     if (state.ex !== 'all') chips.push({ label: '특송', text: state.ex === '1' ? '특송' : '비특송', clear: () => { state.ex = 'all'; } });
     if (state.ft !== 'all') chips.push({ label: '운임', text: state.ft === 'P' ? 'Prepaid' : 'Collect', clear: () => { state.ft = 'all'; } });
+    if (state.rf !== 'all') chips.push({ label: '냉동', text: state.rf === '1' ? '냉동' : '비냉동', clear: () => { state.rf = 'all'; } });
     const el = $('active-chips');
     el.innerHTML = chips.length
       ? '<span class="label">적용 중</span>' + chips.map((c, i) => `<span class="fchip"><span><b>${esc(c.label)}</b> ${esc(c.text)}</span><button type="button" data-i="${i}" aria-label="${esc(c.label)} 조건 해제">×</button></span>`).join('')
@@ -481,6 +486,9 @@
     };
   }
 
+  /** 그릴 값이 없을 때 차트 자리에 안내 문구만 보여 준다 */
+  const emptyChart = (msg) => ({ ...baseOption(), title: { text: msg, left: 'center', top: 'middle', textStyle: { color: COLORS.faint, fontSize: 13, fontWeight: 400 } }, series: [] });
+
   /** 다른 화면(보고서)에서도 쓰는 차트 옵션 생성기. 인자는 dash_summary 의 그룹 배열. */
   const chartOptions = {
     trend(groupRows, mode, metricKey, opts = {}) {
@@ -541,6 +549,7 @@
     rankBar(entries, metricKey, opts = {}) {
       // entries: [{label, full, ...합계}] 이미 정렬된 상위 N
       const m = METRICS[metricKey];
+      if (!entries.length) return emptyChart(opts.empty || '해당 데이터가 없습니다.');
       const rev = [...entries].reverse();
       return {
         ...baseOption(),
@@ -562,15 +571,17 @@
     },
 
     donut(entries, opts = {}) {
-      // entries: [{name, value}]
+      // entries: [{name, value}], opts.unit: 값 단위(기본 '건')
       const sum = entries.reduce((a, e) => a + e.value, 0);
+      const unit = opts.unit || '건';
+      if (!sum) return emptyChart(opts.empty || '해당 데이터가 없습니다.');
       return {
         ...baseOption(),
         animation: !opts.static,
         color: [COLORS.navy700, COLORS.gold, '#5b7fa6', COLORS.navy300, '#6f7f8f'],
-        tooltip: { ...baseOption().tooltip, trigger: 'item', formatter: (p) => `<b>${esc(p.name)}</b><br>${fmt.int(p.value)}건 (${fmt.pct(p.value, sum)})` },
+        tooltip: { ...baseOption().tooltip, trigger: 'item', formatter: (p) => `<b>${esc(p.name)}</b><br>${fmt.int(p.value)}${unit} (${fmt.pct(p.value, sum)})` },
         legend: { orient: 'vertical', ...(opts.compact ? { left: 'center', bottom: 0 } : { right: 8, top: 'middle' }), itemWidth: 10, itemHeight: 10, textStyle: { color: COLORS.ink, fontSize: 12 },
-          formatter: (n) => { const e = entries.find((x) => x.name === n); return `${n}   ${fmt.int(e.value)}건 · ${fmt.pct(e.value, sum)}`; } },
+          formatter: (n) => { const e = entries.find((x) => x.name === n); return `${n}   ${fmt.int(e.value)}${unit} · ${fmt.pct(e.value, sum)}`; } },
         series: [{
           type: 'pie', radius: opts.compact ? ['32%', '50%'] : ['48%', '72%'], center: opts.compact ? ['50%', '32%'] : ['30%', '50%'], avoidLabelOverlap: true,
           label: { show: false }, data: entries, itemStyle: { borderColor: '#fff', borderWidth: 2 },
@@ -703,6 +714,7 @@
     cCargo.on('click', (p) => { const code = cargo[p.dataIndex].code; if (!state.cargo.includes(code)) state.cargo.push(code); update(); });
 
     chart('ch-cntr').setOption(chartOptions.containers(groups.month), true);
+    renderReefer(S);
     chart('ch-charge').setOption(chartOptions.charges(t, state.charge), true);
 
     $('place-title').innerHTML = `배정 장소 <small>${m.label} 기준</small>`;
@@ -717,6 +729,44 @@
     $('ratios').innerHTML = ratio('환적 (T/S)', t.ts, '환적', '비환적') + ratio('특송 (B/L Type X)', t.ex, '특송', '비특송') + ratio('운임 지불 (F/T)', t.prepaid, 'Prepaid', 'Collect') + ratio('Notify 지정', t.withNotify, '지정', '미지정');
   }
 
+  /** 냉동(선어 · 활어 포함) 요약: 전체 대비 비중 + 냉동 · 선어 · 활어 구성. metricKey = 'teu' | 'bl' */
+  function reeferSummary(S, metricKey) {
+    const m = METRICS[metricKey];
+    const rows = (S.groups.reefer || []).filter((g) => RF[g.key]);
+    const total = m.get(S.t), reefer = rows.reduce((a, g) => a + m.get(g), 0);
+    const parts = Object.keys(RF).map((k) => {
+      const g = rows.find((x) => x.key === k);
+      return { key: k, name: RF[k], value: g ? m.get(g) : 0, bl: g ? g.bl : 0, teu: g ? g.teu : 0 };
+    });
+    return { m, total, reefer, parts, unit: metricKey === 'teu' ? 'TEU' : '건' };
+  }
+  /** 냉동 Consignee 상위 n (TEU 기준, 같으면 B/L 많은 순. TEU 0 인 곳도 0 으로 순위에 넣는다) */
+  function reeferTop(S, n = 10) {
+    return [...(S.groups.reeferConsignee || [])]
+      .sort((a, b) => b.teu - a.teu || b.bl - a.bl)
+      .slice(0, n)
+      .map((g) => ({ ...g, full: consigneeName(g.key), label: shortName(consigneeName(g.key)) }));
+  }
+
+  function renderReefer(S) {
+    const r = reeferSummary(S, state.rfMetric);
+    $('rf-title').innerHTML = `냉동 화물 <small>선어 · 활어 포함 · ${r.m.label} 기준</small>`;
+    const cRf = chart('ch-reefer');
+    cRf.setOption(chartOptions.donut(r.parts.filter((p) => p.value > 0), { unit: r.unit, empty: '조건에 맞는 냉동 B/L 이 없습니다.', compact: $('ch-reefer').clientWidth < 480 }), true);
+    const a = r.reefer, rest = r.total - a;
+    $('rf-ratio').innerHTML = `
+      <div class="ratio">
+        <div class="r-head"><span>전체 대비 냉동 비중 (${r.m.label})</span><span>냉동 ${fmt.int(a)}${r.unit} · ${fmt.pct(a, r.total)} · 그 외 ${fmt.pct(rest, r.total)}</span></div>
+        <div class="r-bar"><span style="width:${r.total ? (a / r.total) * 100 : 0}%"></span><span style="flex:1"></span></div>
+      </div>`;
+
+    const tops = reeferTop(S);
+    const cTop = chart('ch-reefer-top');
+    cTop.setOption(chartOptions.rankBar(tops, 'teu', { empty: '조건에 맞는 냉동 B/L 이 없습니다.' }), true);
+    cTop.off('click');
+    cTop.on('click', (p) => { const g = [...tops].reverse()[p.dataIndex]; if (!state.consignee.includes(g.key)) state.consignee.push(g.key); update(); });
+  }
+
   // ── 표 ──────────────────────────────────────
   const C = (key, label, f, o = {}) => ({ key, label, f: f || ((v) => esc(v)), ...o });
   const numCols = [
@@ -729,7 +779,7 @@
     C('usd', '외화 청구(USD)', fmt.int, { num: true }),
     C('total', '총 청구액(원)', fmt.won, { num: true }),
   ];
-  const shareCol = (t) => C('share', 'TEU 비중', (v) => `<span class="share"><i style="width:${Math.round(v * 60)}px"></i>${nf1.format(v * 100)}%</span>`, {
+  const shareCol = (t) => C('share', 'TEU 비중', (v) => `<span class="share"><i style="width:${Math.round(v * 40)}px"></i>${nf1.format(v * 100)}%</span>`, {
     num: true, get: (r) => (t.teu ? r.teu / t.teu : 0), csv: (v) => (v * 100).toFixed(2),
   });
 
@@ -743,12 +793,38 @@
     { key: 'notify', title: 'Notify 미지정 (참고)', desc: 'Notify가 없는 B/L입니다. 오류가 아닐 수 있습니다.' },
   ];
 
+  // 업체별 집계 표는 중량 · CBM · 원화 · 외화 청구를 빼고 본다.
+  const companyNumCols = numCols.filter((c) => !['weight', 'cbm', 'krw', 'usd'].includes(c.key));
+  // Consignee 의 Notify: B/L 이 가장 많은 Notify 를 보여 주고, 여럿이면 "외 N" + 툴팁 · CSV 에 전체 목록
+  const notifyList = (r) => (r.notifies || []).map(([k, n]) => `${notifyName(k)} (${fmt.int(n)}건)`).join(', ');
+  const notifyCol = C('notify', 'Notify', (v, r) => {
+    const ns = r.notifies || [];
+    if (!ns.length) return '';
+    const main = ns[0][0] === NONE ? '<span class="muted">–</span>' : esc(notifyName(ns[0][0]));
+    return ns.length > 1 ? `${main} <span class="muted">외 ${ns.length - 1}</span>` : main;
+  }, { cls: 'trunc w-s', csv: (v, r) => notifyList(r) });
+
+  // 누적 비중(파레토): 표 정렬 · 검색과 상관없이 TEU 많은 순으로 위에서부터 더한 TEU 비중
+  const cumCol = C('cum', '누적 비중', (v) => `${nf1.format(v * 100)}%`, {
+    num: true, noSum: true, csv: (v) => (v * 100).toFixed(2),
+  });
+  function withCumShare(rows, totalTeu) {
+    let acc = 0;
+    [...rows].sort((a, b) => b.teu - a.teu || b.bl - a.bl || String(a.name).localeCompare(String(b.name)))
+      .forEach((r) => { acc += Number(r.teu) || 0; r.cum = totalTeu ? acc / totalTeu : 0; });
+    return rows;
+  }
+
   const TABLES = {
     company: {
       label: () => `${state.groupBy === 'notify' ? 'Notify' : 'Consignee'}별 집계`,
-      rows: (S) => S.groups[state.groupBy].map((g) => ({ ...g, name: companyName(state.groupBy, g.key), code: state.groupBy === 'consignee' ? consigneeCode(g.key) : '' })),
-      cols: (t) => [C('name', '업체명', esc, { cls: 'trunc' }), ...(state.groupBy === 'consignee' ? [C('code', '사업자번호')] : []), ...numCols, shareCol(t)],
-      search: (r) => r.name + ' ' + r.code,
+      rows: (S) => withCumShare(S.groups[state.groupBy].map((g) => {
+        const isC = state.groupBy === 'consignee';
+        const notifies = isC ? (S.notifyOf[g.key] || []) : [];
+        return { ...g, name: companyName(state.groupBy, g.key), code: isC ? consigneeCode(g.key) : '', notifies, notify: notifies.length ? notifyName(notifies[0][0]) : '' };
+      }), S.t.teu),
+      cols: (t) => [C('name', '업체명', esc, { cls: 'trunc w-m' }), ...(state.groupBy === 'consignee' ? [C('code', '사업자번호'), notifyCol] : []), ...companyNumCols, shareCol(t), cumCol],
+      search: (r) => r.name + ' ' + r.code + ' ' + r.notifies.map(([k]) => k).join(' '),
       sort: { key: 'teu', dir: -1 }, footer: true, paged: 100, unit: '곳',
     },
     voyage: {
@@ -830,14 +906,14 @@
     const numbered = !def.server;
     const pages = def.paged ? Math.max(1, Math.ceil(total / def.paged)) : 1;
     const offset = def.paged ? (view.page - 1) * def.paged : 0;
-    const cell = (c, r) => { const v = c.get ? c.get(r) : r[c.key]; return `<td class="${c.num ? 'r' : ''} ${c.cls || ''}"${c.cls === 'trunc' ? ` title="${esc(c.csv ? c.csv(v) : v)}"` : ''}>${c.f(v)}</td>`; };
+    const cell = (c, r) => { const v = c.get ? c.get(r) : r[c.key]; return `<td class="${c.num ? 'r' : ''} ${c.cls || ''}"${/\btrunc\b/.test(c.cls || '') ? ` title="${esc(c.csv ? c.csv(v, r) : v)}"` : ''}>${c.f(v, r)}</td>`; };
 
     wrap.innerHTML = `<table class="data">
       <thead><tr>${numbered ? '<th class="r">No</th>' : ''}${cols.map((c) => `<th class="sortable ${c.num ? 'r' : ''}" data-k="${c.key}">${c.label}<span class="arrow">${sort.key === c.key ? (sort.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('')}</tr></thead>
       <tbody>${rows.length ? rows.map((r, i) => `<tr>${numbered ? `<td class="r muted">${offset + i + 1}</td>` : ''}${cols.map((c) => cell(c, r)).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length + 1}" class="muted">검색 결과가 없습니다.</td></tr>`}</tbody>
       ${sumRow && rows.length ? `<tfoot><tr><td></td>${cols.map((c, i) => {
         if (i === 0) return '<td>합계</td>';
-        if (!c.num || c.key === 'consignees') return '<td></td>';
+        if (!c.num || c.noSum || c.key === 'consignees') return '<td></td>';
         const v = c.key === 'share' ? (shareTotal ? sumRow.teu / shareTotal : 0) : sumRow[c.key];
         return `<td class="r">${c.f(v)}</td>`;
       }).join('')}</tr></tfoot>` : ''}
@@ -933,7 +1009,7 @@
     const header = cols.map((c) => c.label).concat((def.csvExtra || []).map(([l]) => l));
     const lines = rows.map((r) => cols.map((c) => {
       const v = c.get ? c.get(r) : r[c.key];
-      return q(c.csv ? c.csv(v) : v);
+      return q(c.csv ? c.csv(v, r) : v);
     }).concat((def.csvExtra || []).map(([, f]) => q(f(r)))).join(','));
     const csv = '﻿' + [header.map(q).join(','), ...lines].join('\r\n');
     const name = `${def.label().replace(/[\\/:*?"<>|\s]+/g, '_')}_${periodLabel(state.from, state.to).replace(/[\\/:*?"<>|\s()~]+/g, '_')}.csv`;
@@ -1011,8 +1087,8 @@
     showNotice();
 
     window.Dash = {
-      META, MONTHS, YEARS, CARGO, KRW_CHARGES, USD_CHARGES, NONE, METRICS, COLORS, QC,
-      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, chartOptions,
+      META, MONTHS, YEARS, CARGO, RF, KRW_CHARGES, USD_CHARGES, NONE, METRICS, COLORS, QC,
+      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, chartOptions,
       consigneeName, consigneeCode, notifyName, companyName, placeName, vesselLabel,
       companyList: (basis) => (basis === 'notify'
         ? NOTIFIES.filter(([k]) => k !== NONE).map(([k, n]) => ({ key: k, n, name: k, code: '' }))

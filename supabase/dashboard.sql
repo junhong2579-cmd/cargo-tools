@@ -112,8 +112,11 @@ create table if not exists public.dash_rows (
   remark      text,
   descr       text,
   ext         boolean not null default false,  -- 1)의 추가 컬럼까지 업로드된 행인지
-  synced_at   timestamptz not null default now()
+  synced_at   timestamptz not null default now(),
+  rf          text             -- 냉동 구분: R=냉동, S=선어, L=활어, null=냉동 아님 (dash_transform 참고)
 );
+-- 이전 버전에서 만든 테이블에는 rf 를 덧붙인다 (아래 3)의 '한 번에 채움'이 값을 다시 계산함)
+alter table public.dash_rows add column if not exists rf text;
 create index if not exists dash_rows_d_idx on public.dash_rows (d);
 create index if not exists dash_rows_ckey_idx on public.dash_rows (ckey);
 create index if not exists dash_rows_notify_idx on public.dash_rows (notify);
@@ -169,6 +172,11 @@ begin
   o.descr      := public.dash_text(r.description::text);
   o.ext        := r.ft is not null;
   o.synced_at  := now();
+  -- 냉동: B/L 번호에 'E12' 가 있으면 냉동 B/L. 그중 REMARK 에 '선어'가 있으면 선어, '활어'가 있으면 활어(둘 다면 선어 우선).
+  -- (REMARK 의 '냉동 컨테이너'는 Bulk 로 컨테이너 자체를 들여오는 건이라 냉동이 아니며, E12 번호도 아니다.)
+  o.rf         := case when o.bl like '%E12%' then
+                    case when o.remark like '%선어%' then 'S' when o.remark like '%활어%' then 'L' else 'R' end
+                  end;
   return o;
 end $$;
 
@@ -242,7 +250,8 @@ create policy dash_rows_read on public.dash_rows
 -- 5) 조회 조건 · 점검 항목
 --    f (조회 조건 JSON) = { from, to, consignee:[사업자번호], notify:[이름, ''=(Notify 없음)],
 --                          companyMode:'and'|'or', items:[], cargo:[], bt:[], ts:'all'|'1'|'0', ex:'all'|'1'|'0',
---                          ft:'all'|'P'|'C' }   (ex = 특송: B/L Type 이 X 인 B/L)
+--                          ft:'all'|'P'|'C', rf:'all'|'1'|'0' }
+--    (ex = 특송: B/L Type 이 X 인 B/L, rf = 냉동: 선어 · 활어 포함)
 -- ---------------------------------------------------------------------
 create or replace function public.dash_filter(f jsonb) returns setof public.dash_rows
 language sql stable set search_path = public as $$
@@ -257,7 +266,8 @@ language sql stable set search_path = public as $$
            array(select jsonb_array_elements_text(coalesce(f -> 'bt', '[]')))        as bts,
            coalesce(f ->> 'ts', 'all') as ts,
            coalesce(f ->> 'ex', 'all') as ex,
-           coalesce(f ->> 'ft', 'all') as ft
+           coalesce(f ->> 'ft', 'all') as ft,
+           coalesce(f ->> 'rf', 'all') as rf
   )
   select r.*
   from public.dash_rows r, p
@@ -278,6 +288,7 @@ language sql stable set search_path = public as $$
     and (p.ts = 'all' or (p.ts = '1' and r.ts > 0) or (p.ts = '0' and r.ts = 0))
     and (p.ex = 'all' or (p.ex = '1') = (r.bt is not distinct from 'X'))
     and (p.ft = 'all' or r.ft = p.ft)
+    and (p.rf = 'all' or (p.rf = '1') = (r.rf is not null))
 $$;
 
 -- 데이터 점검 항목. 화면(app.js 의 QC)과 같은 키를 씁니다.
@@ -387,8 +398,9 @@ begin
   return res;
 end $$;
 
--- 합계 + 월 · 항차 · Consignee · Notify · ITEM · Cargo · 배정장소별 집계 (화면 갱신마다 1회)
+-- 합계 + 월 · 항차 · Consignee · Notify · ITEM · Cargo · 배정장소 · 냉동 구분 · 냉동 Consignee 별 집계 (화면 갱신마다 1회)
 -- groups.<축> = [[키, ...fields 순서의 값]] (키 ''=값 없음)
+--   reefer = 냉동 구분(R/S/L, ''=냉동 아님), reeferConsignee = 냉동 B/L 만 모은 Consignee 별 집계
 create or replace function public.dash_summary(f jsonb) returns jsonb
 language plpgsql stable set search_path = public as $$
 declare
@@ -396,15 +408,17 @@ declare
 begin
   perform public.dash_assert();
   with r as (
-    select x.*, to_char(x.d, 'YYYY-MM') as m from public.dash_filter(f) x
+    select x.*, to_char(x.d, 'YYYY-MM') as m, (x.rf is not null) as rfc from public.dash_filter(f) x
   ), g as (
     select
       case when grouping(m) = 0 then 'month'
            when grouping(voyage) = 0 then 'voyage'
+           when grouping(rfc) = 0 then 'reeferConsignee'
            when grouping(ckey) = 0 then 'consignee'
            when grouping(notify) = 0 then 'notify'
            when grouping(item) = 0 then 'item'
            when grouping(cargo) = 0 then 'cargo'
+           when grouping(rf) = 0 then 'reefer'
            else 'place' end as dim,
       jsonb_build_array(
         coalesce(case when grouping(m) = 0 then m
@@ -413,17 +427,24 @@ begin
                       when grouping(notify) = 0 then notify
                       when grouping(item) = 0 then item
                       when grouping(cargo) = 0 then cargo
+                      when grouping(rf) = 0 then rf
                       else place end, ''),
         count(*), sum(c20), sum(c40), sum(c45), sum(teu), sum(cntr),
         sum(pkg), sum(weight), sum(cbm), sum(krw), sum(usd), sum(total),
         sum(ts), count(*) filter (where bt = 'X'), count(*) filter (where ft = 'P'), count(notify), count(distinct ckey), min(d)::text
       ) as a
     from r
-    group by grouping sets ((m), (voyage), (ckey), (notify), (item), (cargo), (place))
+    group by grouping sets ((m), (voyage), (ckey), (notify), (item), (cargo), (place), (rf), (rfc, ckey))
+    having grouping(rfc) = 1 or rfc   -- 냉동 Consignee 집계는 냉동 B/L 묶음만 남긴다
   )
   select jsonb_build_object(
     'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date"]'::jsonb,
-    'groups', coalesce((select jsonb_object_agg(dim, rows) from (select dim, jsonb_agg(a) as rows from g group by dim) x), '{}'::jsonb)
+    'groups', coalesce((select jsonb_object_agg(dim, rows) from (select dim, jsonb_agg(a) as rows from g group by dim) x), '{}'::jsonb),
+    -- Consignee 별 Notify 목록: { 키: [[Notify(''=없음), B/L 수], ...] } (B/L 수 많은 순)
+    'notifyOf', coalesce((select jsonb_object_agg(ckey, ns) from (
+                  select ckey, jsonb_agg(jsonb_build_array(k, n) order by n desc, k) as ns
+                  from (select coalesce(ckey, '') as ckey, coalesce(notify, '') as k, count(*) as n from r group by 1, 2) a
+                  group by ckey) b), '{}'::jsonb)
   ) into res;
   return res || jsonb_build_object('totals', public.dash_totals(f));
 end $$;
