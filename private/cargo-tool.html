@@ -759,6 +759,102 @@
       border-top-color: #444;
     }
 
+    /* 안내 문구 카드 - 인보이스 · 이체 금액 불일치 메일 */
+    #invoiceDiffSection {
+      margin-top: 12px;
+      padding-top: 14px;
+      border-top: 1px dashed #ccc;
+    }
+
+    .invoice-diff-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .invoice-diff-inputs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px 10px;
+      max-width: 620px;
+    }
+
+    .invoice-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #777;
+    }
+
+    .invoice-field.wide,
+    .invoice-field.half {
+      grid-column: span 2;
+    }
+
+    .invoice-field input[type="text"] {
+      max-width: none;
+      box-sizing: border-box;
+    }
+
+    #invoiceBeforeInput,
+    #invoiceAfterInput {
+      text-align: right;
+    }
+
+    .invoice-diff-badge {
+      display: inline-block;
+      margin: 12px 0 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: bold;
+      background-color: #f1f1f1;
+      color: #777;
+    }
+
+    .invoice-diff-badge.form1 {
+      background-color: #fdecea;
+      color: #e53935;
+    }
+
+    .invoice-diff-badge.form2 {
+      background-color: #e3f2fd;
+      color: #1e88e5;
+    }
+
+    .dark-mode #invoiceDiffSection {
+      border-top-color: #444;
+    }
+
+    .dark-mode .invoice-field {
+      color: #aaa;
+    }
+
+    .dark-mode .invoice-diff-badge {
+      background-color: #2a2a2a;
+      color: #aaa;
+    }
+
+    .dark-mode .invoice-diff-badge.form1 {
+      background-color: #3a2323;
+      color: #ef9a9a;
+    }
+
+    .dark-mode .invoice-diff-badge.form2 {
+      background-color: #1f2d3a;
+      color: #90caf9;
+    }
+
+    @media (max-width: 600px) {
+      .invoice-diff-inputs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .invoice-field.half {
+        grid-column: span 1;
+      }
+    }
+
     .readonly-box {
       background-color: #f1f1f1;
       border: 1px solid #ccc;
@@ -3923,7 +4019,33 @@
             </svg>
           </button>
         </div>
-        <div id="noticeGuideArea" style="display: none; margin-top: 15px;"></div>
+        <div id="noticeGuideBody" style="display: none; margin-top: 15px;">
+          <div id="noticeGuideArea"></div>
+
+          <!-- 인보이스 금액 · 이체 금액 불일치 메일 (정정 전 - 정정 후 < 0 → 양식 1, > 0 → 양식 2) -->
+          <div id="invoiceDiffSection">
+            <div class="invoice-diff-title">인보이스 · 이체 금액 불일치 메일</div>
+            <div class="invoice-diff-inputs">
+              <label class="invoice-field"><span>항차</span>
+                <input type="text" id="invoiceVoyageInput" placeholder="예: 0979" onfocus="this.select()" autocomplete="off" />
+              </label>
+              <label class="invoice-field"><span>비엘</span>
+                <input type="text" id="invoiceBlInput" placeholder="예: 1234" onfocus="this.select()" autocomplete="off" />
+              </label>
+              <label class="invoice-field wide"><span>정정 사유</span>
+                <input type="text" id="invoiceReasonInput" placeholder="예: 중량 변경으로" onfocus="this.select()" autocomplete="off" />
+              </label>
+              <label class="invoice-field half"><span>정정 전 금액</span>
+                <input type="text" id="invoiceBeforeInput" placeholder="원" inputmode="numeric" onfocus="this.select()" autocomplete="off" />
+              </label>
+              <label class="invoice-field half"><span>정정 후 금액</span>
+                <input type="text" id="invoiceAfterInput" placeholder="원" inputmode="numeric" onfocus="this.select()" autocomplete="off" />
+              </label>
+            </div>
+            <div id="invoiceDiffBadge" class="invoice-diff-badge"></div>
+            <div id="invoiceDiffArea"></div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -4365,7 +4487,7 @@
     <div id="tab-content-dashboard" class="tab-content">
       <div class="dashboard-frame-wrap">
         <div class="dashboard-frame-bar">
-          <span>📊 물류 대시보드</span>
+          <span>물류 대시보드</span>
           <a href="/dash/index.html" target="_blank" rel="noopener">새 창으로 열기 ↗</a>
         </div>
         <iframe id="dashboardFrame" title="물류 대시보드" data-src="/dash/index.html"></iframe>
@@ -7264,14 +7386,131 @@
         container.appendChild(div);
       });
     });
+    updateInvoiceDiff();
   }
+
+  // 인보이스 금액 · 이체 금액 불일치 메일
+  // 정정 전 금액 - 정정 후 금액 이 마이너스면 양식 1(추가 송금 요청), 플러스면 양식 2(차액 처리 안내)
+  function parseInvoiceAmount(str) {
+    const digits = String(str || "").replace(/[^0-9]/g, "");
+    return digits === "" ? null : Number(digits);
+  }
+
+  function formatInvoiceAmount(n) {
+    return n.toLocaleString("ko-KR");
+  }
+
+  // 금액 입력창: 입력하는 동안 천 단위 쉼표를 붙이고 커서 위치를 유지
+  function formatAmountInput(el) {
+    const caret = el.selectionStart || 0;
+    const digitsBeforeCaret = el.value.slice(0, caret).replace(/[^0-9]/g, "").length;
+    const n = parseInvoiceAmount(el.value);
+    el.value = n === null ? "" : formatInvoiceAmount(n);
+    let pos = 0, seen = 0;
+    while (pos < el.value.length && seen < digitsBeforeCaret) {
+      if (/[0-9]/.test(el.value[pos])) seen++;
+      pos++;
+    }
+    el.setSelectionRange(pos, pos);
+  }
+
+  function updateInvoiceDiff() {
+    const area = document.getElementById("invoiceDiffArea");
+    const badge = document.getElementById("invoiceDiffBadge");
+    if (!area || !badge) return;
+
+    const val = id => document.getElementById(id).value.trim();
+    const v = val("invoiceVoyageInput") || "___";
+    const b = val("invoiceBlInput") || "___";
+    const reason = val("invoiceReasonInput") || "___";
+    const before = parseInvoiceAmount(val("invoiceBeforeInput"));
+    const after = parseInvoiceAmount(val("invoiceAfterInput"));
+
+    area.innerHTML = "";
+    badge.className = "invoice-diff-badge";
+
+    if (before === null || after === null) {
+      badge.textContent = "정정 전 · 정정 후 금액을 입력하면 양식이 자동으로 선택됩니다";
+      return;
+    }
+    const diff = before - after;
+    if (diff === 0) {
+      badge.textContent = "두 금액이 같아 차액이 없습니다";
+      return;
+    }
+
+    const abs = formatInvoiceAmount(Math.abs(diff));
+    const beforeStr = formatInvoiceAmount(before);
+    const afterStr = formatInvoiceAmount(after);
+    let text;
+    if (diff < 0) {
+      badge.classList.add("form1");
+      badge.textContent = `양식 1 · 추가 송금 요청 ${abs}원`;
+      text = `JDSNGP${v}E${b} 건 ${reason} 인보이스가 정정되었습니다.
+
+- 정정 전 인보이스 금액: ${beforeStr}원
+- 정정 후 인보이스 금액: ${afterStr}원
+
+- 추가 송금 요청 금액: ${abs}원
+
+위 금액을 추가 송금 부탁드립니다.
+송금 후 이체증은 본 메일 전체 회신으로 전달 부탁드립니다.
+
+감사합니다.`;
+    } else {
+      badge.classList.add("form2");
+      badge.textContent = `양식 2 · 차액 ${abs}원 처리 안내`;
+      text = `JDSNGP${v}E${b} 건 ${reason} 차액이 발생하였습니다.
+
+- 인보이스 금액: ${beforeStr}원
+- 이체 금액: ${afterStr}원
+
+- 차액: ${abs}원
+
+차액은 아래 방법 중 선택하여 처리 가능합니다.
+
+1. 선수금: 다음 진행 건 송금 시 인보이스 금액에서 차액을 차감하여 송금해 주시면 됩니다.
+2. 환불: 환불요청서 등 서류 제출이 필요하며, 처리에 약 2주가 소요됩니다.
+
+원하시는 방법을 회신 부탁드립니다.
+
+감사합니다.`;
+    }
+
+    const div = document.createElement("div");
+    div.className = "sentence-block";
+    const btn = document.createElement("button");
+    btn.textContent = "📋 복사";
+    btn.style.borderRadius = '8px';
+    const p = document.createElement("p");
+    p.textContent = text;
+    btn.onclick = () => {
+      navigator.clipboard.writeText(p.textContent).then(() => {
+        btn.textContent = "✅ 복사됨";
+        p.classList.add("effect");
+        setTimeout(() => { btn.textContent = "📋 복사"; p.classList.remove("effect"); }, 1400);
+      });
+    };
+    div.appendChild(btn);
+    div.appendChild(p);
+    area.appendChild(div);
+  }
+
+  ["invoiceVoyageInput", "invoiceBlInput", "invoiceReasonInput", "invoiceBeforeInput", "invoiceAfterInput"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      if (id === "invoiceBeforeInput" || id === "invoiceAfterInput") formatAmountInput(el);
+      updateInvoiceDiff();
+    });
+  });
 
   // ⭐ 입력창 연동 로직 (setupInputSync) ⭐
   function setupInputSync() {
     // 동기화할 그룹 정의
     const syncGroups = {
-      voyage: ['voyage', 'nameInputNew', 'glovisVoyageInput', 'noticeVoyageInput', 'noticeGuideVoyageInput'],
-      bl: ['blInput', 'blInputNew'],
+      voyage: ['voyage', 'nameInputNew', 'glovisVoyageInput', 'noticeVoyageInput', 'noticeGuideVoyageInput', 'invoiceVoyageInput'],
+      bl: ['blInput', 'blInputNew', 'invoiceBlInput'],
       teu: ['teuInput', 'noticeTeuInput']
     };
 
@@ -8129,7 +8368,7 @@
 
     // 안내 문구 카드 토글 로직
     const toggleNoticeGuideBtn = document.getElementById("toggleNoticeGuideBtn");
-    const noticeGuideArea = document.getElementById("noticeGuideArea");
+    const noticeGuideArea = document.getElementById("noticeGuideBody");
     const noticeGuideDownArrow = document.getElementById("noticeGuideDownArrow");
     const noticeGuideUpArrow = document.getElementById("noticeGuideUpArrow");
 
