@@ -106,14 +106,16 @@ document.addEventListener('dash:ready', () => {
 
   // ── 렌더링 도우미 ─────────────────────────────
   const reportCharts = [];
-  function table(cols, rows, footRow) {
-    return `<table class="rpt"><thead><tr>${cols.map((c) => `<th class="${c.r ? 'r' : ''}">${c.l}</th>`).join('')}</tr></thead>
+  function table(cols, rows, footRow, cls = '') {
+    return `<table class="rpt ${cls}"><thead><tr>${cols.map((c) => `<th class="${c.r ? 'r' : ''}">${c.l}</th>`).join('')}</tr></thead>
       <tbody>${rows.length ? rows.map((r, i) => `<tr>${cols.map((c) => `<td class="${c.r ? 'r' : ''}">${c.v(r, i)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length}">해당 데이터 없음</td></tr>`}</tbody>
       ${footRow ? `<tfoot><tr>${cols.map((c, i) => `<td class="${c.r ? 'r' : ''}">${i === 0 ? '합계' : c.foot ? c.foot(footRow) : ''}</td>`).join('')}</tr></tfoot>` : ''}</table>`;
   }
   const n = (l, key, f = fmt.int) => ({ l, r: true, v: (g) => f(g[key]), foot: (t) => f(t[key]) });
   const share = (t, key = 'teu', l = 'TEU 비중') => ({ l, r: true, v: (g) => fmt.pct(g[key], t[key]), foot: () => (t[key] ? '100.0%' : '–') });
   const volumeCols = (t) => [n('B/L', 'bl'), n('TEU', 'teu'), n('중량(톤)', 'weight', fmt.ton), n('CBM', 'cbm', fmt.one), n('총 청구액(백만원)', 'total', fmt.mil), share(t)];
+  // B/L 상세 목록의 업체명: 한 줄에 들어가도록 "주식회사 · (주)"를 빼고, 그래도 길면 … 으로 줄인다
+  const cut = (name) => `<span class="cut">${esc(X.shortName(name))}</span>`;
   const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 
   function deltaCell(cur, prev, cmp) {
@@ -161,7 +163,8 @@ document.addEventListener('dash:ready', () => {
 
     const { t, groups } = S;
     const months = groups.month.filter((g) => g.key !== X.NONE);
-    const trendMode = months.length > 1 ? 'month' : 'voyage';
+    // 기간 안의 데이터가 한 달 이하면 항차별(월별은 막대 1개뿐). 2개월 이상이면 현재 조회 화면 보고서는 화면의 물동량 추이 선택(월별 · 항차별), 나머지는 월별
+    const trendMode = months.length <= 1 ? 'voyage' : cfg.type === 'current' && s.trend === 'voyage' ? 'voyage' : 'month';
     const now = new Date();
     const printed = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const conds = X.describeFilters(s);
@@ -224,51 +227,51 @@ document.addEventListener('dash:ready', () => {
         <div>${table([{ l: '화물 종류', v: (g) => `${X.CARGO[g.key] || g.key || '(없음)'} (${esc(g.key)})` }, n('B/L', 'bl'), n('TEU', 'teu'), share(t, 'bl', 'B/L 비중')], cg, t)}
         ${chartBlock('rc-cargo')}</div></div></section>`);
 
-      // 냉동 (선어 · 활어 포함): 구성 + Consignee 상위 10
+      // 냉동 (선어 · 활어 포함) · 환적 · 특송: 구성(도넛) → 월(항차)별 TEU · 증감률 · 점유율(막대) → Consignee 상위 10
+      const subRows = (trendMode === 'month' ? months : groups.voyage.filter((g) => g.key !== X.NONE)).sort(byDate);
+      const by = trendMode === 'month' ? '월별' : '항차별', prevWord = trendMode === 'month' ? '전월' : '직전 항차';
+      const pct1 = (a, b) => (b ? `${fmt.one((a / b) * 100)}%` : '–');
       const rfT = X.reeferSummary(S, 'teu'), rfB = X.reeferSummary(S, 'bl');
-      const rfTop = X.reeferTop(S);
-      if (rfB.reefer) {
-        const rfRows = rfT.parts.map((p) => ({ name: p.name, bl: p.bl, teu: p.teu }));
-        const rfSum = { bl: rfB.reefer, teu: rfT.reefer };
-        html.push(`<section class="rpt-sec">${H('냉동 화물 (선어 · 활어 포함)')}<div class="rpt-two">
-          <div>${table([{ l: '구분', v: (g) => g.name }, n('B/L', 'bl'), share(rfSum, 'bl', 'B/L 비중'), n('TEU', 'teu'), share(rfSum, 'teu', 'TEU 비중')], rfRows, rfSum)}
-          <p class="rpt-note">전체 대비 냉동 비중: TEU ${fmt.int(rfT.reefer)} / ${fmt.int(t.teu)} (${fmt.pct(rfT.reefer, t.teu)}) · B/L ${fmt.int(rfB.reefer)} / ${fmt.int(t.bl)}건 (${fmt.pct(rfB.reefer, t.bl)}).
-          B/L 번호에 E12 가 있으면 냉동, 그중 REMARK 에 선어 · 활어가 있으면 선어 · 활어로 나눴습니다.</p></div>
-          ${chartBlock('rc-reefer')}</div></section>`);
-        html.push(`<section class="rpt-sec">${H('냉동 Consignee 상위 10 (TEU 기준)')}${chartBlock('rc-reefer-top')}
-          ${table([{ l: '순위', r: true, v: (g, i) => i + 1 }, { l: 'Consignee', v: (g) => esc(g.full) }, { l: '사업자번호', v: (g) => esc(X.consigneeCode(g.key)) },
-            n('B/L', 'bl'), n('TEU', 'teu'), share(rfSum, 'teu', '냉동 TEU 비중')], rfTop)}
-          <p class="rpt-note">냉동 Consignee ${fmt.int((S.groups.reeferConsignee || []).length)}곳 중 상위 10곳. 상위 10곳 합계 냉동 TEU 비중 ${fmt.pct(rfTop.reduce((a, g) => a + g.teu, 0), rfT.reefer)}.</p></section>`);
-      } else {
-        html.push(`<section class="rpt-sec">${H('냉동 화물 (선어 · 활어 포함)')}<p class="rpt-note">선택한 조건에 해당하는 냉동 B/L 이 없습니다.</p></section>`);
-      }
-
-      // 환적 · 특송: 월(항차)별 TEU · 점유율 + Consignee 상위 10
-      const subRows = trendMode === 'month' ? months : groups.voyage.filter((g) => g.key !== X.NONE);
-      Object.entries(X.SUBSETS).forEach(([k, d]) => {
-        const subTeu = subRows.reduce((a, g) => a + (Number(g[d.teuKey]) || 0), 0);
-        const subBl = subRows.reduce((a, g) => a + (Number(g[d.blKey]) || 0), 0);
-        if (!subBl) {
-          html.push(`<section class="rpt-sec">${H(`${d.name} 화물 (${d.note})`)}<p class="rpt-note">선택한 조건에 해당하는 ${d.name} B/L 이 없습니다.</p></section>`);
+      const KINDS = [
+        { k: 'rf', name: '냉동', note: '선어 · 활어 포함', bl: rfB.reefer, teu: rfT.reefer, top: X.reeferTop(S), dim: 'reeferConsignee',
+          parts: rfT.parts.map((p) => ({ name: p.name, bl: p.bl, teu: p.teu })),
+          cols: [...X.RF_TEU.map(([key, l]) => ({ l, get: (g) => Number(g[key]) || 0 })), { l: '냉동 합계', get: (g) => X.RF_TEU.reduce((a, [key]) => a + (Number(g[key]) || 0), 0) }],
+          remark: 'B/L 번호에 E12 가 있으면 냉동, 그중 REMARK 에 선어 · 활어가 있으면 선어 · 활어로 나눴습니다.' },
+        ...Object.entries(X.SUBSETS).map(([k, d]) => ({
+          k, name: d.name, note: d.note, bl: Number(t[d.blKey]) || 0, teu: Number(t[d.teuKey]) || 0, top: X.subsetTop(S, d.dim), dim: d.dim,
+          parts: [{ name: d.name, bl: Number(t[d.blKey]) || 0, teu: Number(t[d.teuKey]) || 0 }, { name: `비${d.name}`, bl: t.bl - (Number(t[d.blKey]) || 0), teu: t.teu - (Number(t[d.teuKey]) || 0) }],
+          cols: [{ l: `${d.name} B/L`, get: (g) => Number(g[d.blKey]) || 0 }, { l: `${d.name} TEU`, get: (g) => Number(g[d.teuKey]) || 0 }],
+          remark: '' })),
+      ];
+      KINDS.forEach((c) => {
+        if (!c.bl) {
+          html.push(`<section class="rpt-sec">${H(`${c.name} 화물 (${c.note})`)}<p class="rpt-note">선택한 조건에 해당하는 ${c.name} B/L 이 없습니다.</p></section>`);
           return;
         }
-        const pr = [...subRows].sort(byDate);
-        const pct1 = (a, b) => (b ? `${fmt.one((a / b) * 100)}%` : '–');
-        html.push(`<section class="rpt-sec flow">${H(`${d.name} 화물 (${d.note}) · ${trendMode === 'month' ? '월별' : '항차별'}`)}${chartBlock(`rc-${k}`)}
+        // 구성: 냉동은 냉동 · 선어 · 활어 안의 비중, 환적 · 특송은 전체 중 환적 · 비환적 비중
+        const pSum = { bl: c.parts.reduce((a, p) => a + p.bl, 0), teu: c.parts.reduce((a, p) => a + p.teu, 0) };
+        html.push(`<section class="rpt-sec">${H(`${c.name} 화물 (${c.note}) · 구성`)}<div class="rpt-two">
+          <div>${table([{ l: '구분', v: (g) => g.name }, n('B/L', 'bl'), share(pSum, 'bl', 'B/L 비중'), n('TEU', 'teu'), share(pSum, 'teu', 'TEU 비중')], c.parts, pSum)}
+          <p class="rpt-note">전체 대비 ${c.name} 비중: TEU ${fmt.int(c.teu)} / ${fmt.int(t.teu)} (${fmt.pct(c.teu, t.teu)}) · B/L ${fmt.int(c.bl)} / ${fmt.int(t.bl)}건 (${fmt.pct(c.bl, t.bl)}).
+          ${c.remark}</p></div>
+          ${chartBlock(`rc-${c.k}-donut`)}</div></section>`);
+        // 월(항차)별: 증감률 · 점유율 기준은 해당 TEU (마지막 열)
+        const val = c.cols[c.cols.length - 1].get;
+        const subSum = (f) => subRows.reduce((a, g) => a + f(g), 0);
+        html.push(`<section class="rpt-sec flow">${H(`${c.name} 화물 · ${by} TEU · 점유율`)}${chartBlock(`rc-${c.k}`)}
           ${table([
             trendMode === 'month' ? { l: '월', v: (g) => X.monthLabel(g.key) } : { l: '항차', v: (g) => esc(g.key) },
             ...(trendMode === 'voyage' ? [{ l: '입항일', v: (g) => g.date || '' }] : []),
-            { l: `${d.name} B/L`, r: true, v: (g) => fmt.int(g[d.blKey]), foot: () => fmt.int(subBl) },
-            { l: `${d.name} TEU`, r: true, v: (g) => fmt.int(g[d.teuKey]), foot: () => fmt.int(subTeu) },
+            ...c.cols.map((col) => ({ l: col.l, r: true, v: (g) => fmt.int(col.get(g)), foot: () => fmt.int(subSum(col.get)) })),
             { l: '전체 TEU', r: true, v: (g) => fmt.int(g.teu), foot: () => fmt.int(t.teu) },
-            { l: '점유율', r: true, v: (g) => pct1(Number(g[d.teuKey]) || 0, g.teu), foot: () => pct1(subTeu, t.teu) },
-          ], pr, t)}
-          <p class="rpt-note">점유율 = 그 ${trendMode === 'month' ? '월' : '항차'}의 전체 TEU 중 ${d.name} TEU.</p></section>`);
-        const top = X.subsetTop(S, d.dim);
-        html.push(`<section class="rpt-sec">${H(`${d.name} Consignee 상위 10 (TEU 기준)`)}${chartBlock(`rc-${k}-top`)}
+            { l: `증감률 (${prevWord} 대비)`, r: true, v: (g, i) => X.rate(val(g), i ? val(subRows[i - 1]) : null) },
+            { l: '점유율', r: true, v: (g) => pct1(val(g), g.teu), foot: () => pct1(subSum(val), t.teu) },
+          ], subRows, t)}
+          <p class="rpt-note">증감률 = ${c.name} TEU 의 ${prevWord} 대비 증감. 점유율 = 그 ${trendMode === 'month' ? '월' : '항차'}의 전체 TEU 중 ${c.name} TEU.</p></section>`);
+        html.push(`<section class="rpt-sec">${H(`${c.name} Consignee 상위 10 (TEU 기준)`)}${chartBlock(`rc-${c.k}-top`)}
           ${table([{ l: '순위', r: true, v: (g, i) => i + 1 }, { l: 'Consignee', v: (g) => esc(g.full) }, { l: '사업자번호', v: (g) => esc(X.consigneeCode(g.key)) },
-            n('B/L', 'bl'), n('TEU', 'teu'), { l: `${d.name} TEU 비중`, r: true, v: (g) => fmt.pct(g.teu, subTeu) }], top)}
-          <p class="rpt-note">${d.name} Consignee ${fmt.int((S.groups[d.dim] || []).length)}곳 중 상위 10곳. 상위 10곳 합계 ${d.name} TEU 비중 ${fmt.pct(top.reduce((a, g) => a + g.teu, 0), subTeu)}.</p></section>`);
+            n('B/L', 'bl'), n('TEU', 'teu'), { l: `${c.name} TEU 비중`, r: true, v: (g) => fmt.pct(g.teu, c.teu) }], c.top)}
+          <p class="rpt-note">${c.name} Consignee ${fmt.int((S.groups[c.dim] || []).length)}곳 중 상위 10곳. 상위 10곳 합계 ${c.name} TEU 비중 ${fmt.pct(c.top.reduce((a, g) => a + g.teu, 0), c.teu)}.</p></section>`);
       });
 
       // 5. 청구 항목
@@ -292,12 +295,16 @@ document.addEventListener('dash:ready', () => {
       if (list) {
         html.push(`<section class="rpt-sec flow">${H(`B/L 상세 목록 (${fmt.int(list.length)}건)`)}
           ${table([
-            { l: 'B/L NO', v: (r) => esc(r.bl) }, { l: '항차', v: (r) => esc(r.voy) }, { l: '입항일', v: (r) => r.date || '' },
-            cfg.type === 'company' && cfg.basis === 'consignee' ? { l: 'Notify', v: (r) => (r.notify === X.NONE ? '–' : esc(X.notifyName(r.notify))) } : { l: 'Consignee', v: (r) => esc(X.consigneeName(r.consignee)) },
-            { l: 'ITEM', v: (r) => esc(r.item) }, { l: '화물', v: (r) => X.CARGO[r.cargo] || esc(r.cargo) },
-            { l: 'TEU', r: true, v: (r) => fmt.int(r.teu) }, { l: '중량(톤)', r: true, v: (r) => fmt.ton(r.weight) },
+            { l: 'No', r: true, v: (r, i) => fmt.int(i + 1) },
+            { l: '입항일', v: (r) => r.date || '' }, { l: 'B/L NO', v: (r) => esc(r.bl) },
+            { l: 'Consignee', v: (r) => cut(X.consigneeName(r.consignee)) },
+            { l: 'Notify', v: (r) => (r.notify === X.NONE ? '–' : cut(X.notifyName(r.notify))) },
+            { l: 'ITEM', v: (r) => esc(r.item) },
+            { l: "20'", r: true, v: (r) => fmt.int(r.c20) }, { l: "40'", r: true, v: (r) => fmt.int(r.c40) }, { l: "45'", r: true, v: (r) => fmt.int(r.c45) },
+            { l: 'TEU', r: true, v: (r) => fmt.int(r.teu) },
             { l: '총 청구액(원)', r: true, v: (r) => fmt.won(r.total) },
-          ], list)}</section>`);
+          ], list, null, 'detail')}
+          <p class="rpt-note">업체명은 "주식회사 · (주)"를 빼고, 길면 줄여서 표시했습니다.</p></section>`);
       }
     }
 
@@ -315,14 +322,14 @@ document.addEventListener('dash:ready', () => {
       mountChart('rc-trend', X.chartOptions.trend(trendMode === 'month' ? groups.month : groups.voyage, trendMode, 'teu', { static: true }), trendMode === 'voyage' ? 300 : 230);
       const cargo = [...groups.cargo].sort((a, b) => b.bl - a.bl).map((g) => ({ name: `${X.CARGO[g.key] || g.key || '(없음)'}`, value: g.bl }));
       mountChart('rc-cargo', X.chartOptions.donut(cargo, { static: true }), 150);
-      const rfT = X.reeferSummary(S, 'teu');
-      if (X.reeferSummary(S, 'bl').reefer) {
-        mountChart('rc-reefer', X.chartOptions.donut(rfT.parts.filter((p) => p.value > 0), { static: true, unit: 'TEU' }), 170);
-        mountChart('rc-reefer-top', X.chartOptions.rankBar(X.reeferTop(S), 'teu', { static: true, labelWidth: 180 }), 260);
-      }
-      Object.keys(X.SUBSETS).forEach((k) => {
+      // 냉동 · 환적 · 특송: 도넛 · 막대 · 상위 10 (해당 B/L 이 없으면 본문에 차트 자리가 없어 그리지 않는다)
+      const rfParts = X.reeferSummary(S, 'teu').parts;
+      [['rf', rfParts, X.RF_TEU.map((x) => x[2])],
+        ...Object.entries(X.SUBSETS).map(([k, d]) => [k, [{ name: d.name, value: Number(t[d.teuKey]) || 0 }, { name: `비${d.name}`, value: t.teu - (Number(t[d.teuKey]) || 0) }], [X.COLORS.navy700, X.COLORS.navy300]]),
+      ].forEach(([k, parts, colors]) => {
+        mountChart(`rc-${k}-donut`, X.chartOptions.donut(parts.filter((p) => p.value > 0), { static: true, unit: 'TEU', colors }), 170);
         mountChart(`rc-${k}`, X.chartOptions.shareTrend(trendMode === 'month' ? groups.month : groups.voyage, trendMode, k, { static: true }), 230);
-        mountChart(`rc-${k}-top`, X.chartOptions.rankBar(X.subsetTop(S, X.SUBSETS[k].dim), 'teu', { static: true, labelWidth: 180 }), 260);
+        mountChart(`rc-${k}-top`, X.chartOptions.rankBar(k === 'rf' ? X.reeferTop(S) : X.subsetTop(S, X.SUBSETS[k].dim), 'teu', { static: true, labelWidth: 180 }), 260);
       });
     }
     $('report-root').scrollTop = 0;

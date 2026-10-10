@@ -163,6 +163,17 @@ main { padding: 20px 24px 48px; min-width: 0; display: grid; grid-template-colum
 .trend-table table.data th, .trend-table table.data td { padding: 7px 12px; }
 .trend-table table.data tfoot td { position: sticky; bottom: 0; }
 .trend-table .delta { font-size: 12.5px; }
+/* 냉동 · 환적 · 특송 [표]: 차트 높이까지만 보이고 나머지는 스크롤 (머리글 · 합계 고정) */
+.sub-table { max-height: 300px; overflow: auto; margin-bottom: 12px; }
+.sub-table table.data th, .sub-table table.data td { padding: 7px 12px; }
+.sub-table table.data tfoot td { position: sticky; bottom: 0; }
+/* Consignee 상위 10 표: TEU 칸 안 막대, 줄을 누르면 조회 */
+.top-table table.data th, .top-table table.data td { padding: 7px 10px; }
+.top-table tbody tr { cursor: pointer; }
+.top-table + .chart-note { padding-top: 10px; }
+.bar-cell { display: flex; align-items: center; gap: 6px; }
+.bar-cell i { display: block; width: calc(var(--w) * 80px); height: 10px; background: var(--navy-700); border-radius: 1px; min-width: 1px; flex: none; }
+.bar-cell b { font-weight: 600; }
 .chart-note { font-size: 11.5px; color: var(--faint); padding: 0 16px 10px; margin: 0; }
 .ratios { display: grid; gap: 10px; padding: 4px 16px 16px; }
 .ratio { display: grid; gap: 4px; }
@@ -247,6 +258,12 @@ table.data td.muted { color: var(--faint); }
   .brand h1 { font-size: 15px; }
   .brand p { display: none; }
   .chart { height: 260px; }
+  .sub-table { max-height: 260px; }
+  /* 모바일: 표가 화면 폭에 들어오도록 칸 간격 · 업체명 · 막대를 줄인다 */
+  .sub-table table.data th, .sub-table table.data td, .top-table table.data th, .top-table table.data td { padding: 6px 6px; font-size: 12px; }
+  .top-table table.data td.trunc.w-m { max-width: 96px; }
+  .bar-cell { gap: 4px; }
+  .bar-cell i { width: calc(var(--w) * 32px); }
   .chart.tall { height: 320px; }
   .chart.voyage-axis { height: 360px; }
   .main-head h2 { font-size: 19px; }
@@ -298,6 +315,10 @@ table.rpt th { background: var(--navy-50); color: var(--navy-800); font-weight: 
 table.rpt .r { text-align: right; }
 table.rpt tfoot td { font-weight: 700; border-top: 1px solid var(--line-strong); background: var(--navy-50); }
 table.rpt tr { break-inside: avoid; }
+/* B/L 상세 목록: 한 줄에 한 B/L (줄바꿈하면 쪽수가 두 배로 늘어남) */
+table.rpt.detail { font-size: 8.2pt; }
+table.rpt.detail th, table.rpt.detail td { white-space: nowrap; padding: 4px 4px; }
+table.rpt.detail .cut { display: block; max-width: 32mm; overflow: hidden; text-overflow: ellipsis; }
 .rpt-note { font-size: 8.5pt; color: var(--muted); margin: 6px 0 0; }
 
 /* ── 인쇄 ───────────────────────────── */

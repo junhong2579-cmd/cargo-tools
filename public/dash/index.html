@@ -151,13 +151,14 @@
           <span class="seg small" id="rf-view"></span>
         </header>
         <div class="chart" id="ch-reefer"></div>
+        <div class="table-wrap sub-table" id="rf-table" hidden></div>
         <div class="ratios" id="rf-ratio"></div>
         <p class="chart-note" id="rf-note"></p>
       </article>
       <article class="panel">
         <header><h3>냉동 Consignee 상위 10 <small>선어 · 활어 포함 · TEU 기준</small></h3></header>
-        <div class="chart" id="ch-reefer-top"></div>
-        <p class="chart-note">막대를 누르면 해당 업체로 조회합니다.</p>
+        <div class="table-wrap top-table" id="rf-top"></div>
+        <p class="chart-note">줄을 누르면 해당 업체로 조회합니다. 비중 · 누적 비중 = 해당 화물 전체 TEU 중.</p>
       </article>
       <article class="panel">
         <header>
@@ -165,13 +166,14 @@
           <span class="seg small" id="ts-view"></span>
         </header>
         <div class="chart" id="ch-ts"></div>
+        <div class="table-wrap sub-table" id="ts-table" hidden></div>
         <div class="ratios" id="ts-ratio"></div>
         <p class="chart-note" id="ts-note"></p>
       </article>
       <article class="panel">
         <header><h3>환적 Consignee 상위 10 <small>T/S · TEU 기준</small></h3></header>
-        <div class="chart" id="ch-ts-top"></div>
-        <p class="chart-note">막대를 누르면 해당 업체로 조회합니다.</p>
+        <div class="table-wrap top-table" id="ts-top"></div>
+        <p class="chart-note">줄을 누르면 해당 업체로 조회합니다. 비중 · 누적 비중 = 해당 화물 전체 TEU 중.</p>
       </article>
       <article class="panel">
         <header>
@@ -179,13 +181,14 @@
           <span class="seg small" id="ex-view"></span>
         </header>
         <div class="chart" id="ch-ex"></div>
+        <div class="table-wrap sub-table" id="ex-table" hidden></div>
         <div class="ratios" id="ex-ratio"></div>
         <p class="chart-note" id="ex-note"></p>
       </article>
       <article class="panel">
         <header><h3>특송 Consignee 상위 10 <small>B/L Type X · TEU 기준</small></h3></header>
-        <div class="chart" id="ch-ex-top"></div>
-        <p class="chart-note">막대를 누르면 해당 업체로 조회합니다.</p>
+        <div class="table-wrap top-table" id="ex-top"></div>
+        <p class="chart-note">줄을 누르면 해당 업체로 조회합니다. 비중 · 누적 비중 = 해당 화물 전체 TEU 중.</p>
       </article>
       <article class="panel">
         <header>
@@ -243,7 +246,7 @@
         <label class="flabel" for="rm-company-period">기간</label>
         <select id="rm-company-period"></select>
       </div>
-      <p class="hint" id="rm-current-hint">현재 화면의 조회 조건(기간·업체·ITEM·화물 종류 등)을 그대로 보고서로 만듭니다.</p>
+      <p class="hint" id="rm-current-hint">현재 화면의 조회 조건(기간·업체·ITEM·화물 종류 등)과 월별·항차별 선택을 그대로 보고서로 만듭니다. 한 달만 조회하면 항차별로 만듭니다.</p>
       <label class="check"><input type="checkbox" id="rm-detail"> B/L 상세 목록 포함 <span class="hint" id="rm-detail-hint"></span></label>
     </div>
     <footer>

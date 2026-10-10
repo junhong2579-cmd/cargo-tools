@@ -328,7 +328,7 @@
     syncers.push(seg($('trend-mode'), [['month', '월별'], ['voyage', '항차별']], () => state.trend, (v) => { state.trend = v; update(); }));
     syncers.push(seg($('charge-cur'), [['krw', '원화 (KRW)'], ['usd', '외화 (USD)']], () => state.charge, (v) => { state.charge = v; update(); }));
     ['rf', 'ts', 'ex'].forEach((k) => {
-      syncers.push(seg($(`${k}-view`), [['bar', '막대'], ['donut', '도넛']], () => state[`${k}View`], (v) => { state[`${k}View`] = v; update(); }));
+      syncers.push(seg($(`${k}-view`), [['bar', '막대'], ['donut', '도넛'], ['table', '표']], () => state[`${k}View`], (v) => { state[`${k}View`] = v; update(); }));
     });
 
     $('btn-reset').addEventListener('click', () => {
@@ -696,17 +696,18 @@
       .map((g) => ({ ...g, full: companyName(basis, g.key), label: shortName(companyName(basis, g.key)) }));
   }
 
+  /** 직전 값 대비 증감률 칸 (▲ 빨강 · ▼ 파랑). 직전 값이 없거나 0 이면 – */
+  function rate(cur, prev) {
+    if (!prev) return '<span class="delta">–</span>';
+    const d = ((cur - prev) / prev) * 100;
+    const cls = Math.abs(d) < 0.05 ? '' : d > 0 ? 'up' : 'down';
+    return `<span class="delta ${cls}">${cls === 'up' ? '▲' : cls === 'down' ? '▼' : ''} ${nf1.format(Math.abs(d))}%</span>`;
+  }
+
   /** 추이 차트 아래 표: 월(또는 항차)별 컨테이너 · TEU · 직전 월(항차) 대비 TEU 증감률 · 총 청구액 */
   function renderTrendTable(groupRows, mode, t) {
     const rows = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
     const prevWord = mode === 'voyage' ? '직전 항차' : '전월';
-    const rate = (cur, prev) => {
-      if (prev == null) return '<span class="delta">–</span>';
-      if (!prev) return '<span class="delta">–</span>';
-      const d = ((cur - prev) / prev) * 100;
-      const cls = Math.abs(d) < 0.05 ? '' : d > 0 ? 'up' : 'down';
-      return `<span class="delta ${cls}">${cls === 'up' ? '▲' : cls === 'down' ? '▼' : ''} ${nf1.format(Math.abs(d))}%</span>`;
-    };
     $('trend-table').innerHTML = `<table class="data">
       <thead><tr>
         <th>${mode === 'voyage' ? '항차' : '월'}</th><th class="r">20'</th><th class="r">40'</th><th class="r">45'</th><th class="r">TEU</th>
@@ -813,22 +814,31 @@
   }
   const reeferTop = (S, n = 10) => subsetTop(S, 'reeferConsignee', n);
 
-  /** 냉동 · 환적 · 특송 카드 위쪽 차트: 막대(월 · 항차별 TEU + 점유율) 또는 도넛(구성), 그 아래 전체 대비 비중 */
+  /** 냉동 · 환적 · 특송 카드 위쪽: 막대(월 · 항차별 TEU + 점유율) · 도넛(구성) · 표 전환, 그 아래 전체 대비 비중 */
   function renderShareCard(S, k, donutEntries, colors) {
     const isRf = k === 'rf';
-    const name = isRf ? '냉동' : SUBSETS[k].name;
-    const sub = isRf ? '선어 · 활어 포함' : SUBSETS[k].note;
+    const d = isRf ? null : SUBSETS[k];
+    const name = isRf ? '냉동' : d.name;
+    const sub = isRf ? '선어 · 활어 포함' : d.note;
     const mode = state.trend, by = mode === 'voyage' ? '항차별' : '월별';
-    const bar = state[`${k}View`] !== 'donut';
+    const v = state[`${k}View`];
     const id = isRf ? 'ch-reefer' : `ch-${k}`;
     const empty = `조건에 맞는 ${name} B/L 이 없습니다.`;
-    $(`${k}-title`).innerHTML = `${name} 화물 <small>${sub} · ${bar ? `${by} TEU · 점유율` : 'TEU 구성'}</small>`;
-    $(`${k}-note`).textContent = bar
-      ? `막대 위 숫자 = ${name} TEU 합계, 점유율 = 그 월(항차) 전체 TEU 중 ${name} TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.`
-      : `조회 기간 전체의 TEU 구성입니다.`;
-    chart(id).setOption(bar
-      ? chartOptions.shareTrend(mode === 'voyage' ? S.groups.voyage : S.groups.month, mode, k, { width: $(id).clientWidth, empty })
-      : chartOptions.donut(donutEntries.filter((p) => p.value > 0), { unit: 'TEU', empty, colors, compact: $(id).clientWidth < 480 }), true);
+    const rows = mode === 'voyage' ? S.groups.voyage : S.groups.month;
+    $(`${k}-title`).innerHTML = `${name} 화물 <small>${sub} · ${v === 'donut' ? 'TEU 구성' : `${by} TEU · 점유율`}</small>`;
+    $(`${k}-note`).textContent = v === 'donut'
+      ? '조회 기간 전체의 TEU 구성입니다.'
+      : `${v === 'bar' ? `막대 위 숫자 = ${name} TEU 합계, ` : ''}점유율 = 그 월(항차) 전체 TEU 중 ${name} TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.`;
+    $(id).hidden = v === 'table';
+    $(`${k}-table`).hidden = v !== 'table';
+    if (v === 'table') renderShareTable(rows, mode, k, empty);
+    else {
+      const c = chart(id);
+      c.resize();
+      c.setOption(v === 'donut'
+        ? chartOptions.donut(donutEntries.filter((p) => p.value > 0), { unit: 'TEU', empty, colors, compact: $(id).clientWidth < 480 })
+        : chartOptions.shareTrend(rows, mode, k, { width: $(id).clientWidth, empty }), true);
+    }
     const total = S.t.teu, a = isRf ? donutEntries.reduce((x, p) => x + p.value, 0) : donutEntries[0].value, rest = total - a;
     $(`${k}-ratio`).innerHTML = `
       <div class="ratio">
@@ -837,29 +847,71 @@
       </div>`;
   }
 
-  function topClick(c, tops) {
-    c.off('click');
-    c.on('click', (p) => { const g = [...tops].reverse()[p.dataIndex]; if (!state.consignee.includes(g.key)) state.consignee.push(g.key); update(); });
+  /** 냉동 · 환적 · 특송 [표]: 월(항차)별 해당 TEU(냉동은 냉동 · 선어 · 활어) · 전체 TEU · 증감률(해당 TEU, 직전 월 · 항차 대비) · 점유율, 맨 아래 합계 */
+  function renderShareTable(groupRows, mode, k, empty) {
+    const isRf = k === 'rf', d = SUBSETS[k];
+    const rows = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
+    const cols = isRf
+      ? [...RF_TEU.map(([key, label]) => ({ label, get: (g) => Number(g[key]) || 0 })),
+        { label: '냉동 합계', bold: true, get: (g) => RF_TEU.reduce((a, [key]) => a + (Number(g[key]) || 0), 0) }]
+      : [{ label: `${d.name} B/L`, get: (g) => Number(g[d.blKey]) || 0 }, { label: `${d.name} TEU`, bold: true, get: (g) => Number(g[d.teuKey]) || 0 }];
+    const val = cols[cols.length - 1].get; // 증감률 · 점유율 기준 = 해당 TEU 합계
+    const name = isRf ? '냉동' : d.name, prevWord = mode === 'voyage' ? '직전 항차' : '전월';
+    const wrap = $(`${k}-table`);
+    if (!rows.some((g) => val(g) > 0)) { wrap.innerHTML = `<p class="empty-state">${empty}</p>`; return; }
+    const sum = (f) => rows.reduce((a, g) => a + f(g), 0);
+    const cell = (c, n) => `<td class="r">${c.bold ? `<b>${fmt.int(n)}</b>` : fmt.int(n)}</td>`;
+    wrap.innerHTML = `<table class="data">
+      <thead><tr><th>${mode === 'voyage' ? '항차' : '월'}</th>${cols.map((c) => `<th class="r">${c.label}</th>`).join('')}<th class="r">전체 TEU</th>
+        <th class="r" title="${name} TEU 기준">증감률 <small>(${prevWord} 대비)</small></th><th class="r">점유율</th></tr></thead>
+      <tbody>${rows.map((g, i) => `<tr><td>${mode === 'voyage' ? esc(g.key) : monthLabel(g.key)}</td>${cols.map((c) => cell(c, c.get(g))).join('')}<td class="r">${fmt.int(g.teu)}</td>
+        <td class="r">${rate(val(g), i ? val(rows[i - 1]) : null)}</td><td class="r">${fmt.pct(val(g), g.teu)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>합계</td>${cols.map((c) => `<td class="r">${fmt.int(sum(c.get))}</td>`).join('')}<td class="r">${fmt.int(sum((g) => g.teu))}</td><td class="r"></td><td class="r">${fmt.pct(sum(val), sum((g) => g.teu))}</td></tr></tfoot>
+    </table>`;
+    wrap.scrollTop = 0;
+  }
+
+  /** Consignee 상위 10 표: 순위 · Consignee · B/L · TEU(칸 안 막대) · 비중 · 누적 비중. 비중 = 해당 화물(냉동 등) 전체 TEU 중. 줄을 누르면 그 업체로 조회 */
+  function renderTopTable(k, tops, subsetTeu, empty) {
+    const wrap = $(`${k}-top`);
+    if (!tops.length) { wrap.innerHTML = `<p class="empty-state">${empty}</p>`; return; }
+    const max = Math.max(...tops.map((g) => g.teu), 1);
+    let acc = 0;
+    wrap.innerHTML = `<table class="data">
+      <thead><tr><th class="r">순위</th><th>Consignee</th><th class="r">B/L</th><th>TEU</th><th class="r">비중</th><th class="r">누적 비중</th></tr></thead>
+      <tbody>${tops.map((g, i) => {
+        acc += g.teu;
+        return `<tr data-i="${i}" title="${esc(g.full)} · 누르면 이 업체로 조회">
+          <td class="r muted">${i + 1}</td>
+          <td class="trunc w-m">${esc(g.label)}</td>
+          <td class="r">${fmt.int(g.bl)}</td>
+          <td><span class="bar-cell"><i style="--w:${(g.teu / max).toFixed(3)}"></i><b>${fmt.int(g.teu)}</b></span></td>
+          <td class="r">${fmt.pct(g.teu, subsetTeu)}</td>
+          <td class="r">${fmt.pct(acc, subsetTeu)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+    wrap.onclick = (e) => {
+      const tr = e.target.closest('tr[data-i]');
+      if (!tr) return;
+      const g = tops[+tr.dataset.i];
+      if (!state.consignee.includes(g.key)) state.consignee.push(g.key);
+      update();
+    };
   }
 
   function renderReefer(S) {
     const r = reeferSummary(S, 'teu');
     renderShareCard(S, 'rf', r.parts, RF_TEU.map((x) => x[2]));
-    const tops = reeferTop(S);
-    const cTop = chart('ch-reefer-top');
-    cTop.setOption(chartOptions.rankBar(tops, 'teu', { empty: '조건에 맞는 냉동 B/L 이 없습니다.' }), true);
-    topClick(cTop, tops);
+    renderTopTable('rf', reeferTop(S), r.reefer, '조건에 맞는 냉동 B/L 이 없습니다.');
   }
 
-  /** 환적 · 특송 카드: 막대(월 · 항차별 TEU + 점유율) / 도넛(환적 · 비환적 등) 전환, Consignee 상위 10 */
+  /** 환적 · 특송 카드: 막대 · 도넛(환적 · 비환적 등) · 표 전환, Consignee 상위 10 표 */
   function renderSubsets(S) {
     Object.entries(SUBSETS).forEach(([k, d]) => {
       const a = Number(S.t[d.teuKey]) || 0;
       renderShareCard(S, k, [{ name: d.name, value: a }, { name: `비${d.name}`, value: Math.max(S.t.teu - a, 0) }], [COLORS.navy700, COLORS.navy300]);
-      const tops = subsetTop(S, d.dim);
-      const cTop = chart(`ch-${k}-top`);
-      cTop.setOption(chartOptions.rankBar(tops, 'teu', { empty: `조건에 맞는 ${d.name} B/L 이 없습니다.` }), true);
-      topClick(cTop, tops);
+      renderTopTable(k, subsetTop(S, d.dim), a, `조건에 맞는 ${d.name} B/L 이 없습니다.`);
     });
   }
 
@@ -1184,7 +1236,7 @@
 
     window.Dash = {
       META, MONTHS, YEARS, CARGO, RF, KRW_CHARGES, USD_CHARGES, NONE, METRICS, COLORS, QC,
-      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, subsetTop, SUBSETS, chartOptions,
+      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, subsetTop, SUBSETS, RF_TEU, rate, shortName, chartOptions,
       consigneeName, consigneeCode, notifyName, companyName, placeName, vesselLabel,
       companyList: (basis) => (basis === 'notify'
         ? NOTIFIES.filter(([k]) => k !== NONE).map(([k, n]) => ({ key: k, n, name: k, code: '' }))
