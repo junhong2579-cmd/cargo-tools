@@ -401,6 +401,8 @@ end $$;
 -- 합계 + 월 · 항차 · Consignee · Notify · ITEM · Cargo · 배정장소 · 냉동 구분 · 냉동 Consignee 별 집계 (화면 갱신마다 1회)
 -- groups.<축> = [[키, ...fields 순서의 값]] (키 ''=값 없음)
 --   reefer = 냉동 구분(R/S/L, ''=냉동 아님), reeferConsignee = 냉동 B/L 만 모은 Consignee 별 집계
+--   tsConsignee = 환적(T/S) B/L 만, exConsignee = 특송(B/L Type X) B/L 만 모은 Consignee 별 집계
+--   tsTeu · exTeu = 묶음 안의 환적 · 특송 TEU (월 · 항차별 점유율 차트용)
 create or replace function public.dash_summary(f jsonb) returns jsonb
 language plpgsql stable set search_path = public as $$
 declare
@@ -408,12 +410,16 @@ declare
 begin
   perform public.dash_assert();
   with r as (
-    select x.*, to_char(x.d, 'YYYY-MM') as m, (x.rf is not null) as rfc from public.dash_filter(f) x
+    select x.*, to_char(x.d, 'YYYY-MM') as m, (x.rf is not null) as rfc,
+           (x.ts > 0) as tsc, (x.bt is not distinct from 'X') as exc
+    from public.dash_filter(f) x
   ), g as (
     select
       case when grouping(m) = 0 then 'month'
            when grouping(voyage) = 0 then 'voyage'
            when grouping(rfc) = 0 then 'reeferConsignee'
+           when grouping(tsc) = 0 then 'tsConsignee'
+           when grouping(exc) = 0 then 'exConsignee'
            when grouping(ckey) = 0 then 'consignee'
            when grouping(notify) = 0 then 'notify'
            when grouping(item) = 0 then 'item'
@@ -431,14 +437,16 @@ begin
                       else place end, ''),
         count(*), sum(c20), sum(c40), sum(c45), sum(teu), sum(cntr),
         sum(pkg), sum(weight), sum(cbm), sum(krw), sum(usd), sum(total),
-        sum(ts), count(*) filter (where bt = 'X'), count(*) filter (where ft = 'P'), count(notify), count(distinct ckey), min(d)::text
+        sum(ts), count(*) filter (where bt = 'X'), count(*) filter (where ft = 'P'), count(notify), count(distinct ckey), min(d)::text,
+        coalesce(sum(teu) filter (where tsc), 0), coalesce(sum(teu) filter (where exc), 0)
       ) as a
     from r
-    group by grouping sets ((m), (voyage), (ckey), (notify), (item), (cargo), (place), (rf), (rfc, ckey))
-    having grouping(rfc) = 1 or rfc   -- 냉동 Consignee 집계는 냉동 B/L 묶음만 남긴다
+    group by grouping sets ((m), (voyage), (ckey), (notify), (item), (cargo), (place), (rf), (rfc, ckey), (tsc, ckey), (exc, ckey))
+    -- 냉동 · 환적 · 특송 Consignee 집계는 해당 B/L 묶음(true)만 남긴다
+    having (grouping(rfc) = 1 or rfc) and (grouping(tsc) = 1 or tsc) and (grouping(exc) = 1 or exc)
   )
   select jsonb_build_object(
-    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date"]'::jsonb,
+    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date","tsTeu","exTeu"]'::jsonb,
     'groups', coalesce((select jsonb_object_agg(dim, rows) from (select dim, jsonb_agg(a) as rows from g group by dim) x), '{}'::jsonb),
     -- Consignee 별 Notify 목록: { 키: [[Notify(''=없음), B/L 수], ...] } (B/L 수 많은 순)
     'notifyOf', coalesce((select jsonb_object_agg(ckey, ns) from (

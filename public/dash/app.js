@@ -15,7 +15,12 @@
   const KRW_CHARGES = ['THC', 'DOC', 'WFG', 'CCF', 'TSF', 'PSC'];
   const USD_CHARGES = ['FRT', 'BAF', 'CAF', 'CRS', 'LSS', 'PSS', 'ESC'];
   const SUM_KEYS = ['bl', 'c20', 'c40', 'c45', 'teu', 'cntr', 'pkg', 'weight', 'cbm', 'krw', 'usd', 'total', 'ts', 'ex', 'prepaid', 'withNotify'];
-  const GROUP_DIMS = ['month', 'voyage', 'consignee', 'notify', 'item', 'cargo', 'place', 'reefer', 'reeferConsignee'];
+  const GROUP_DIMS = ['month', 'voyage', 'consignee', 'notify', 'item', 'cargo', 'place', 'reefer', 'reeferConsignee', 'tsConsignee', 'exConsignee'];
+  // 환적 · 특송 카드: 묶음 안의 해당 TEU(tsTeu · exTeu), 해당 B/L 수(ts · ex), Consignee 집계 축
+  const SUBSETS = {
+    ts: { name: '환적', note: 'T/S', teuKey: 'tsTeu', blKey: 'ts', dim: 'tsConsignee' },
+    ex: { name: '특송', note: 'B/L Type X', teuKey: 'exTeu', blKey: 'ex', dim: 'exConsignee' },
+  };
   const NONE = ''; // 값 없음: (Notify 없음) · (미지정) 등
   const COLORS = {
     navy900: '#13243b', navy700: '#1f3a5f', navy500: '#456789', navy300: '#9fb3c8', navy100: '#e5ecf3',
@@ -589,6 +594,47 @@
       };
     },
 
+    /** 환적 · 특송: 막대 = 해당 TEU, 금색 선(보조축) = 그 월 · 항차 전체 TEU 중 점유율(%, 소수 첫째 자리) */
+    shareTrend(groupRows, mode, kind, opts = {}) {
+      const d = SUBSETS[kind];
+      const groups = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
+      const vals = groups.map((g) => Number(g[d.teuKey]) || 0);
+      if (!vals.some((v) => v > 0)) return emptyChart(opts.empty || `조건에 맞는 ${d.name} B/L 이 없습니다.`);
+      const shares = groups.map((g, i) => (g.teu ? +((vals[i] / g.teu) * 100).toFixed(1) : null));
+      const labels = mode === 'voyage' ? groups.map((g) => g.key) : monthTicks(groups.map((g) => g.key));
+      const show = Math.max(8, Math.floor((opts.width || 500) / 22)); // 항차가 많으면 최근 것부터 보여 주고 스크롤
+      const zoom = !opts.static && groups.length > show;
+      const barName = `${d.name} TEU`, lineName = '점유율 (%)';
+      return {
+        ...baseOption(),
+        animation: !opts.static,
+        grid: { left: 8, right: 8, top: 40, bottom: zoom ? 34 : 4, containLabel: true },
+        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: [barName, lineName] },
+        tooltip: {
+          ...baseOption().tooltip, trigger: 'axis', axisPointer: { type: 'shadow' },
+          formatter: (ps) => {
+            const i = ps[0].dataIndex, g = groups[i];
+            const head = mode === 'voyage' ? `${esc(g.key)} · ${g.date || '-'}` : monthLabel(g.key);
+            return `<b>${head}</b><br>${d.name} ${fmt.int(vals[i])} TEU (B/L ${fmt.int(g[d.blKey])}건)<br>전체 ${fmt.int(g.teu)} TEU` +
+              `<br><span style="color:${COLORS.gold}">점유율 ${shares[i] == null ? '–' : nf1.format(shares[i]) + '%'}</span>`;
+          },
+        },
+        ...(zoom ? { dataZoom: [
+          { type: 'inside', startValue: groups.length - show, endValue: groups.length - 1 },
+          { type: 'slider', height: 16, bottom: 6, startValue: groups.length - show, endValue: groups.length - 1, showDetail: false, borderColor: COLORS.line },
+        ] } : {}),
+        xAxis: { type: 'category', data: labels, ...axisCommon, axisLabel: { ...axisCommon.axisLabel, ...(mode === 'voyage' ? { rotate: 90, fontSize: 10 } : {}) } },
+        yAxis: [
+          { type: 'value', name: 'TEU', ...axisCommon },
+          { type: 'value', name: '점유율', min: 0, ...axisCommon, splitLine: { show: false }, axisLabel: { ...axisCommon.axisLabel, formatter: (v) => `${nf1.format(v)}%` } },
+        ],
+        series: [
+          { type: 'bar', name: barName, data: vals, barMaxWidth: 34, itemStyle: { color: COLORS.navy700, borderRadius: [2, 2, 0, 0] } },
+          { type: 'line', name: lineName, yAxisIndex: 1, data: shares, symbol: 'circle', symbolSize: 6, lineStyle: { color: COLORS.gold, width: 2 }, itemStyle: { color: COLORS.gold }, z: 3 },
+        ],
+      };
+    },
+
     containers(monthGroups, opts = {}) {
       const groups = monthGroups.filter((g) => g.key !== NONE).sort(byKey);
       const s = (name, key, color) => ({ type: 'bar', name, stack: 'c', data: groups.map((g) => g[key]), itemStyle: { color }, barMaxWidth: 40 });
@@ -715,6 +761,7 @@
 
     chart('ch-cntr').setOption(chartOptions.containers(groups.month), true);
     renderReefer(S);
+    renderSubsets(S);
     chart('ch-charge').setOption(chartOptions.charges(t, state.charge), true);
 
     $('place-title').innerHTML = `배정 장소 <small>${m.label} 기준</small>`;
@@ -740,13 +787,14 @@
     });
     return { m, total, reefer, parts, unit: metricKey === 'teu' ? 'TEU' : '건' };
   }
-  /** 냉동 Consignee 상위 n (TEU 기준, 같으면 B/L 많은 순. TEU 0 인 곳도 0 으로 순위에 넣는다) */
-  function reeferTop(S, n = 10) {
-    return [...(S.groups.reeferConsignee || [])]
+  /** 냉동 · 환적 · 특송 Consignee 상위 n (dim = reeferConsignee 등). TEU 기준, 같으면 B/L 많은 순. TEU 0 인 곳도 0 으로 순위에 넣는다 */
+  function subsetTop(S, dim, n = 10) {
+    return [...(S.groups[dim] || [])]
       .sort((a, b) => b.teu - a.teu || b.bl - a.bl)
       .slice(0, n)
       .map((g) => ({ ...g, full: consigneeName(g.key), label: shortName(consigneeName(g.key)) }));
   }
+  const reeferTop = (S, n = 10) => subsetTop(S, 'reeferConsignee', n);
 
   function renderReefer(S) {
     const r = reeferSummary(S, state.rfMetric);
@@ -765,6 +813,21 @@
     cTop.setOption(chartOptions.rankBar(tops, 'teu', { empty: '조건에 맞는 냉동 B/L 이 없습니다.' }), true);
     cTop.off('click');
     cTop.on('click', (p) => { const g = [...tops].reverse()[p.dataIndex]; if (!state.consignee.includes(g.key)) state.consignee.push(g.key); update(); });
+  }
+
+  /** 환적 · 특송 카드: 월(또는 항차)별 TEU 막대 + 점유율 꺾은선, Consignee 상위 10. 월별 · 항차별은 물동량 추이 선택을 따른다. */
+  function renderSubsets(S) {
+    const mode = state.trend;
+    const rows = mode === 'voyage' ? S.groups.voyage : S.groups.month;
+    Object.entries(SUBSETS).forEach(([k, d]) => {
+      $(`${k}-title`).innerHTML = `${d.name} 화물 <small>${d.note} · ${mode === 'voyage' ? '항차별' : '월별'} TEU · 점유율</small>`;
+      chart(`ch-${k}`).setOption(chartOptions.shareTrend(rows, mode, k, { width: $(`ch-${k}`).clientWidth }), true);
+      const tops = subsetTop(S, d.dim);
+      const cTop = chart(`ch-${k}-top`);
+      cTop.setOption(chartOptions.rankBar(tops, 'teu', { empty: `조건에 맞는 ${d.name} B/L 이 없습니다.` }), true);
+      cTop.off('click');
+      cTop.on('click', (p) => { const g = [...tops].reverse()[p.dataIndex]; if (!state.consignee.includes(g.key)) state.consignee.push(g.key); update(); });
+    });
   }
 
   // ── 표 ──────────────────────────────────────
@@ -1088,7 +1151,7 @@
 
     window.Dash = {
       META, MONTHS, YEARS, CARGO, RF, KRW_CHARGES, USD_CHARGES, NONE, METRICS, COLORS, QC,
-      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, chartOptions,
+      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, subsetTop, SUBSETS, chartOptions,
       consigneeName, consigneeCode, notifyName, companyName, placeName, vesselLabel,
       companyList: (basis) => (basis === 'notify'
         ? NOTIFIES.filter(([k]) => k !== NONE).map(([k, n]) => ({ key: k, n, name: k, code: '' }))

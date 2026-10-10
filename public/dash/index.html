@@ -73,6 +73,11 @@
     </section>
 
     <section class="fgroup">
+      <h3>냉동 <small>선어 · 활어 포함 · B/L 번호 E12</small></h3>
+      <div class="seg block small" id="f-rf"></div>
+    </section>
+
+    <section class="fgroup">
       <h3>환적 <small>T/S</small></h3>
       <div class="seg block small" id="f-ts"></div>
     </section>
@@ -80,11 +85,6 @@
     <section class="fgroup">
       <h3>특송 <small>B/L Type X</small></h3>
       <div class="seg block small" id="f-ex"></div>
-    </section>
-
-    <section class="fgroup">
-      <h3>냉동 <small>선어 · 활어 포함 · B/L 번호 E12</small></h3>
-      <div class="seg block small" id="f-rf"></div>
     </section>
 
     <section class="fgroup">
@@ -156,6 +156,26 @@
       <article class="panel">
         <header><h3>냉동 Consignee 상위 10 <small>선어 · 활어 포함 · TEU 기준</small></h3></header>
         <div class="chart" id="ch-reefer-top"></div>
+        <p class="chart-note">막대를 누르면 해당 업체로 조회합니다.</p>
+      </article>
+      <article class="panel">
+        <header><h3 id="ts-title">환적 화물</h3></header>
+        <div class="chart" id="ch-ts"></div>
+        <p class="chart-note">점유율 = 그 월(항차) 전체 TEU 중 환적 TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.</p>
+      </article>
+      <article class="panel">
+        <header><h3>환적 Consignee 상위 10 <small>T/S · TEU 기준</small></h3></header>
+        <div class="chart" id="ch-ts-top"></div>
+        <p class="chart-note">막대를 누르면 해당 업체로 조회합니다.</p>
+      </article>
+      <article class="panel">
+        <header><h3 id="ex-title">특송 화물</h3></header>
+        <div class="chart" id="ch-ex"></div>
+        <p class="chart-note">점유율 = 그 월(항차) 전체 TEU 중 특송 TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.</p>
+      </article>
+      <article class="panel">
+        <header><h3>특송 Consignee 상위 10 <small>B/L Type X · TEU 기준</small></h3></header>
+        <div class="chart" id="ch-ex-top"></div>
         <p class="chart-note">막대를 누르면 해당 업체로 조회합니다.</p>
       </article>
       <article class="panel">
