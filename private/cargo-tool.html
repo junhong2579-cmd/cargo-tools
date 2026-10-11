@@ -5076,7 +5076,7 @@
             <div class="fc-drop-zone" id="fcPastDropZone" onclick="document.getElementById('fcPastFileInput').click()" ondragover="handleFcPastDragOver(event)" ondragleave="handleFcPastDragLeave(event)" ondrop="handleFcPastDrop(event)">
               <input type="file" id="fcPastFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleFcPastFileSelect(event)" />
               <div class="fc-drop-icon">☁️</div>
-              <div class="fc-drop-text" id="fcPastDropText">Supabase 클라우드 실시간 연동 (검증 시 자동 조회)</div>
+              <div class="fc-drop-text" id="fcPastDropText">Supabase 클라우드 실시간 연동 (4/1 이후 입항분과 비교)</div>
               <div class="fc-drop-subtext" id="fcPastDropSubtext">다른 이전항차 엑셀로 비교하려면 여기를 클릭하거나 드래그하세요</div>
             </div>
 
@@ -11067,6 +11067,15 @@
   let g_fcPastData = null;         // 비교 대상 과거 운임 데이터
   let g_fcPastFileName = '';       // 과거 데이터 파일명
   let g_fcUsingCloudPast = true;   // 클라우드 데이터 사용 여부
+  let g_fcOldOnlyConsignees = new Set(); // 기준일 이전 기록만 있는 화주 (클라우드 비교 시)
+
+  // 클라우드 비교 기준일: 이 날짜(I/O Date) 이전 입항분은 운임 체크 비교 기준에서 제외
+  // (3/16 ESC 신설 이전 운임 · 1/1 작년 운임 적용 건이 잘못된 기준이 되지 않도록). 운임이 바뀌면 여기만 고칩니다.
+  const FC_BASELINE_FROM = { year: 2026, month: 4, day: 1 };
+  const FC_BASELINE_LABEL = `${FC_BASELINE_FROM.month}/${FC_BASELINE_FROM.day}`;
+  const FC_BASELINE_TS = new Date(FC_BASELINE_FROM.year, FC_BASELINE_FROM.month - 1, FC_BASELINE_FROM.day).getTime();
+  const FC_MSG_NEW_COMPANY = '과거 데이터 없음 (신규 업체)';
+  const FC_MSG_OLD_ONLY = `기준일(${FC_BASELINE_LABEL}) 이후 기록 없음 (이전 기록만 있음)`;
 
   let g_fcInternalErrors = [];     // 자체 기준 오류 결과
   let g_fcDiscrepancies = [];      // 과거 데이터 불일치 결과
@@ -11453,7 +11462,7 @@
     if (dropZone) dropZone.classList.remove('has-file');
     if (resetBtn) resetBtn.style.display = 'none';
     if (sourceText) sourceText.textContent = '클라우드 실시간 연동';
-    if (dropText) dropText.textContent = 'Supabase 클라우드 실시간 연동 (검증 시 자동 조회)';
+    if (dropText) dropText.textContent = `Supabase 클라우드 실시간 연동 (${FC_BASELINE_LABEL} 이후 입항분과 비교)`;
     if (dropSubtext) dropSubtext.textContent = '다른 이전항차 엑셀로 비교하려면 여기를 클릭하거나 드래그하세요';
 
     updateFreightCheckBtnState();
@@ -11916,9 +11925,11 @@
   // ==========================================================================
   //  5. 과거 데이터 비교 로직 (파이썬 compare_history 이식)
   // ==========================================================================
-  function fcCompareHistory(df, pastDf) {
+  function fcCompareHistory(df, pastDf, oldOnlyConsignees) {
     const discrepancies = [];
-    if (!pastDf || pastDf.length === 0) return discrepancies;
+    if (!pastDf) pastDf = [];
+    if (!oldOnlyConsignees) oldOnlyConsignees = new Set();
+    if (pastDf.length === 0 && oldOnlyConsignees.size === 0) return discrepancies;
 
     const stringCols = ['Cargo', 'B/T (B/L Type)', 'T/S', 'Consignee', 'Consignee Code', 'Notify', 'Actual Shipper', 'A/Shipper Code'];
     const containerCols = ["20'", "40'", "45'"];
@@ -12018,7 +12029,8 @@
       const pastRows = pastDf.filter(pRow => fcNormalizeVal(pRow['Consignee']) === consignee);
 
       if (pastRows.length === 0) {
-        // 신규 업체 건
+        // 신규 업체 건 (또는 기준일 이전 기록만 있는 업체)
+        const noBaselineMsg = oldOnlyConsignees.has(consignee) ? FC_MSG_OLD_ONLY : FC_MSG_NEW_COMPANY;
         const currentOrderedData = {};
         stringCols.forEach(col => {
           let cVal = fcNormalizeVal(row[col]);
@@ -12043,7 +12055,7 @@
         });
 
         const record = {
-          '불일치 내용': '과거 데이터 없음 (신규 업체)',
+          '불일치 내용': noBaselineMsg,
           'B/L NO': blNo,
           ...currentOrderedData
         };
@@ -12051,7 +12063,8 @@
         discrepancies.push({
           data: record,
           mismatchedCols: ['Consignee'],
-          diffDetails: { 'Consignee': '과거 데이터 없음 (신규 업체)' }
+          diffDetails: { 'Consignee': noBaselineMsg },
+          noBaseline: true
         });
         return;
       }
@@ -12288,16 +12301,32 @@
 
         if (targetConsignees.length > 0) {
           // 2. Supabase RPC로 해당 화주들의 모든 과거 기록 핀포인트 쿼리 (로컬 다운로드 0MB)
-          const pastData = await fetchTargetPastDataFromSupabase(targetConsignees);
+          const pastAll = await fetchTargetPastDataFromSupabase(targetConsignees);
+
+          // 3. 기준일 이전 입항분은 비교 기준에서 제외 (날짜를 읽을 수 없는 행은 그대로 둠)
+          const pastData = [];
+          const oldConsignees = new Set();
+          pastAll.forEach(r => {
+            const ts = parseFreightIoDate(r['I/O Date']);
+            if (ts > 0 && ts < FC_BASELINE_TS) oldConsignees.add(fcNormalizeVal(r['Consignee']));
+            else pastData.push(r);
+          });
+          const baselineConsignees = new Set(pastData.map(r => fcNormalizeVal(r['Consignee'])));
+          g_fcOldOnlyConsignees = new Set([...oldConsignees].filter(c => !baselineConsignees.has(c)));
           g_fcPastData = pastData;
 
           const statsSpan = document.getElementById('fcPastFileStats');
           if (statsSpan) {
-            statsSpan.textContent = `${pastData.length.toLocaleString()}건 (타겟 화주 ${targetConsignees.length}개사 연동)`;
+            const excluded = pastAll.length - pastData.length;
+            statsSpan.textContent = `${pastData.length.toLocaleString()}건 (타겟 화주 ${targetConsignees.length}개사 연동`
+              + (excluded > 0 ? `, ${FC_BASELINE_LABEL} 이전 ${excluded.toLocaleString()}건 제외)` : ')');
           }
         } else {
           g_fcPastData = [];
+          g_fcOldOnlyConsignees = new Set();
         }
+      } else {
+        g_fcOldOnlyConsignees = new Set(); // 수동으로 고른 엑셀은 날짜로 거르지 않음
       }
 
       await new Promise(resolve => setTimeout(resolve, 30));
@@ -12305,8 +12334,8 @@
       g_fcInternalErrors = fcCheckErrors(g_fcTargetData);
 
       g_fcDiscrepancies = [];
-      if (g_fcPastData && g_fcPastData.length > 0) {
-        g_fcDiscrepancies = fcCompareHistory(g_fcTargetData, g_fcPastData);
+      if ((g_fcPastData && g_fcPastData.length > 0) || g_fcOldOnlyConsignees.size > 0) {
+        g_fcDiscrepancies = fcCompareHistory(g_fcTargetData, g_fcPastData, g_fcOldOnlyConsignees);
       }
 
       const extracts = fcExtractTsAndThc(g_fcTargetData);
@@ -12343,7 +12372,8 @@
           statusText = '자체 오류';
           statusClass = 'fc-badge-danger';
         } else if (hasHistDisc) {
-          statusText = histDisc.data['불일치 내용'] === '과거 데이터 없음 (신규 업체)' ? '신규 업체' : '과거 불일치';
+          if (!histDisc.noBaseline) statusText = '과거 불일치';
+          else statusText = histDisc.data['불일치 내용'] === FC_MSG_OLD_ONLY ? '기준 기록 없음' : '신규 업체';
           statusClass = 'fc-badge-warning';
         }
 
@@ -12548,7 +12578,7 @@
           return `<td ${titleTip} style="${styleAlign}" class="${diffClass}">${displayVal}</td>`;
         };
 
-        const isNewCompany = data['불일치 내용'].includes('신규 업체');
+        const isNewCompany = !!disc.noBaseline;
 
         html += `
           <tr>
