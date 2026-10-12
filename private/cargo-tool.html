@@ -1387,41 +1387,127 @@
       border-color: #888;
     }
 
-    /* 기본 운임표 다크모드 스타일 */
-    .dark-mode #basicFreightResultTable,
-    .dark-mode #glovisFreightTable,
-    .dark-mode #blFreightResultTable {
-      background-color: #1e1e1e !important;
-      color: #e0e0e0 !important;
-      border-color: #444 !important;
-      box-shadow: 0 1px 3px rgba(255, 255, 255, 0.05) !important;
+    /* 기본 운임표 · B/L 총 운임 · 계약 기업 운임표 공통 스타일 (차분한 회청색 톤) */
+    .freight-table {
+      --ft-bg: #ffffff;
+      --ft-head-bg: #3a4555;
+      --ft-head-text: #f5f7fa;
+      --ft-line: #e3e7ec;
+      --ft-outer: #c9d0d9;
+      --ft-text: #1f2733;
+      --ft-label: #1f2733;
+      --ft-label-bg: #f3f5f8;
+      --ft-muted: #9aa3af;
+      --ft-hover: #eef3f9;
+      --ft-stripe: #fafbfc;
+      --ft-head-line: #4a5668;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+      text-align: right;
+      color: var(--ft-text);
+      background-color: var(--ft-bg);
+      border: 1px solid var(--ft-outer);
+      border-radius: 10px;
+      overflow: hidden;
+      font-variant-numeric: tabular-nums;
     }
 
-    .dark-mode #basicFreightResultTable tr,
-    .dark-mode #glovisFreightTable tr,
-    .dark-mode #blFreightResultTable tr {
-      background-color: #1e1e1e !important;
+    .freight-table th {
+      background-color: var(--ft-head-bg);
+      color: var(--ft-head-text);
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--ft-outer);
+      border-right: 1px solid var(--ft-head-line);
+      white-space: nowrap;
     }
 
-    .dark-mode #basicFreightResultTable th,
-    .dark-mode #glovisFreightTable th,
-    .dark-mode #blFreightResultTable th {
-      background-color: #1a365d !important;
-      border-color: #2b4c7e !important;
-      color: #ffffff !important;
+    .freight-table th:last-child {
+      border-right: none;
     }
 
-    .dark-mode #basicFreightResultTable td,
-    .dark-mode #glovisFreightTable td,
-    .dark-mode #blFreightResultTable td {
-      border-color: #444 !important;
+    .freight-table td {
+      padding: 10px 14px;
+      font-weight: 500;
+      border-bottom: 1px solid var(--ft-line);
     }
 
-    .dark-mode #basicFreightResultTable td:first-child,
-    .dark-mode #glovisFreightTable td:first-child,
-    .dark-mode #blFreightResultTable td:first-child {
-      background-color: #2a2a2a !important;
-      color: #e0e0e0 !important;
+    .freight-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .freight-table tbody tr:nth-child(even) td {
+      background-color: var(--ft-stripe);
+    }
+
+    .freight-table tbody tr:hover td {
+      background-color: var(--ft-hover);
+    }
+
+    /* 줄무늬 · hover 보다 우선하도록 선택자를 맞춤 */
+    .freight-table tbody tr td.ft-label {
+      text-align: left;
+      font-weight: 700;
+      color: var(--ft-label);
+      background-color: var(--ft-label-bg);
+      border-right: 1px solid var(--ft-line);
+      white-space: nowrap;
+    }
+
+    .freight-table td.ft-center {
+      text-align: center;
+    }
+
+    .freight-table td.ft-total {
+      font-weight: 700;
+    }
+
+    .freight-table td.ft-empty {
+      color: var(--ft-muted);
+    }
+
+    /* 할인 운임 행: 기본 숨김, "할인 운임 표시"를 켜면 보임 */
+    #basicFreightCard:not(.show-discount) .ft-discount {
+      display: none;
+    }
+
+    .ft-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      font-size: 13px;
+      color: #6b7280;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .ft-toggle input {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .dark-mode .freight-table {
+      --ft-bg: #1e1f22;
+      --ft-head-bg: #39424f;
+      --ft-head-text: #f5f7fa;
+      --ft-line: #30343a;
+      --ft-outer: #3d434b;
+      --ft-text: #e4e7eb;
+      --ft-label: #e4e7eb;
+      --ft-label-bg: #25282d;
+      --ft-muted: #6b7380;
+      --ft-hover: #2a2e35;
+      --ft-stripe: #222428;
+      --ft-head-line: #4a5462;
+    }
+
+    .dark-mode .ft-toggle {
+      color: #9aa3ae;
     }
 
     .dark-mode .rate-unit-text {
@@ -4187,7 +4273,7 @@
 
     <div id="tab-content-freight" class="tab-content">
       <!-- 📊 기본 운임표 카드 -->
-      <div class="card" style="max-width: 660px; margin-bottom: 20px;">
+      <div class="card" id="basicFreightCard" style="max-width: 660px; margin-bottom: 20px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
           <h2 style="margin: 0;">📊 기본 운임표</h2>
           <button id="toggleContractFreightBtn" class="icon-btn" title="연간 계약 기업 특별 운임표 토글"
@@ -4209,23 +4295,25 @@
           <input type="number" id="basicFreightExchangeRate" placeholder="환율 입력 (예: 1480.5)" step="0.1"
             onwheel="this.blur();" style="width: 180px; padding: 8px 12px; font-size: 15px;" />
           <span style="font-size: 14px; color: #666;" class="rate-unit-text">원 / $</span>
+          <label class="ft-toggle" title="할인7 · 할인9 행 표시 (45피트 THC 할인)">
+            <input type="checkbox" id="showDiscountFreightRows" /> 할인 운임 표시
+          </label>
         </div>
 
         <div style="overflow-x: auto;">
-          <table id="basicFreightResultTable"
-            style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+          <table id="basicFreightResultTable" class="freight-table">
             <thead>
-              <tr style="background-color: #2b579a; color: #ffffff;">
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">기본</th>
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20피트
+              <tr>
+                <th>기본</th>
+                <th>20피트
                 </th>
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40피트
+                <th>40피트
                 </th>
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">45피트
+                <th>45피트
                 </th>
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">20냉동
+                <th>20냉동
                 </th>
-                <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">40냉동
+                <th>40냉동
                 </th>
               </tr>
             </thead>
@@ -4284,15 +4372,14 @@
 
           <!-- B/L 계산 결과 표 -->
           <div style="overflow-x: auto;">
-            <table id="blFreightResultTable"
-              style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <table id="blFreightResultTable" class="freight-table">
               <thead>
-                <tr style="background-color: #2b579a; color: #ffffff;">
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">구분
+                <tr>
+                  <th>구분
                   </th>
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">총
+                  <th>총
                     컨테이너 수량</th>
-                  <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                  <th>
                     Collect TTL</th>
                 </tr>
               </thead>
@@ -4310,25 +4397,24 @@
           <!-- 현대글로비스 -->
           <div style="margin-bottom: 10px;">
             <div style="overflow-x: auto;">
-              <table id="glovisFreightTable"
-                style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: right; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+              <table id="glovisFreightTable" class="freight-table">
                 <thead>
-                  <tr style="background-color: #2b579a; color: #ffffff;">
-                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                  <tr>
+                    <th>
                       현대글로비스</th>
-                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                    <th>
                       20피트
                     </th>
-                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                    <th>
                       40피트
                     </th>
-                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                    <th>
                       45피트
                     </th>
-                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                    <th>
                       20냉동
                     </th>
-                    <th style="border: 1px solid #2b579a; padding: 10px 14px; text-align: center; font-weight: 600;">
+                    <th>
                       40냉동
                     </th>
                   </tr>
@@ -6179,22 +6265,15 @@
 
     rowConfigs.forEach(rowInfo => {
       const tr = document.createElement("tr");
-      tr.style.borderBottom = "1px solid #ddd";
+      if (rowInfo.discount) tr.className = "ft-discount";
 
       const tdLabel = document.createElement("td");
-      tdLabel.style.border = "1px solid #ddd";
-      tdLabel.style.padding = "10px 14px";
-      tdLabel.style.textAlign = "left";
-      tdLabel.style.fontWeight = "bold";
-      tdLabel.style.backgroundColor = "#f8f9fa";
+      tdLabel.className = "ft-label";
       tdLabel.textContent = rowInfo.label;
       tr.appendChild(tdLabel);
 
       sizes.forEach((size, idx) => {
         const td = document.createElement("td");
-        td.style.border = "1px solid #ddd";
-        td.style.padding = "10px 14px";
-        td.style.textAlign = "right";
 
         // THC 할인 행의 경우 45피트(idx === 2)만 계산하고 나머지는 빈칸 표시
         if (rowInfo.discount && idx !== 2) {
@@ -6204,6 +6283,7 @@
         }
 
         if (!isRateValid) {
+          td.className = "ft-empty";
           td.textContent = "-";
           tr.appendChild(td);
           return;
@@ -6269,29 +6349,20 @@
 
     rowConfigs.forEach(rowInfo => {
       const tr = document.createElement("tr");
-      tr.style.borderBottom = "1px solid #ddd";
+      if (rowInfo.discount) tr.className = "ft-discount";
 
       const tdLabel = document.createElement("td");
-      tdLabel.style.border = "1px solid #ddd";
-      tdLabel.style.padding = "10px 14px";
-      tdLabel.style.textAlign = "left";
-      tdLabel.style.fontWeight = "bold";
-      tdLabel.style.backgroundColor = "#f8f9fa";
+      tdLabel.className = "ft-label";
       tdLabel.textContent = rowInfo.label;
       tr.appendChild(tdLabel);
 
       const tdQty = document.createElement("td");
-      tdQty.style.border = "1px solid #ddd";
-      tdQty.style.padding = "10px 14px";
-      tdQty.style.textAlign = "center";
+      tdQty.className = "ft-center";
       tdQty.textContent = totalQty > 0 ? `${totalQty}대` : "-";
       tr.appendChild(tdQty);
 
       const tdTotal = document.createElement("td");
-      tdTotal.style.border = "1px solid #ddd";
-      tdTotal.style.padding = "10px 14px";
-      tdTotal.style.textAlign = "right";
-      tdTotal.style.fontWeight = "bold";
+      tdTotal.className = "ft-total";
 
       if (!isRateValid || totalQty === 0) {
         tdTotal.textContent = totalQty === 0 ? "0원" : "-";
@@ -6357,22 +6428,15 @@
 
     rowConfigs.forEach(rowInfo => {
       const tr = document.createElement("tr");
-      tr.style.borderBottom = "1px solid #ddd";
+      if (rowInfo.discount) tr.className = "ft-discount";
 
       const tdLabel = document.createElement("td");
-      tdLabel.style.border = "1px solid #ddd";
-      tdLabel.style.padding = "10px 14px";
-      tdLabel.style.textAlign = "left";
-      tdLabel.style.fontWeight = "bold";
-      tdLabel.style.backgroundColor = "#f8f9fa";
+      tdLabel.className = "ft-label";
       tdLabel.textContent = rowInfo.label;
       tr.appendChild(tdLabel);
 
       sizes.forEach((size, idx) => {
         const td = document.createElement("td");
-        td.style.border = "1px solid #ddd";
-        td.style.padding = "10px 14px";
-        td.style.textAlign = "right";
 
         // 현대글로비스는 20피트(0), 40피트(1)만 진행
         if (idx !== 0 && idx !== 1) {
@@ -6382,6 +6446,7 @@
         }
 
         if (!isRateValid) {
+          td.className = "ft-empty";
           td.textContent = "-";
           tr.appendChild(td);
           return;
@@ -6430,6 +6495,18 @@
           if (el) el.value = "0";
         });
         calculateAndRenderBasicFreightTable();
+      });
+    }
+
+    // 할인 운임(할인7 · 할인9) 행 표시 토글: 기본 숨김, 마지막 선택을 기억
+    const discountToggle = document.getElementById("showDiscountFreightRows");
+    const freightCard = document.getElementById("basicFreightCard");
+    if (discountToggle && freightCard) {
+      try { discountToggle.checked = localStorage.getItem("showDiscountFreightRows") === "1"; } catch (e) { }
+      freightCard.classList.toggle("show-discount", discountToggle.checked);
+      discountToggle.addEventListener("change", function () {
+        freightCard.classList.toggle("show-discount", this.checked);
+        try { localStorage.setItem("showDiscountFreightRows", this.checked ? "1" : "0"); } catch (e) { }
       });
     }
 
