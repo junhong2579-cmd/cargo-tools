@@ -644,6 +644,17 @@
       max-width: 60px;
     }
 
+    /* 카드 제목 옆 숫자 입력창(TEU, 중량 등) 위아래 증감(스피너) 버튼 제거 */
+    .header-group input[type="number"]::-webkit-outer-spin-button,
+    .header-group input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .header-group input[type="number"] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
     /* ⭐ 요청에 따라 BUTTON 기본 배경색 수정: #a6a6a629 ⭐ */
     button {
       background-color: #a6a6a629;
@@ -3996,6 +4007,8 @@
           <h3>🛳️ 전체 공지</h3>
           <input type="text" id="noticeVoyageInput" placeholder="항차" onfocus="this.select()" autocomplete="off" />
           <input type="number" id="noticeTeuInput" placeholder="TEU" onfocus="this.select()" autocomplete="off" />
+          <input type="number" id="noticeTotalKgInput" placeholder="GW" title="총 중량 (Gross Weight, KG)" onfocus="this.select()" autocomplete="off" />
+          <input type="number" id="noticeTsKgInput" placeholder="T/S" title="환적 중량 (T/S Weight, KG)" onfocus="this.select()" autocomplete="off" />
         </div>
         <div id="extendedSentenceArea1"></div>
       </div>
@@ -6134,6 +6147,14 @@
     }
   };
 
+  // 달러 × 환율 → 원화(소수점 버림). 화물시스템 · 엑셀 ROUNDDOWN 과 같은 값이 나오도록 정수로 계산합니다.
+  // 1351.1 같은 소수를 그대로 곱하면 256708.99999… 처럼 오차가 생겨 1원이 빠질 수 있습니다.
+  // 센트(달러×100) × 환율×100 = 원×10000 → 10000 미만 나머지를 버립니다. 환율은 소수 둘째 자리까지입니다.
+  function usdToKrwFloor(usdAmount, rate) {
+    const p = Math.round(usdAmount * 100) * Math.round(rate * 100);
+    return (p - (p % 10000)) / 10000;
+  }
+
   function calculateAndRenderBasicFreightTable() {
     const exchangeRateInput = document.getElementById("basicFreightExchangeRate");
     const tbody = document.getElementById("basicFreightResultBody");
@@ -6188,14 +6209,14 @@
           return;
         }
 
-        // USD 항목별 환율 곱산 후 각각 소수점 절삭(ROUNDDOWN/Math.floor)하여 합산
+        // USD 항목별 환율 곱산 후 각각 소수점 절삭(ROUNDDOWN, usdToKrwFloor)하여 합산
         let usdKrwSum = 0;
         if (rowInfo.type === "base7") {
-          usdKrwSum = Math.floor(usd.CRS[idx] * rate);
+          usdKrwSum = usdToKrwFloor(usd.CRS[idx], rate);
         } else if (rowInfo.type === "base9") {
-          usdKrwSum = Math.floor(usd.CRS[idx] * rate) +
-            Math.floor(usd.CAF[idx] * rate) +
-            Math.floor(usd.BAF[idx] * rate);
+          usdKrwSum = usdToKrwFloor(usd.CRS[idx], rate) +
+            usdToKrwFloor(usd.CAF[idx], rate) +
+            usdToKrwFloor(usd.BAF[idx], rate);
         }
 
         // KRW 항목 합산
@@ -6287,11 +6308,11 @@
         // USD 계산 (대당)
         let usdKrwPerUnit = 0;
         if (rowInfo.type === "base7") {
-          usdKrwPerUnit = Math.floor(usd.CRS[idx] * rate);
+          usdKrwPerUnit = usdToKrwFloor(usd.CRS[idx], rate);
         } else if (rowInfo.type === "base9") {
-          usdKrwPerUnit = Math.floor(usd.CRS[idx] * rate) +
-            Math.floor(usd.CAF[idx] * rate) +
-            Math.floor(usd.BAF[idx] * rate);
+          usdKrwPerUnit = usdToKrwFloor(usd.CRS[idx], rate) +
+            usdToKrwFloor(usd.CAF[idx], rate) +
+            usdToKrwFloor(usd.BAF[idx], rate);
         }
 
         // KRW 계산 (대당, DOC 제외)
@@ -6371,7 +6392,7 @@
 
         let usdKrwSum = 0;
         if (rowInfo.type === "base7") {
-          usdKrwSum = Math.floor(glovisFrt[idx] * rate);
+          usdKrwSum = usdToKrwFloor(glovisFrt[idx], rate);
         }
 
         const total = usdKrwSum + krwSum;
@@ -7305,7 +7326,7 @@
   ];
   const extendedTemplates1 = [
     (v, b, t, mrn) => `명일 인바운드 ${t} TEU 예정입니다.`,
-    (v, b, t, mrn) => `${v}E<br>${t} TEU 26SDPF${mrn}I<br>1,*** TON (환적 *** TON)`,
+    (v, b, t, mrn, kg) => `${v}E<br>${t} TEU 26SDPF${mrn}I<br>${kg.total} TON (환적 ${kg.ts} TON)`,
   ];
 
 
@@ -7347,6 +7368,13 @@
     const bl = document.getElementById("blInput").value.trim() || "___";
     const teu = document.getElementById("teuInput").value.trim() || "___";
     const mrn = isNaN(Number(voyage)) ? "___" : String(Number(voyage) - 53);
+    // 전체 공지 중량: KG 로 입력 → 톤(천 단위 반올림), 쉼표 표시
+    const kgToTon = id => {
+      const raw = (document.getElementById(id)?.value || "").trim();
+      const n = Number(raw);
+      return raw === "" || isNaN(n) ? "___" : Math.round(n / 1000).toLocaleString("ko-KR");
+    };
+    const kg = { total: kgToTon("noticeTotalKgInput"), ts: kgToTon("noticeTsKgInput") };
 
     const areas = [
       { id: "sentenceArea", tpls: templates },
@@ -7367,8 +7395,8 @@
         btn.textContent = "📋 복사";
         btn.style.borderRadius = '8px'; // 버튼에 radius 다시 추가
         const p = document.createElement("p");
-        if (area.html) p.innerHTML = tpl(voyage, bl, teu, mrn);
-        else p.textContent = tpl(voyage, bl, teu, mrn);
+        if (area.html) p.innerHTML = tpl(voyage, bl, teu, mrn, kg);
+        else p.textContent = tpl(voyage, bl, teu, mrn, kg);
 
         btn.onclick = () => {
           let text = area.html ? p.innerText : p.textContent;
@@ -7511,7 +7539,9 @@
     const syncGroups = {
       voyage: ['voyage', 'nameInputNew', 'glovisVoyageInput', 'noticeVoyageInput', 'noticeGuideVoyageInput', 'invoiceVoyageInput'],
       bl: ['blInput', 'blInputNew', 'invoiceBlInput'],
-      teu: ['teuInput', 'noticeTeuInput']
+      teu: ['teuInput', 'noticeTeuInput'],
+      totalKg: ['noticeTotalKgInput'],
+      tsKg: ['noticeTsKgInput']
     };
 
     // 각 그룹에 대해 이벤트 리스너 등록
