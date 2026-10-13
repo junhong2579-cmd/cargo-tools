@@ -43,7 +43,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **`main` = 운영(푸시하면 Vercel 이 바로 배포합니다).** 기능 · 디자인 작업은 `dev` 같은 브랜치에서 하고, Vercel 미리보기 주소에서 확인한 뒤 main 에 합칩니다.
 - 올리는 방법은 git 하나로 통일합니다(GitHub 웹 업로드와 섞으면 로컬과 GitHub 이 어긋납니다). 커밋 · 푸시는 사용자가 요청할 때만 합니다.
 - 큰 작업이 끝나면 이름표(태그)를 답니다: `git tag -a dashboard-v2 -m "..." && git push origin dashboard-v2`.
-  - 현재 이름표: `before-dashboard`(대시보드 이전), `dashboard-v1`(대시보드 첫 버전), `dashboard-v2`(B/L 타입 · 특송 조건, KPI 개편, 추이 차트 · 표), `dashboard-v3`(조회 조건 스크롤 분리), `dashboard-v4`(Notify · 누적 비중 열, 냉동 · 환적 · 특송 카드, 인보이스 차액 메일 양식), `dashboard-v5`(냉동 · 환적 · 특송 막대 · 도넛 · 표 전환, 상위 10 표, 보고서 구성 · B/L 상세 목록), `dashboard-v5.1`(보고서 차트 쪽 잘림 수정), `freight-check-v1`(운임 체크 4/1 이전 입항분 비교 제외), `freight-table-v1`(기본 운임표 1원 오차 수정 · 할인 행 숨김 · 디자인, 전체 공지 중량).
+  - 현재 이름표: `before-dashboard`(대시보드 이전), `dashboard-v1`(대시보드 첫 버전), `dashboard-v2`(B/L 타입 · 특송 조건, KPI 개편, 추이 차트 · 표), `dashboard-v3`(조회 조건 스크롤 분리), `dashboard-v4`(Notify · 누적 비중 열, 냉동 · 환적 · 특송 카드, 인보이스 차액 메일 양식), `dashboard-v5`(냉동 · 환적 · 특송 막대 · 도넛 · 표 전환, 상위 10 표, 보고서 구성 · B/L 상세 목록), `dashboard-v5.1`(보고서 차트 쪽 잘림 수정), `freight-check-v1`(운임 체크 4/1 이전 입항분 비교 제외), `freight-table-v1`(기본 운임표 1원 오차 수정 · 할인 행 숨김 · 디자인, 전체 공지 중량), `teu-empty-v1`(B/L Type E TEU 0), `before-stats`(시험 탭 직전), `stats-test-v1`([시험] 보기 전환 · 고객 변화 · Shipper 연결).
+- **[시험] 고객 변화 · Shipper 연결 탭**: `supabase/stats_customers.sql` · `stats_shippers.sql`(새 함수만), 되돌리기 `stats_rollback.sql`. 코드에는 `[실험]` 표시. 기존 `dashboard.sql` 함수는 바꾸지 않습니다.
 - **되돌리기**
   - 화면만: Vercel → Deployments → 이전 배포 → Promote to Production.
   - 코드: 해당 이름표 기준으로 되돌린 커밋을 만들어 푸시합니다.
