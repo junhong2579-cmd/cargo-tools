@@ -359,3 +359,38 @@ main.is-loading .kpis, main.is-loading #charts, main.is-loading .table-wrap { op
 .notice.error { background: #fbeeed; border-color: #e8c4c1; color: var(--down); }
 .presets .presets-label { width: 100%; font-size: 11px; color: var(--faint); margin-top: 2px; }
 @media print { .loadbar, .notice { display: none !important; } }
+
+/* ── [실험] 보기 전환 · 고객 변화 보기 ──────── */
+.view-switch { display: flex; gap: 0; box-shadow: inset 0 -1px 0 var(--line-strong); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; margin-bottom: -4px; }
+.view-switch::-webkit-scrollbar { display: none; }
+.view-switch button { border: 0; background: none; padding: 8px 16px 10px; font-size: 14px; color: var(--muted); border-bottom: 3px solid transparent; white-space: nowrap; }
+.view-switch button:hover { color: var(--ink); }
+.view-switch button[aria-selected="true"] { color: var(--navy-900); font-weight: 700; border-bottom-color: var(--navy-700); }
+.view-switch .exp { font-size: 10.5px; font-weight: 500; color: var(--gold); margin-left: 4px; }
+.view-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.view-body[hidden] { display: none; }
+.kpi[data-st] { cursor: pointer; text-align: left; font: inherit; }
+.kpi[data-st]:hover { border-color: var(--navy-300); }
+.kpi[data-st][aria-pressed="true"] { border-color: var(--navy-700); box-shadow: inset 0 0 0 1px var(--navy-700); }
+.kpi .k-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.st-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid transparent; }
+.st-new { background: #f6efdc; color: #7a5f1c; }
+.st-back { background: #e6edf5; color: #34567e; }
+.st-keep { background: var(--navy-100); color: var(--navy-800); }
+.st-warn { background: #fbf3e2; color: #8a6413; border-color: #ecd9ad; }
+.st-lost { background: #fbeeed; color: var(--down); border-color: #e8c4c1; }
+.st-gone { background: #f1f2f4; color: var(--faint); }
+.cust-table { max-height: 560px; overflow: auto; }
+.cust-table tbody tr { cursor: pointer; }
+.cust-table td.up, .top-table td.up { color: var(--up); }
+.cust-table td.down, .top-table td.down { color: var(--down); }
+#cust-st { flex: 1 1 100%; }
+main.is-loading #view-customers { opacity: .55; transition: opacity .15s; }
+@media (max-width: 600px) {
+  .view-switch button { padding: 8px 12px 10px; font-size: 13px; }
+  .cust-table { max-height: 70vh; }
+  .cust-table table.data th, .cust-table table.data td { padding: 6px 8px; font-size: 12px; }
+}
+.chart.sankey { height: 520px; }
+#ship-st { flex: 1 1 100%; }
+main.is-loading #view-shippers { opacity: .55; transition: opacity .15s; }

@@ -69,5 +69,7 @@
     summary: (f) => rpc('dash_summary', { f }),
     totals: (f) => rpc('dash_totals', { f }),
     detail: (f, opt) => rpc('dash_detail', { f, opt }),
+    customers: (f, opt) => rpc('dash_customers', { f, opt }), // [실험] supabase/stats_customers.sql
+    shippers: (f, opt) => rpc('dash_shippers', { f, opt }),   // [실험] supabase/stats_shippers.sql
   };
 })();

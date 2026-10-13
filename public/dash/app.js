@@ -118,6 +118,7 @@
     from: '', to: '', consignee: [], notify: [], companyMode: 'and',
     items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all', rf: 'all',
     groupBy: 'consignee', metric: 'teu', trend: 'month', charge: 'krw', rfView: 'bar', tsView: 'bar', exView: 'bar', tab: 'company',
+    view: 'volume', // 보기 전환: volume(물동량) | customers(고객 변화, 실험)
   };
   const state = loadHash();
   const view = { search: '', page: 1, sort: {}, qc: null };
@@ -162,11 +163,11 @@
   }
   // 같은 조건을 다시 고르면(필터 해제 · 보고서) 서버에 다시 묻지 않는다.
   const cache = new Map();
-  function cached(kind, f) {
-    const key = kind + JSON.stringify(f);
+  function cached(kind, f, opt) {
+    const key = kind + JSON.stringify(f) + (opt ? JSON.stringify(opt) : '');
     if (!cache.has(key)) {
       if (cache.size >= 40) cache.delete(cache.keys().next().value);
-      const p = api[kind](f).then((r) => (kind === 'summary' ? expandSummary(r) : r));
+      const p = api[kind](f, opt).then((r) => (kind === 'summary' ? expandSummary(r) : r));
       p.catch(() => cache.delete(key));
       cache.set(key, p);
     }
@@ -332,7 +333,7 @@
     });
 
     $('btn-reset').addEventListener('click', () => {
-      Object.assign(state, structuredClone(DEFAULT_STATE), { groupBy: state.groupBy, metric: state.metric, trend: state.trend, charge: state.charge, rfView: state.rfView, tsView: state.tsView, exView: state.exView, tab: state.tab });
+      Object.assign(state, structuredClone(DEFAULT_STATE), { groupBy: state.groupBy, metric: state.metric, trend: state.trend, charge: state.charge, rfView: state.rfView, tsView: state.tsView, exView: state.exView, tab: state.tab, view: state.view });
       view.qc = null; view.page = 1; update();
     });
 
@@ -683,6 +684,44 @@
           type: 'bar', data: vals.map((x) => x.v).reverse(), barMaxWidth: 16, itemStyle: { color: cur === 'usd' ? COLORS.gold : COLORS.navy700, borderRadius: [0, 2, 2, 0] },
           label: { show: true, position: 'right', color: COLORS.muted, fontSize: 11, formatter: (p) => `${f(p.value)} · ${fmt.pct(p.value, sum)}` },
         }],
+      };
+    },
+
+    /** [실험] 고객 변화: 월별 실적 고객 수. months = [[월, 활동, 신규, 전월에 이어, 다시 시작, 전월 대비 빠짐, TEU]]
+     *  데이터가 시작된 달은 신규를 알 수 없으므로 한 색(데이터 시작 달)으로 그린다. 빠진 고객은 0 아래 빨간 막대. */
+    custFlow(months, firstMonth, opts = {}) {
+      const rows = months.map(([m, active, fresh, cont, back, dropped, teu]) => ({ m, active, fresh, cont, back, dropped, teu, base: m === firstMonth }));
+      if (!rows.length) return emptyChart('해당 데이터가 없습니다.');
+      const S = (name, color, get) => ({ type: 'bar', name, stack: 'c', data: rows.map(get), itemStyle: { color }, barMaxWidth: 40 });
+      const series = [
+        S('데이터 시작 달', COLORS.navy300, (r) => (r.base ? r.active : 0)),
+        S('전월에 이어', COLORS.navy700, (r) => (r.base ? 0 : r.cont)),
+        S('다시 시작', '#5b7fa6', (r) => (r.base ? 0 : r.back)),
+        S('신규', COLORS.gold, (r) => (r.base ? 0 : r.fresh)),
+        S('전월 대비 빠짐', '#a3403a', (r) => (r.base ? 0 : -r.dropped)),
+      ].filter((s) => s.data.some((v) => v));
+      return {
+        ...baseOption(),
+        animation: !opts.static,
+        grid: { left: 8, right: 8, top: 40, bottom: 4, containLabel: true },
+        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: series.map((s) => s.name) },
+        tooltip: {
+          ...baseOption().tooltip, trigger: 'axis', axisPointer: { type: 'shadow' },
+          formatter: (ps) => {
+            const r = rows[ps[0].dataIndex];
+            return `<b>${monthLabel(r.m)}</b><br>실적 고객 ${fmt.int(r.active)}곳 · ${fmt.int(r.teu)} TEU` + (r.base
+              ? `<br><span style="color:${COLORS.faint}">데이터가 시작된 달이라 신규 구분 없음</span>`
+              : `<br>· 전월에 이어 ${fmt.int(r.cont)}곳<br>· 다시 시작 ${fmt.int(r.back)}곳<br>· 신규 ${fmt.int(r.fresh)}곳<br><span style="color:#a3403a">전월 대비 빠짐 ${fmt.int(r.dropped)}곳</span>`);
+          },
+        },
+        xAxis: { type: 'category', data: monthTicks(rows.map((r) => r.m)), ...axisCommon },
+        yAxis: { type: 'value', name: '곳', ...axisCommon, axisLabel: { ...axisCommon.axisLabel, formatter: (v) => fmt.int(Math.abs(v)) } },
+        series: [
+          ...series,
+          // 막대 위 숫자 = 그 달 실적 고객 수
+          { type: 'scatter', name: '', data: rows.map((r) => r.active), symbolSize: 0, silent: true, tooltip: { show: false }, zlevel: 1,
+            label: { show: true, position: 'top', distance: 4, color: COLORS.ink, fontSize: 11, formatter: (p) => fmt.int(p.value), backgroundColor: '#fff', padding: [1, 2], borderRadius: 2 } },
+        ],
       };
     },
   };
@@ -1153,20 +1192,505 @@
         rows = (await fetchDetail(state, { ...detailOpt(view.sort.detail || def.sort), limit: 100000, offset: 0 })).rows;
       } catch (e) { toast('내보내기 실패: ' + e.message); return; }
     }
-    const q = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const header = cols.map((c) => c.label).concat((def.csvExtra || []).map(([l]) => l));
     const lines = rows.map((r) => cols.map((c) => {
       const v = c.get ? c.get(r) : r[c.key];
-      return q(c.csv ? c.csv(v, r) : v);
-    }).concat((def.csvExtra || []).map(([, f]) => q(f(r)))).join(','));
-    const csv = '﻿' + [header.map(q).join(','), ...lines].join('\r\n');
-    const name = `${def.label().replace(/[\\/:*?"<>|\s]+/g, '_')}_${periodLabel(state.from, state.to).replace(/[\\/:*?"<>|\s()~]+/g, '_')}.csv`;
+      return c.csv ? c.csv(v, r) : v;
+    }).concat((def.csvExtra || []).map(([, f]) => f(r))));
+    saveCsv(def.label(), header, lines);
+  }
+
+  /** CSV 파일 내려받기. rows = 값 배열의 배열, period = 파일 이름에 붙일 기간 */
+  function saveCsv(label, header, rows, period = periodLabel(state.from, state.to)) {
+    const q = (v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const csv = '﻿' + [header, ...rows].map((r) => r.map(q).join(',')).join('\r\n');
+    const name = `${label.replace(/[\\/:*?"<>|\s]+/g, '_')}_${period.replace(/[\\/:*?"<>|\s()~]+/g, '_')}.csv`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     toast(`${name} 파일로 내보냈습니다.`);
+  }
+
+  // ── [실험] 고객 변화 보기 (supabase/stats_customers.sql 의 dash_customers) ─────
+  // 상태 정의는 SQL 머리말 참고. 기준일 = 조회 기간 끝과 데이터 마지막 입항일 중 이른 날.
+  const CUST_ST = {
+    new: { label: '신규', desc: '조회 기간에 첫 실적', color: COLORS.gold },
+    back: { label: '재개', desc: '3개월 넘게 쉬다가 다시 실적', color: '#5b7fa6' },
+    keep: { label: '유지', desc: '최근 1개월 안에 실적', color: COLORS.navy700 },
+    warn: { label: '주의', desc: '1~3개월 실적 없음', color: '#c9a23a' },
+    lost: { label: '이탈 의심', desc: '3개월 넘게 실적 없음', color: '#a3403a' },
+    gone: { label: '장기 미거래', desc: '6개월 넘게 실적 없음', color: COLORS.faint },
+  };
+  const cust = { st: 'all', search: '', sort: { key: 'teu', dir: -1 }, data: null };
+  const stBadge = (st) => `<span class="st-badge st-${st}">${CUST_ST[st]?.label || st}</span>`;
+  const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt.int(Math.abs(n));
+
+  function buildViewSwitch() {
+    const el = $('view-switch');
+    el.innerHTML = [['volume', '물동량'], ['customers', '고객 변화', true], ['shippers', 'Shipper 연결', true]]
+      .map(([v, l, exp]) => `<button type="button" role="tab" data-v="${v}">${l}${exp ? '<span class="exp">시험</span>' : ''}</button>`).join('');
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b || b.dataset.v === state.view) return;
+      state.view = b.dataset.v; update();
+    });
+    syncers.push(() => el.querySelectorAll('button').forEach((b) => b.setAttribute('aria-selected', b.dataset.v === state.view)));
+  }
+
+  /** 고객 변화의 조회 기간: 기간을 고르지 않았으면 데이터 마지막 달(최근 1개월) */
+  function custRange(s = state) {
+    if (s.from || s.to) return { from: s.from || META.dateMin, to: s.to || META.dateMax, auto: false };
+    return { ...monthRange(MONTHS[MONTHS.length - 1]), auto: true };
+  }
+  async function fetchCustomers(s = state) {
+    const range = custRange(s);
+    const cmp = compareRange(range.from, range.to);
+    const opt = { from: range.from, to: range.to, basis: s.groupBy, ...(cmp && cmp.available ? { cmpFrom: cmp.from, cmpTo: cmp.to } : {}) };
+    const res = await cached('customers', filterOf(s, { from: '', to: '' }), opt);
+    const list = res.rows.map((a) => {
+      const o = zip(res.fields, a);
+      o.name = companyName(s.groupBy, o.key);
+      o.code = s.groupBy === 'consignee' ? consigneeCode(o.key) : '';
+      o.diff = o.teu - o.teuC;
+      o.avg = o.mon ? o.teuH / o.mon : 0;
+      o.idle = Math.round((parse(res.asOf) - parse(o.last)) / 864e5);
+      return o;
+    });
+    return { ...res, range, cmp: cmp && cmp.available ? cmp : null, basis: s.groupBy, list };
+  }
+
+  async function updateCustomers(my) {
+    setLoading(true);
+    try {
+      const D = await fetchCustomers(state);
+      if (my !== seq) return;
+      showNotice();
+      if (D.range.auto) $('view-title').textContent = `${monthLabel(D.range.from.slice(0, 7))} (최근 1개월)`;
+      cust.data = D;
+      renderCustomers(D);
+    } catch (e) {
+      if (my !== seq) return;
+      if (e.code === 'PGRST202') e.message = 'Supabase 에 고객 변화 함수가 없습니다. 시험 기능이라 supabase/stats_customers.sql 을 실행해야 볼 수 있습니다.';
+      showNotice(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderCustomers(D) {
+    const L = D.list;
+    const of = (st) => L.filter((o) => o.st === st);
+    const teuOf = (a) => a.reduce((x, o) => x + o.teu, 0);
+    const avgOf = (a) => a.reduce((x, o) => x + o.avg, 0);
+    const active = L.filter((o) => o.bl > 0);
+    const bn = D.basis === 'notify' ? 'Notify' : 'Consignee';
+
+    // KPI 카드: 누르면 아래 고객 목록을 그 상태로 거른다
+    const cards = [
+      { st: 'all', label: '실적 고객', value: fmt.int(active.length), unit: '곳', sub: `TEU ${fmt.int(teuOf(active))} · ${bn} 기준`,
+        delta: deltaHtml(active.length, D.cmp ? L.filter((o) => o.blC > 0).length : null, D.cmp || compareRange(D.range.from, D.range.to)) },
+      { st: 'new', value: D.newKnown ? fmt.int(of('new').length) : '–', unit: D.newKnown ? '곳' : '',
+        sub: D.newKnown ? `TEU ${fmt.int(teuOf(of('new')))} · ${CUST_ST.new.desc}` : '데이터가 시작된 달이라 구분할 수 없음' },
+      { st: 'back', value: fmt.int(of('back').length), unit: '곳', sub: CUST_ST.back.desc },
+      { st: 'keep', value: fmt.int(of('keep').length), unit: '곳', sub: `TEU ${fmt.int(teuOf(of('keep')))} · ${CUST_ST.keep.desc}` },
+      { st: 'warn', value: fmt.int(of('warn').length), unit: '곳', sub: `${CUST_ST.warn.desc} · 월평균 합 ${fmt.one(avgOf(of('warn')))} TEU` },
+      { st: 'lost', value: fmt.int(of('lost').length), unit: '곳', sub: `${CUST_ST.lost.desc} · 월평균 합 ${fmt.one(avgOf(of('lost')))} TEU` },
+    ];
+    $('cust-kpis').innerHTML = cards.map((k) => `
+      <button type="button" class="kpi" data-st="${k.st}" aria-pressed="${cust.st === k.st}" title="누르면 아래 고객 목록을 이 상태로 거릅니다">
+        <span class="k-label">${k.st === 'all' ? '' : `<i class="k-dot" style="background:${CUST_ST[k.st].color}"></i>`}${k.label || CUST_ST[k.st].label}</span>
+        <span class="k-value">${k.value}${k.unit ? `<small>${k.unit}</small>` : ''}</span>
+        ${k.delta || ''}
+        <span class="k-sub">${k.sub}</span>
+      </button>`).join('');
+
+    const notes = [`기준일 ${D.asOf}`];
+    if (D.range.auto) notes.push(`기간을 고르지 않아 최근 1개월(${monthLabel(D.range.from.slice(0, 7))}) 기준`);
+    notes.push(`고객 = ${bn}`, 'B/L Type E(엠티) 제외', '기간 외 조회 조건(ITEM 등)은 그대로 적용');
+    if (D.cmp) notes.push(`비교 = ${D.cmp.label} (${D.cmp.from} ~ ${D.cmp.to})`);
+    if (!D.newKnown) notes.push('데이터가 시작된 달이 포함되어 신규 · 재개는 유지로 표시');
+    $('cust-note').textContent = notes.join(' · ');
+
+    // 월별 고객 흐름
+    const flow = chart('ch-cust-flow');
+    flow.resize();
+    flow.setOption(chartOptions.custFlow(D.months, D.firstMonth), true);
+    flow.off('click');
+    flow.on('click', (p) => { const m = D.months[p.dataIndex]; if (!m) return; const r = monthRange(m[0]); state.from = r.from; state.to = r.to; update(); });
+
+    // 늘어난 · 줄어든 고객 상위 10
+    const name = (o) => `<td class="trunc w-m">${esc(shortName(o.name))}</td>`;
+    const cmpWord = D.cmp ? D.cmp.label : '비교 기간 없음';
+    $('cust-up-sub').textContent = `${cmpWord} · TEU 기준`;
+    $('cust-down-sub').textContent = `${cmpWord} · TEU 기준`;
+    const diffRows = (rows, cls) => rows.map((o) => `${name(o)}<td class="r">${fmt.int(o.teuC)}</td><td class="r">${fmt.int(o.teu)}</td><td class="r ${cls}"><b>${signed(o.diff)}</b></td>`);
+    const diffHead = '<th>고객</th><th class="r">비교</th><th class="r">조회 기간</th><th class="r">증감</th>';
+    const noCmp = '비교 기간 데이터가 없습니다. 월 단위로 조회하면 직전 기간과 비교합니다.';
+    const ups = D.cmp ? L.filter((o) => o.diff > 0).sort((a, b) => b.diff - a.diff).slice(0, 10) : [];
+    const downs = D.cmp ? L.filter((o) => o.diff < 0).sort((a, b) => a.diff - b.diff).slice(0, 10) : [];
+    custMini('cust-up', ups, diffHead, diffRows(ups, 'up'), D.cmp ? '늘어난 고객이 없습니다.' : noCmp);
+    custMini('cust-down', downs, diffHead, diffRows(downs, 'down'), D.cmp ? '줄어든 고객이 없습니다.' : noCmp);
+
+    // 놓치면 아까운 고객: 주의 · 이탈 의심 중 월평균 TEU 큰 순
+    const risk = L.filter((o) => o.st === 'warn' || o.st === 'lost').sort((a, b) => b.avg - a.avg || b.teuH - a.teuH).slice(0, 10);
+    custMini('cust-risk', risk, '<th>고객</th><th>상태</th><th>마지막 실적</th><th class="r">월평균 TEU</th>',
+      risk.map((o) => `${name(o)}<td>${stBadge(o.st)}</td><td>${o.last} <small class="muted">(${fmt.int(o.idle)}일 전)</small></td><td class="r"><b>${fmt.one(o.avg)}</b></td>`),
+      '주의 · 이탈 의심 고객이 없습니다.');
+
+    // 고객 등급 (ABC)
+    const graded = L.filter((o) => o.grade);
+    const total = teuOf(graded);
+    $('cust-grade').innerHTML = graded.length ? `<table class="data">
+      <thead><tr><th>등급</th><th class="r">고객 수</th><th class="r">TEU</th><th class="r">TEU 비중</th><th class="r">고객당 평균 TEU</th></tr></thead>
+      <tbody>${['A', 'B', 'C'].map((g) => {
+        const a = graded.filter((o) => o.grade === g), t = teuOf(a);
+        return `<tr><td><b>${g}</b></td><td class="r">${fmt.int(a.length)}</td><td class="r">${fmt.int(t)}</td><td class="r">${fmt.pct(t, total)}</td><td class="r">${a.length ? fmt.one(t / a.length) : '–'}</td></tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr><td>합계</td><td class="r">${fmt.int(graded.length)}</td><td class="r">${fmt.int(total)}</td><td class="r">100.0%</td><td class="r">${fmt.one(total / graded.length)}</td></tr></tfoot>
+    </table>` : '<p class="empty-state">조회 기간에 TEU 실적이 있는 고객이 없습니다.</p>';
+
+    // 상태 칩
+    const counts = { all: L.length };
+    L.forEach((o) => { counts[o.st] = (counts[o.st] || 0) + 1; });
+    $('cust-st').innerHTML = ['all', ...Object.keys(CUST_ST)].filter((k) => k === 'all' || k === cust.st || counts[k])
+      .map((k) => `<button type="button" class="chip" data-st="${k}" aria-pressed="${cust.st === k}">${k === 'all' ? '전체' : CUST_ST[k].label}<span class="cnt">${fmt.int(counts[k] || 0)}</span></button>`).join('');
+    renderCustTable();
+  }
+
+  /** 고객 변화의 작은 표(순위 + 칸들). 줄을 누르면 그 업체의 물동량 화면으로 */
+  function custMini(id, rows, head, cells, empty, onRow = (o) => openCompany(o.key), hint = '누르면 이 업체의 물동량 화면으로 갑니다') {
+    const wrap = $(id);
+    if (!rows.length) { wrap.innerHTML = `<p class="empty-state">${esc(empty)}</p>`; wrap.onclick = null; return; }
+    wrap.innerHTML = `<table class="data"><thead><tr><th class="r">순위</th>${head}</tr></thead><tbody>${rows.map((o, i) =>
+      `<tr data-i="${i}" title="${esc(o.name)} · ${hint}"><td class="r muted">${i + 1}</td>${cells[i]}</tr>`).join('')}</tbody></table>`;
+    wrap.onclick = (e) => { const tr = e.target.closest('tr[data-i]'); if (tr) onRow(rows[+tr.dataset.i]); };
+  }
+
+  function openCompany(k) {
+    const key = state.groupBy;
+    if (!state[key].includes(k)) state[key].push(k);
+    state.view = 'volume';
+    update();
+  }
+
+  function custCols(D) {
+    return [
+      C('name', '업체명', esc, { cls: 'trunc w-m' }),
+      ...(D.basis === 'consignee' ? [C('code', '사업자번호')] : []),
+      C('st', '상태', stBadge, { csv: (v) => CUST_ST[v]?.label || v }),
+      C('grade', '등급', (v) => esc(v || '–'), { csv: (v) => v }),
+      C('teu', '기간 TEU', fmt.int, { num: true }),
+      ...(D.cmp ? [C('teuC', '비교 TEU', fmt.int, { num: true }), C('diff', '증감', signed, { num: true, cls: (o) => (o.diff > 0 ? 'up' : o.diff < 0 ? 'down' : '') })] : []),
+      C('bl', '기간 B/L', fmt.int, { num: true }),
+      C('first', '첫 실적'), C('last', '마지막 실적'),
+      C('idle', '경과일', fmt.int, { num: true }),
+      C('avg', '월평균 TEU', fmt.one, { num: true, csv: (v) => v.toFixed(2) }),
+      C('mon', '실적 개월', fmt.int, { num: true }),
+    ];
+  }
+
+  function custFiltered() {
+    const D = cust.data;
+    let rows = cust.st === 'all' ? D.list : D.list.filter((o) => o.st === cust.st);
+    if (cust.search) rows = rows.filter((o) => `${o.name} ${o.code} ${o.key}`.toLowerCase().includes(cust.search));
+    return sortRows(rows, custCols(D), cust.sort);
+  }
+
+  function renderCustTable() {
+    const D = cust.data;
+    if (!D) return;
+    const cols = custCols(D);
+    const rows = custFiltered();
+    const LIMIT = 500;
+    $('cust-count').textContent = `${fmt.int(rows.length)}곳${rows.length > LIMIT ? ` · 앞 ${LIMIT}곳만 표시 (CSV 는 전체)` : ''}`;
+    sortableTable('cust-tbl', cols, rows.slice(0, LIMIT), cust.sort, '해당하는 고객이 없습니다.', (o) => o.key);
+  }
+
+  /** 고객 · Shipper 목록 공통 표: 머리글 정렬 화살표, 줄마다 data-k(누르면 업체로 이동하는 키) */
+  function sortableTable(id, cols, rows, sort, empty, keyOf) {
+    const cell = (c, o) => { const v = o[c.key]; const cls = typeof c.cls === 'function' ? c.cls(o) : c.cls || ''; return `<td class="${c.num ? 'r' : ''} ${cls}"${/\btrunc\b/.test(cls) ? ` title="${esc(c.title ? c.title(o) : v)}"` : ''}>${c.f(v, o)}</td>`; };
+    $(id).innerHTML = `<table class="data">
+      <thead><tr><th class="r">No</th>${cols.map((c) => `<th class="sortable ${c.num ? 'r' : ''}" data-k="${c.key}">${c.label}<span class="arrow">${sort.key === c.key ? (sort.dir > 0 ? '▲' : '▼') : ''}</span></th>`).join('')}</tr></thead>
+      <tbody>${rows.length ? rows.map((o, i) => `<tr data-k="${esc(keyOf(o))}"><td class="r muted">${i + 1}</td>${cols.map((c) => cell(c, o)).join('')}</tr>`).join('')
+        : `<tr><td colspan="${cols.length + 1}" class="muted">${empty}</td></tr>`}</tbody>
+    </table>`;
+    $(id).scrollTop = 0;
+  }
+
+  function buildCustomers() {
+    $('cust-kpis').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-st]'); if (!b || !cust.data) return;
+      cust.st = cust.st === b.dataset.st ? 'all' : b.dataset.st;
+      renderCustomers(cust.data);
+    });
+    $('cust-st').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-st]'); if (!b || !cust.data) return;
+      cust.st = b.dataset.st;
+      renderCustomers(cust.data);
+    });
+    $('cust-search').addEventListener('input', (e) => { cust.search = e.target.value.trim().toLowerCase(); renderCustTable(); });
+    $('cust-tbl').addEventListener('click', (e) => {
+      const th = e.target.closest('th[data-k]');
+      if (th) {
+        const k = th.dataset.k, col = custCols(cust.data).find((c) => c.key === k);
+        cust.sort = { key: k, dir: cust.sort.key === k ? -cust.sort.dir : col.num ? -1 : 1 };
+        renderCustTable();
+        return;
+      }
+      const tr = e.target.closest('tbody tr[data-k]');
+      if (tr) openCompany(tr.dataset.k);
+    });
+    $('cust-csv').addEventListener('click', () => {
+      const D = cust.data; if (!D) return;
+      const cols = custCols(D);
+      const rows = custFiltered().map((o) => cols.map((c) => (c.csv ? c.csv(o[c.key], o) : o[c.key])));
+      const label = `고객변화_${cust.st === 'all' ? '전체' : CUST_ST[cust.st].label}`;
+      saveCsv(label, cols.map((c) => c.label), rows, periodLabel(D.range.from, D.range.to));
+    });
+  }
+
+  // ── [실험] Shipper 연결 보기 (supabase/stats_shippers.sql 의 dash_shippers) ─────
+  // 연결 = Shipper × 상대편(Consignee 또는 Notify). 상태: new(첫 거래가 조회 기간 안) · keep(이어짐) · lost(비교 기간에만 있음)
+  const PAIR_ST = { new: '새 연결', keep: '이어짐', lost: '끊긴 연결' };
+  const pairBadge = (st) => `<span class="st-badge st-${st}">${PAIR_ST[st]}</span>`;
+  const ship = { st: 'all', search: '', focus: '', sort: { key: 'teu', dir: -1 }, data: null };
+
+  async function fetchShippers(s = state) {
+    const range = custRange(s);
+    const cmp = compareRange(range.from, range.to);
+    const ok = !!(cmp && cmp.available);
+    const opt = { from: range.from, to: range.to, basis: s.groupBy, ...(ok ? { cmpFrom: cmp.from, cmpTo: cmp.to } : {}) };
+    const res = await cached('shippers', filterOf(s, { from: '', to: '' }), opt);
+    const shippers = res.shippers.map((a) => zip(res.sFields, a));
+    const byKey = new Map(shippers.map((o) => [o.key, o]));
+    const pairs = res.pairs.map((a) => {
+      const o = zip(res.pFields, a);
+      o.sname = byKey.get(o.s)?.name || o.s;
+      o.name = companyName(s.groupBy, o.k);
+      o.code = s.groupBy === 'consignee' ? consigneeCode(o.k) : '';
+      o.diff = o.teu - o.teuC;
+      o.st = o.bl === 0 ? 'lost' : res.newKnown && o.first >= res.from ? 'new' : 'keep';
+      return o;
+    });
+    return { ...res, range, cmp: ok ? cmp : null, basis: s.groupBy, shippers, pairs };
+  }
+
+  async function updateShippers(my) {
+    setLoading(true);
+    try {
+      const D = await fetchShippers(state);
+      if (my !== seq) return;
+      showNotice();
+      if (D.range.auto) $('view-title').textContent = `${monthLabel(D.range.from.slice(0, 7))} (최근 1개월)`;
+      if (ship.focus && !D.shippers.some((o) => o.key === ship.focus)) ship.focus = '';
+      ship.data = D;
+      renderShippers(D);
+    } catch (e) {
+      if (my !== seq) return;
+      if (e.code === 'PGRST202') e.message = 'Supabase 에 Shipper 연결 함수가 없습니다. 시험 기능이라 supabase/stats_shippers.sql 을 실행해야 볼 수 있습니다.';
+      showNotice(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderShippers(D) {
+    const bn = D.basis === 'notify' ? 'Notify' : 'Consignee';
+    const sum = (a, k = 'teu') => a.reduce((x, o) => x + o[k], 0);
+    const act = D.shippers.filter((o) => o.bl > 0);
+    const total = sum(act);
+    const tops = [...act].sort((a, b) => b.teu - a.teu || b.bl - a.bl).slice(0, 10);
+    const one = act.filter((o) => o.n === 1);
+    const hubs = act.filter((o) => o.n >= 3);
+    const pNew = D.pairs.filter((p) => p.st === 'new'), pLost = D.pairs.filter((p) => p.st === 'lost');
+    $('ship-side').textContent = bn;
+
+    const cards = [
+      { label: '실적 Shipper', value: fmt.int(act.length), unit: '곳', sub: `TEU ${fmt.int(total)} · 연결 ${fmt.int(D.pairs.length - pLost.length)}개`,
+        delta: deltaHtml(act.length, D.cmp ? D.shippers.filter((o) => o.blC > 0).length : null, D.cmp || compareRange(D.range.from, D.range.to)) },
+      { label: '상위 10곳 비중', value: fmt.pct(sum(tops), total), sub: 'TEU 기준 · 높을수록 소수에 집중' },
+      { label: '1:1 거래 Shipper', value: fmt.pct(one.length, act.length), sub: `${fmt.int(one.length)}곳 · ${bn} 1곳에만 보냄` },
+      { label: '허브 Shipper', value: fmt.int(hubs.length), unit: '곳', sub: `${bn} 3곳 이상 · TEU 비중 ${fmt.pct(sum(hubs), total)}` },
+      { st: 'new', label: '새 연결', value: D.newKnown ? fmt.int(pNew.length) : '–', unit: D.newKnown ? '개' : '',
+        sub: D.newKnown ? `TEU ${fmt.int(sum(pNew))} · 조회 기간에 첫 거래` : '데이터가 시작된 달이라 구분할 수 없음' },
+      { st: 'lost', label: '끊긴 연결', value: D.cmp ? fmt.int(pLost.length) : '–', unit: D.cmp ? '개' : '',
+        sub: D.cmp ? `비교 기간 TEU ${fmt.int(sum(pLost, 'teuC'))}` : '비교 기간 데이터 없음' },
+    ];
+    $('ship-kpis').innerHTML = cards.map((k) => {
+      const tag = k.st ? 'button' : 'div';
+      return `<${tag}${k.st ? ` type="button" data-st="${k.st}" aria-pressed="${ship.st === k.st}" title="누르면 아래 연결 목록을 이 상태로 거릅니다"` : ''} class="kpi">
+        <span class="k-label">${k.label}</span>
+        <span class="k-value">${k.value}${k.unit ? `<small>${k.unit}</small>` : ''}</span>
+        ${k.delta || ''}
+        <span class="k-sub">${k.sub}</span>
+      </${tag}>`;
+    }).join('');
+
+    const notes = [`기준일 ${D.asOf}`];
+    if (D.range.auto) notes.push(`기간을 고르지 않아 최근 1개월(${monthLabel(D.range.from.slice(0, 7))}) 기준`);
+    notes.push(`상대편 = ${bn}`, '표기만 다른 Shipper 이름(띄어쓰기 · 점 · 대소문자)은 하나로 합침', 'B/L Type E(엠티) 제외');
+    if (D.cmp) notes.push(`비교 = ${D.cmp.label} (${D.cmp.from} ~ ${D.cmp.to})`);
+    $('ship-note').textContent = notes.join(' · ');
+
+    // 연결 흐름(Sankey). 휴대폰처럼 좁으면 그리지 않고 아래 표를 보게 한다.
+    const box = $('ch-ship-flow');
+    const narrow = box.parentElement.clientWidth < 560;
+    box.hidden = narrow;
+    $('ship-flow-note').textContent = narrow
+      ? '화면이 좁아 흐름도를 생략했습니다. 아래 허브 Shipper · 연결 목록을 보세요.'
+      : `왼쪽 = Shipper(중국 측), 오른쪽 = ${bn}(한국 측), 선 굵기 = TEU. 상위 업체 외에는 "기타"로 묶었습니다. Shipper 를 누르면 아래 연결 목록을 그 Shipper 로 거릅니다.`;
+    if (!narrow) {
+      const c = chart('ch-ship-flow');
+      c.resize();
+      c.setOption(shipFlowOption(D, box.clientWidth), true);
+      c.off('click');
+      c.on('click', (p) => { if (p.dataType === 'node' && p.data.name.startsWith('S|')) focusShipper(p.data.name.slice(2)); });
+    }
+
+    // 허브 · 상위 10 · 새 연결 · 끊긴 연결
+    const sCell = (n) => `<td class="trunc w-m" title="${esc(n)}">${esc(n)}</td>`;
+    const cCell = (o) => `<td class="trunc w-m" title="${esc(o.name)}">${esc(shortName(o.name))}</td>`;
+    const toFocus = (o) => focusShipper(o.key || o.s);
+    const hubRows = [...act].sort((a, b) => b.n - a.n || b.teu - a.teu).filter((o) => o.n > 1).slice(0, 10);
+    custMini('ship-hub', hubRows, `<th>Shipper</th><th class="r">${bn} 수</th><th class="r">TEU</th><th class="r">B/L</th>`,
+      hubRows.map((o) => `${sCell(o.name)}<td class="r"><b>${fmt.int(o.n)}</b></td><td class="r">${fmt.int(o.teu)}</td><td class="r">${fmt.int(o.bl)}</td>`),
+      `${bn} 여러 곳에 보낸 Shipper 가 없습니다.`, toFocus, '누르면 아래 연결 목록을 이 Shipper 로 거릅니다');
+    custMini('ship-top', tops, `<th>Shipper</th><th class="r">${bn} 수</th><th class="r">TEU</th><th class="r">비중</th>${D.cmp ? '<th class="r">증감</th>' : ''}`,
+      tops.map((o) => `${sCell(o.name)}<td class="r">${fmt.int(o.n)}</td><td class="r"><b>${fmt.int(o.teu)}</b></td><td class="r">${fmt.pct(o.teu, total)}</td>${D.cmp ? `<td class="r ${o.teu > o.teuC ? 'up' : o.teu < o.teuC ? 'down' : ''}">${signed(o.teu - o.teuC)}</td>` : ''}`),
+      'Shipper 실적이 없습니다.', toFocus, '누르면 아래 연결 목록을 이 Shipper 로 거릅니다');
+    const newRows = [...pNew].sort((a, b) => b.teu - a.teu || b.bl - a.bl).slice(0, 10).map((p) => ({ ...p, name: p.name }));
+    custMini('ship-new', newRows, `<th>Shipper</th><th>${bn}</th><th class="r">TEU</th><th>첫 거래</th>`,
+      newRows.map((p) => `${sCell(p.sname)}${cCell(p)}<td class="r"><b>${fmt.int(p.teu)}</b></td><td>${p.first}</td>`),
+      D.newKnown ? '새 연결이 없습니다.' : '데이터가 시작된 달이라 새 연결을 구분할 수 없습니다.', toFocus, '누르면 아래 연결 목록을 이 Shipper 로 거릅니다');
+    const lostRows = [...pLost].sort((a, b) => b.teuC - a.teuC || b.blC - a.blC).slice(0, 10);
+    $('ship-lost-sub').textContent = D.cmp ? `${D.cmp.label} · 비교 기간에는 있었고 조회 기간에는 없음` : '비교 기간 데이터 없음';
+    custMini('ship-lost', lostRows, `<th>Shipper</th><th>${bn}</th><th class="r">비교 TEU</th><th>마지막 거래</th>`,
+      lostRows.map((p) => `${sCell(p.sname)}${cCell(p)}<td class="r"><b>${fmt.int(p.teuC)}</b></td><td>${p.last}</td>`),
+      D.cmp ? '끊긴 연결이 없습니다.' : '비교 기간 데이터가 없습니다. 월 단위로 조회하면 직전 기간과 비교합니다.', toFocus, '누르면 아래 연결 목록을 이 Shipper 로 거릅니다');
+
+    renderShipChips();
+    renderShipTable();
+  }
+
+  /** Sankey: 상위 Shipper 12곳 → 상대편 상위 15곳(나머지는 '기타'). 노드 순서를 고정(layoutIterations 0)해 TEU 큰 순으로 위에서부터 */
+  function shipFlowOption(D, width) {
+    const bn = D.basis === 'notify' ? 'Notify' : 'Consignee';
+    const top = D.shippers.filter((o) => o.teu > 0).sort((a, b) => b.teu - a.teu).slice(0, 12);
+    if (!top.length) return emptyChart('조회 기간에 TEU 실적이 있는 Shipper 가 없습니다.');
+    const topSet = new Set(top.map((o) => o.key));
+    const links0 = D.pairs.filter((p) => topSet.has(p.s) && p.teu > 0);
+    const side = new Map();
+    links0.forEach((p) => side.set(p.k, (side.get(p.k) || 0) + p.teu));
+    const sideTop = [...side].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k]) => k);
+    const keep = new Set(sideTop);
+    const nodes = [
+      ...top.map((o) => ({ name: 'S|' + o.key, _t: o.name, itemStyle: { color: COLORS.navy700 }, label: { position: 'left' } })),
+      ...sideTop.map((k) => ({ name: 'C|' + k, _t: shortName(companyName(D.basis, k)), itemStyle: { color: COLORS.gold }, label: { position: 'right' } })),
+    ];
+    const links = new Map();
+    links0.forEach((p) => {
+      const src = 'S|' + p.s, tgt = keep.has(p.k) ? 'C|' + p.k : 'C|*';
+      const l = links.get(src + '>' + tgt) || { source: src, target: tgt, value: 0, bl: 0 };
+      l.value += p.teu; l.bl += p.bl;
+      links.set(src + '>' + tgt, l);
+    });
+    if ([...links.values()].some((l) => l.target === 'C|*')) nodes.push({ name: 'C|*', _t: `기타 ${bn}`, itemStyle: { color: COLORS.navy300 }, label: { position: 'right' } });
+    const text = new Map(nodes.map((n) => [n.name, n._t]));
+    const side1 = Math.min(230, Math.round(width * 0.28)), side2 = Math.min(190, Math.round(width * 0.24));
+    return {
+      ...baseOption(),
+      tooltip: {
+        ...baseOption().tooltip, trigger: 'item',
+        formatter: (p) => (p.dataType === 'edge'
+          ? `${esc(text.get(p.data.source))}<br>→ ${esc(text.get(p.data.target))}<br><b>${fmt.int(p.data.value)} TEU</b> · B/L ${fmt.int(p.data.bl)}건`
+          : `<b>${esc(p.data._t)}</b><br>${fmt.int(p.value)} TEU`),
+      },
+      series: [{
+        type: 'sankey', left: side1, right: side2, top: 8, bottom: 8, nodeWidth: 10, nodeGap: 6, layoutIterations: 0, draggable: false,
+        emphasis: { focus: 'adjacency' },
+        data: nodes, links: [...links.values()],
+        lineStyle: { color: 'gradient', opacity: 0.3, curveness: 0.5 },
+        label: { fontSize: 11, color: COLORS.ink, formatter: (p) => p.data._t, width: side1 - 12, overflow: 'truncate' },
+      }],
+    };
+  }
+
+  function focusShipper(key) {
+    ship.focus = key; ship.st = 'all';
+    renderShipChips(); renderShipTable();
+    $('ship-tbl').closest('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderShipChips() {
+    const D = ship.data;
+    const counts = { all: D.pairs.length };
+    D.pairs.forEach((p) => { counts[p.st] = (counts[p.st] || 0) + 1; });
+    const focus = ship.focus ? D.shippers.find((o) => o.key === ship.focus) : null;
+    $('ship-st').innerHTML = ['all', 'new', 'keep', 'lost'].filter((k) => k === 'all' || k === ship.st || counts[k])
+      .map((k) => `<button type="button" class="chip" data-st="${k}" aria-pressed="${ship.st === k}">${k === 'all' ? '전체' : PAIR_ST[k]}<span class="cnt">${fmt.int(counts[k] || 0)}</span></button>`).join('') +
+      (focus ? ` <span class="fchip"><span><b>Shipper</b> ${esc(focus.name)}</span><button type="button" data-unfocus aria-label="Shipper 선택 해제">×</button></span>` : '');
+    $('ship-kpis').querySelectorAll('[data-st]').forEach((b) => b.setAttribute('aria-pressed', ship.st === b.dataset.st));
+  }
+
+  function shipCols(D) {
+    return [
+      C('sname', 'Shipper', esc, { cls: 'trunc w-m' }),
+      C('name', D.basis === 'notify' ? 'Notify' : 'Consignee', (v) => esc(shortName(v)), { cls: 'trunc w-m' }),
+      ...(D.basis === 'consignee' ? [C('code', '사업자번호')] : []),
+      C('st', '상태', pairBadge, { csv: (v) => PAIR_ST[v] }),
+      C('teu', '기간 TEU', fmt.int, { num: true }),
+      ...(D.cmp ? [C('teuC', '비교 TEU', fmt.int, { num: true }), C('diff', '증감', signed, { num: true, cls: (o) => (o.diff > 0 ? 'up' : o.diff < 0 ? 'down' : '') })] : []),
+      C('bl', '기간 B/L', fmt.int, { num: true }),
+      C('first', '첫 거래'), C('last', '마지막 거래'),
+    ];
+  }
+
+  function shipFiltered() {
+    const D = ship.data;
+    let rows = D.pairs;
+    if (ship.focus) rows = rows.filter((p) => p.s === ship.focus);
+    if (ship.st !== 'all') rows = rows.filter((p) => p.st === ship.st);
+    if (ship.search) rows = rows.filter((p) => `${p.sname} ${p.name} ${p.code}`.toLowerCase().includes(ship.search));
+    return sortRows(rows, shipCols(D), ship.sort);
+  }
+
+  function renderShipTable() {
+    const D = ship.data;
+    if (!D) return;
+    const rows = shipFiltered();
+    const LIMIT = 500;
+    $('ship-count').textContent = `${fmt.int(rows.length)}개 연결${rows.length > LIMIT ? ` · 앞 ${LIMIT}개만 표시 (CSV 는 전체)` : ''}`;
+    sortableTable('ship-tbl', shipCols(D), rows.slice(0, LIMIT), ship.sort, '해당하는 연결이 없습니다.', (p) => p.k);
+  }
+
+  function buildShippers() {
+    const setSt = (st) => { ship.st = ship.st === st && st !== 'all' ? 'all' : st; renderShipChips(); renderShipTable(); };
+    $('ship-kpis').addEventListener('click', (e) => { const b = e.target.closest('[data-st]'); if (b && ship.data) setSt(b.dataset.st); });
+    $('ship-st').addEventListener('click', (e) => {
+      if (!ship.data) return;
+      if (e.target.closest('[data-unfocus]')) { ship.focus = ''; renderShipChips(); renderShipTable(); return; }
+      const b = e.target.closest('[data-st]'); if (b) setSt(b.dataset.st);
+    });
+    $('ship-search').addEventListener('input', (e) => { ship.search = e.target.value.trim().toLowerCase(); renderShipTable(); });
+    $('ship-tbl').addEventListener('click', (e) => {
+      const th = e.target.closest('th[data-k]');
+      if (th) {
+        const k = th.dataset.k, col = shipCols(ship.data).find((c) => c.key === k);
+        ship.sort = { key: k, dir: ship.sort.key === k ? -ship.sort.dir : col.num ? -1 : 1 };
+        renderShipTable();
+        return;
+      }
+      const tr = e.target.closest('tbody tr[data-k]');
+      if (tr) openCompany(tr.dataset.k);
+    });
+    $('ship-csv').addEventListener('click', () => {
+      const D = ship.data; if (!D) return;
+      const cols = shipCols(D);
+      const rows = shipFiltered().map((o) => cols.map((c) => (c.csv ? c.csv(o[c.key], o) : o[c.key])));
+      saveCsv(`Shipper연결_${ship.st === 'all' ? '전체' : PAIR_ST[ship.st]}`, cols.map((c) => c.label), rows, periodLabel(D.range.from, D.range.to));
+    });
   }
 
   // ── 갱신 ────────────────────────────────────
@@ -1182,6 +1706,12 @@
     renderActiveChips();
 
     const my = ++seq;
+    $('view-volume').hidden = state.view !== 'volume';
+    $('view-customers').hidden = state.view !== 'customers';
+    $('view-shippers').hidden = state.view !== 'shippers';
+    $('opt-metric').hidden = state.view !== 'volume';
+    if (state.view === 'customers') { updateCustomers(my); return; }
+    if (state.view === 'shippers') { updateShippers(my); return; }
     const cmp = compareRange(state.from, state.to);
     setLoading(true);
     try {
@@ -1232,6 +1762,9 @@
     $('foot').innerHTML = `<span>원본: 운임 데이터 클라우드 동기화 (Supabase)</span><span>최근 반영: ${esc(META.syncedAt)}</span><span>TEU = 20'×1 + 40'×2 + 45'×2</span><span>금액은 모두 Collect 기준, 총 청구액 = 원화 + 외화(원 환산)</span>`;
     buildFilters();
     buildTabs();
+    buildViewSwitch();
+    buildCustomers();
+    buildShippers();
     showNotice();
 
     window.Dash = {

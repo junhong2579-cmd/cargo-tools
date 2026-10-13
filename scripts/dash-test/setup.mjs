@@ -77,6 +77,10 @@ await upsert(half, OLD_COLS);
 // 3) dashboard.sql 실행 (기존 데이터 백필 확인)
 const sql = fs.readFileSync(TOOL + '/supabase/dashboard.sql', 'utf8');
 await db.exec(sql);
+// [실험] 통계 보기용 SQL(stats_*.sql, 롤백 파일 제외)도 함께 적용
+for (const f of fs.readdirSync(TOOL + '/supabase').filter((n) => /^stats_.*\.sql$/.test(n) && n !== 'stats_rollback.sql')) {
+  await db.exec(fs.readFileSync(TOOL + '/supabase/' + f, 'utf8'));
+}
 let r = await db.query(`select count(*)::int n, count(*) filter (where ext)::int ext, min(d)::text dmin, max(d)::text dmax,
   count(*) filter (where d is null)::int nodate from public.dash_rows`);
 console.log('after backfill', r.rows[0]);

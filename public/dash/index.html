@@ -97,6 +97,8 @@
   <main id="main">
     <div class="notice" id="notice" hidden></div>
 
+    <nav class="view-switch" id="view-switch" role="tablist" aria-label="보기 전환"></nav>
+
     <div class="main-head">
       <div>
         <h2 id="view-title"></h2>
@@ -104,12 +106,95 @@
       </div>
       <div class="view-opts">
         <label>업체 기준 <span class="seg small" id="groupby"></span></label>
-        <label>차트 지표 <span class="seg small" id="metric"></span></label>
+        <label id="opt-metric">차트 지표 <span class="seg small" id="metric"></span></label>
       </div>
     </div>
 
     <div class="active-chips" id="active-chips"></div>
 
+    <!-- [실험] 고객 변화 보기 (supabase/stats_customers.sql) -->
+    <div class="view-body" id="view-customers" hidden>
+      <section class="kpis" id="cust-kpis" aria-label="고객 변화 지표"></section>
+      <p class="kpi-note" id="cust-note"></p>
+      <section class="grid">
+        <article class="panel span-2">
+          <header><h3>월별 고객 흐름 <small>실적 있는 고객 수</small></h3></header>
+          <div class="chart" id="ch-cust-flow"></div>
+          <p class="chart-note">막대 = 그 달 실적 있는 고객(전월에 이어 · 다시 시작 · 신규), 아래 빨간 막대 = 전월에는 있었는데 그 달에 없는 고객. 막대를 누르면 그 달로 조회합니다.</p>
+        </article>
+        <article class="panel">
+          <header><h3>늘어난 고객 상위 10 <small id="cust-up-sub">TEU 기준</small></h3></header>
+          <div class="table-wrap top-table" id="cust-up"></div>
+        </article>
+        <article class="panel">
+          <header><h3>줄어든 고객 상위 10 <small id="cust-down-sub">TEU 기준</small></h3></header>
+          <div class="table-wrap top-table" id="cust-down"></div>
+        </article>
+        <article class="panel">
+          <header><h3>놓치면 아까운 고객 <small>주의 · 이탈 의심 중 월평균 TEU 순</small></h3></header>
+          <div class="table-wrap top-table" id="cust-risk"></div>
+          <p class="chart-note">월평균 TEU = 실적이 있던 달의 평균. 줄을 누르면 해당 업체의 물동량 화면으로 갑니다.</p>
+        </article>
+        <article class="panel">
+          <header><h3>고객 등급 <small>조회 기간 TEU 기준 ABC</small></h3></header>
+          <div class="table-wrap" id="cust-grade"></div>
+          <p class="chart-note">TEU 많은 고객부터 더해 앞쪽 80% = A, 다음 15% = B, 나머지 5% = C.</p>
+        </article>
+      </section>
+      <section class="panel">
+        <header><h3>고객 목록</h3></header>
+        <div class="table-tools">
+          <span class="chips" id="cust-st"></span>
+          <span class="count" id="cust-count"></span>
+          <input type="search" id="cust-search" placeholder="업체명 · 사업자번호 검색" aria-label="고객 검색">
+          <button type="button" class="btn" id="cust-csv">CSV 내보내기</button>
+        </div>
+        <div class="table-wrap cust-table" id="cust-tbl"></div>
+      </section>
+    </div>
+
+    <!-- [실험] Shipper 연결 보기 (supabase/stats_shippers.sql) -->
+    <div class="view-body" id="view-shippers" hidden>
+      <section class="kpis" id="ship-kpis" aria-label="Shipper 지표"></section>
+      <p class="kpi-note" id="ship-note"></p>
+      <section class="grid">
+        <article class="panel span-2">
+          <header><h3>Shipper → <span id="ship-side">Consignee</span> 연결 흐름 <small>상위 Shipper 12곳 · TEU 기준</small></h3></header>
+          <div class="chart sankey" id="ch-ship-flow"></div>
+          <p class="chart-note" id="ship-flow-note">왼쪽 = Shipper(중국 측), 오른쪽 = 한국 측 업체, 선 굵기 = TEU. 상위 업체 외에는 "기타"로 묶었습니다. Shipper 를 누르면 아래 연결 목록을 그 Shipper 로 거릅니다.</p>
+        </article>
+        <article class="panel">
+          <header><h3>허브 Shipper <small>거래 업체가 많은 순</small></h3></header>
+          <div class="table-wrap top-table" id="ship-hub"></div>
+          <p class="chart-note">여러 업체에 보내는 Shipper 는 대개 중국 측 포워더입니다. 줄을 누르면 아래 연결 목록을 그 Shipper 로 거릅니다.</p>
+        </article>
+        <article class="panel">
+          <header><h3>Shipper 상위 10 <small>TEU 기준</small></h3></header>
+          <div class="table-wrap top-table" id="ship-top"></div>
+        </article>
+        <article class="panel">
+          <header><h3>새 연결 <small>조회 기간에 처음 거래한 Shipper × 업체</small></h3></header>
+          <div class="table-wrap top-table" id="ship-new"></div>
+        </article>
+        <article class="panel">
+          <header><h3>끊긴 연결 <small id="ship-lost-sub">비교 기간에는 있었고 조회 기간에는 없음</small></h3></header>
+          <div class="table-wrap top-table" id="ship-lost"></div>
+          <p class="chart-note">다른 선사로 옮겼을 수 있는 신호입니다. 비교 기간 TEU 큰 순.</p>
+        </article>
+      </section>
+      <section class="panel">
+        <header><h3>연결 목록 <small>Shipper × 업체</small></h3></header>
+        <div class="table-tools">
+          <span class="chips" id="ship-st"></span>
+          <span class="count" id="ship-count"></span>
+          <input type="search" id="ship-search" placeholder="Shipper · 업체명 · 사업자번호 검색" aria-label="연결 검색">
+          <button type="button" class="btn" id="ship-csv">CSV 내보내기</button>
+        </div>
+        <div class="table-wrap cust-table" id="ship-tbl"></div>
+      </section>
+    </div>
+
+    <div class="view-body" id="view-volume">
     <section class="kpis" id="kpis" aria-label="주요 지표"></section>
     <p class="kpi-note" id="kpi-note"></p>
 
@@ -214,6 +299,7 @@
       <div class="table-wrap" id="tbl"></div>
       <div class="pager" id="pager"></div>
     </section>
+    </div>
 
     <footer class="foot" id="foot"></footer>
   </main>
