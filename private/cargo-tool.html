@@ -7567,8 +7567,8 @@
       badge.textContent = `양식 2 · 차액 ${abs}원 처리 안내`;
       text = `JDSNGP${v}E${b} 건 ${reason} 차액이 발생하였습니다.
 
-- 인보이스 금액: ${beforeStr}원
-- 이체 금액: ${afterStr}원
+- 정정 전 인보이스 금액: ${beforeStr}원 (입금 완료)
+- 정정 후 인보이스 금액: ${afterStr}원
 
 - 차액: ${abs}원
 
@@ -10085,6 +10085,8 @@
     "CRS", "LSS", "PSS", "FRT", "ESC", "CAF", "BAF", "THC", "CCF", "DOC", "WFG", "TSF", "PSC",
     "EBS", "CFS", "Collect TTL"
   ];
+  // 처음 열 때 숨겨 두는 항목 (필요하면 항목 표시/숨기기에서 체크)
+  const freightColsHiddenByDefault = ["SHIPPER", "DESCRIPTION", "EBS", "CFS"];
 
   const freightColStyle = document.createElement("style");
   document.head.appendChild(freightColStyle);
@@ -10096,7 +10098,7 @@
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = true;
+    checkbox.checked = !freightColsHiddenByDefault.includes(colName);
     checkbox.dataset.index = index;
 
     checkbox.addEventListener("change", updateFreightTableColumns);
@@ -10149,6 +10151,7 @@
       freightColStyle.textContent = cssRules;
     });
   }
+  updateFreightTableColumns();
 
   // ============================================
   // 양하 시간 계산 로직 시작
