@@ -27,7 +27,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 업무 규칙 (사용자 확정 · 데이터로 검증)
 
-- **TEU** = 20'×1 + 40'×2 + **45'×2**. **Cargo**: F=FCL, L=LCL, E=Empty, B=Bulk. **ITEM** 은 코드(RA, EL 등)를 그대로 표시합니다.
+- **TEU** = 20'×1 + 40'×2 + **45'×2**. 단 **B/L Type E**(여객 수화물 · 엠티 컨테이너 운송)는 실제 수입 물량이 아니므로 TEU 0 입니다(컨테이너 개수는 그대로 셉니다). **Cargo**: F=FCL, L=LCL, E=Empty, B=Bulk. **ITEM** 은 코드(RA, EL 등)를 그대로 표시합니다.
 - 금액은 모두 Collect 기준입니다. **원화** = THC+DOC+WFG+CCF+TSF+PSC, **USD** = FRT+BAF+CAF+CRS+LSS+PSS+**ESC**(ESC 는 달러 항목).
   `Collect TTL` = 원화 + USD × 적용환율이며 전 건에서 이 식이 맞습니다. 엑셀의 `원화발생금액(C)` 컬럼은 일부 행에서 0이라 쓰지 않습니다.
 - **냉동** = B/L 번호에 `E12` 가 있는 B/L(선어 · 활어 포함). 그중 REMARK 에 `선어`가 있으면 선어, `활어`가 있으면 활어(둘 다면 선어 우선), 나머지는 냉동입니다(`dash_rows.rf` = R/S/L). REMARK 의 "냉동 컨테이너"는 Bulk 로 컨테이너를 들여오는 건이라 냉동이 아닙니다.

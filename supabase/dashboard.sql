@@ -10,7 +10,7 @@
 --                      └─ RPC: dash_meta / dash_options / dash_summary / dash_totals / dash_detail
 --    대시보드는 집계 결과만 받아 오므로 데이터가 몇 년 치로 늘어나도 브라우저 부담이 거의 같습니다.
 --
---  업무 규칙: TEU = 20'×1 + 40'×2 + 45'×2, 금액은 Collect 기준, 업체는 사업자번호(Consignee Code)로 구분.
+--  업무 규칙: TEU = 20'×1 + 40'×2 + 45'×2 (B/L Type E 는 0), 금액은 Collect 기준, 업체는 사업자번호(Consignee Code)로 구분.
 --            원화 = THC+DOC+WFG+CCF+TSF+PSC, USD = FRT+BAF+CAF+CRS+LSS+PSS+ESC (ESC 는 달러 항목).
 -- =====================================================================
 
@@ -145,7 +145,8 @@ begin
   o.c20        := public.dash_num(r.twenty::text);
   o.c40        := public.dash_num(r.forty::text);
   o.c45        := public.dash_num(r.forty_five::text);
-  o.teu        := o.c20 + 2 * o.c40 + 2 * o.c45;   -- 45' = 2 TEU
+  -- 45' = 2 TEU. B/L Type E(여객 수화물 · 엠티 컨테이너 운송)는 실제 수입 물량이 아니므로 TEU 0
+  o.teu        := case when o.bt = 'E' then 0 else o.c20 + 2 * o.c40 + 2 * o.c45 end;
   o.cntr       := o.c20 + o.c40 + o.c45;
   o.pkg        := public.dash_num(r.pkg::text);
   o.weight     := public.dash_num(r.weight::text);
