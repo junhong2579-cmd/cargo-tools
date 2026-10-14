@@ -1542,6 +1542,160 @@
       color: #666;
     }
 
+    .todo-item {
+      padding: 4px 6px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+    }
+
+    .todo-item.starred {
+      background: #fff8e1;
+      border-color: #ffe08a;
+    }
+
+    .dark-mode .todo-item.starred {
+      background: #33301f;
+      border-color: #6b5a26;
+    }
+
+    .todo-item.dragging {
+      opacity: 0.6;
+      background: rgba(38, 198, 218, 0.12);
+    }
+
+    .todo-item-text {
+      user-select: none;
+      word-break: break-all;
+    }
+
+    .todo-handle {
+      cursor: grab;
+      color: #b5b5b5;
+      font-size: 16px;
+      padding: 0 2px;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .todo-item.dragging .todo-handle {
+      cursor: grabbing;
+    }
+
+    .todo-star {
+      all: unset;
+      cursor: pointer;
+      color: #c4c4c4;
+      font-size: 18px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+
+    .todo-star:hover,
+    .todo-item.starred .todo-star {
+      color: #f5b301;
+    }
+
+    .dark-mode .todo-star,
+    .dark-mode .todo-star:hover,
+    .dark-mode .todo-star:active,
+    .dark-mode .todo-history-del,
+    .dark-mode .todo-history-del:hover,
+    .dark-mode .todo-history-del:active {
+      background: none;
+      border: none;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .dark-mode .todo-star {
+      color: #666;
+    }
+
+    .dark-mode .todo-star:hover,
+    .dark-mode .todo-item.starred .todo-star {
+      color: #f5b301;
+    }
+
+    .todo-item.editing input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      max-width: none;
+      padding: 6px 8px;
+      font-size: 15px;
+    }
+
+    .todo-item.editing button {
+      padding: 6px 12px;
+    }
+
+    .todo-hint {
+      margin: 0;
+      font-size: 12px;
+      color: #999;
+    }
+
+    #todoHistorySearch {
+      box-sizing: border-box;
+      max-width: none;
+      margin-bottom: 4px;
+    }
+
+    .todo-history-day {
+      margin-top: 16px;
+    }
+
+    .todo-history-date {
+      display: flex;
+      justify-content: space-between;
+      padding-bottom: 4px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid #e6e6e6;
+      font-size: 14px;
+      font-weight: 700;
+      color: #555;
+    }
+
+    .dark-mode .todo-history-date {
+      border-color: #3a3a3a;
+      color: #bbb;
+    }
+
+    .todo-history-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 3px 0;
+      font-size: 14px;
+    }
+
+    .todo-history-time {
+      flex: 0 0 auto;
+      color: #999;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .todo-history-text {
+      flex: 1;
+      word-break: break-all;
+    }
+
+    .todo-history-del {
+      all: unset;
+      cursor: pointer;
+      color: #c4c4c4;
+      font-size: 12px;
+    }
+
+    .todo-history-del:hover {
+      color: #ff5252;
+    }
+
+    .todo-history-empty {
+      margin: 16px 0 0;
+      font-size: 14px;
+      color: #999;
+    }
+
     .delete-btn {
       all: unset;
       cursor: pointer;
@@ -4254,8 +4408,16 @@
       <div class="card">
         <div class="header-group" style="margin-bottom: 0;">
           <h2>📝 오늘 할 일</h2>
-          <button id="todoResetBtn" class="reset-btn icon-btn" title="전체 초기화"
-            style="position: static; margin-left: auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+          <button id="todoHistoryBtn" class="icon-btn" title="완료 기록 보기"
+            style="margin-left: auto; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+              <path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"></path>
+            </svg>
+          </button>
+          <button id="todoResetBtn" class="reset-btn icon-btn" title="전체 초기화 (완료 기록은 남습니다)"
+            style="position: static; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 8px;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
@@ -4266,8 +4428,15 @@
           <input type="text" id="todoInput" placeholder="업무를 입력하고 Enter" style="flex-grow: 1; max-width: none;" />
           <button id="todoAddBtn" style="border-radius: 8px;">추가</button>
         </div>
+        <p class="todo-hint">더블클릭: 고치기 · ⠿ 끌기: 순서 바꾸기 · ☆: 중요 표시(맨 위로)</p>
         <div id="todo-list"></div>
         <p id="todo-status" style="margin-top: 20px; font-size: 14px; color: #666;"></p>
+      </div>
+
+      <div class="card" id="todoHistoryCard" style="display: none;">
+        <h2 style="margin-top: 0;">📅 완료 기록</h2>
+        <input type="text" id="todoHistorySearch" placeholder="검색 (예: B/L 번호, 업체명)" />
+        <div id="todoHistoryList"></div>
       </div>
     </div>
 
@@ -7717,15 +7886,59 @@
     updateProgress(listId);
   }
 
-  // To Do List 기능
+  // To Do List 기능 (고치기 · 순서 바꾸기 · 중요 표시 · 완료 기록)
   function setupTodo() {
     const TODO_KEY = 'myTodoList';
+    const HISTORY_KEY = 'myTodoHistory';
+    const HISTORY_DAYS = 365; // 완료 기록 보관 기간(일)
     const input = document.getElementById('todoInput');
     const addBtn = document.getElementById('todoAddBtn');
     const list = document.getElementById('todo-list');
     const resetBtn = document.getElementById('todoResetBtn');
     const status = document.getElementById('todo-status');
-    let tasks = JSON.parse(localStorage.getItem(TODO_KEY) || '[]');
+    const historyBtn = document.getElementById('todoHistoryBtn');
+    const historyCard = document.getElementById('todoHistoryCard');
+    const historySearch = document.getElementById('todoHistorySearch');
+    const historyList = document.getElementById('todoHistoryList');
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const hmOf = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const stamp = (d) => `${dayKey(d)}T${hmOf(d)}`; // 'YYYY-MM-DDTHH:MM' (이 PC 시각)
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const readJson = (key) => {
+      try {
+        const v = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(v) ? v : [];
+      } catch (e) { return []; }
+    };
+
+    // 예전 형식({ text, completed })도 그대로 읽습니다.
+    function loadTasks() {
+      return readJson(TODO_KEY).filter(t => t && t.text).map(t => ({
+        id: t.id || uid(),
+        text: String(t.text),
+        completed: !!t.completed,
+        star: !!t.star,
+        completedAt: t.completedAt || '',
+      }));
+    }
+
+    function loadHistory() {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - HISTORY_DAYS);
+      const from = stamp(cutoff);
+      return readJson(HISTORY_KEY).filter(h => h && h.text && h.at >= from);
+    }
+
+    let tasks = loadTasks();
+    let history = loadHistory();
+    let editingId = null;
+    let dragEl = null;
+    let clickTimer = null;
+
+    const findTask = (id) => tasks.find(t => t.id === id);
 
     function updateTodoNotification() {
       const todoDot = document.getElementById('todoDot');
@@ -7740,28 +7953,231 @@
       updateTodoNotification(); // ⭐ 저장 후 알림 업데이트 ⭐
     }
 
+    function saveHistory() {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      renderHistory();
+    }
+
     function render() {
-      list.innerHTML = '';
-      tasks.forEach((task, idx) => {
-        const div = document.createElement('div');
-        div.className = `todo-item ${task.completed ? 'completed' : ''}`;
-        div.innerHTML = `
-               <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTodo(${idx})">
-               <span class="todo-item-text" onclick="toggleTodo(${idx})">${task.text}</span>
-               <span class="delete-btn" onclick="deleteTodo(${idx})">❌</span>
-            `;
-        list.appendChild(div);
-      });
+      editingId = null;
+      // 중요(★) 항목이 맨 위, 나머지는 저장된 순서대로
+      const view = [...tasks].sort((a, b) => (b.star ? 1 : 0) - (a.star ? 1 : 0));
+      list.innerHTML = view.map(t => {
+        const cls = ['todo-item', t.completed && 'completed', t.star && 'starred'].filter(Boolean).join(' ');
+        return `<div class="${cls}" data-id="${esc(t.id)}">
+          <span class="todo-handle" title="끌어서 순서 바꾸기">⠿</span>
+          <input type="checkbox" ${t.completed ? 'checked' : ''}>
+          <span class="todo-item-text" title="더블클릭해서 고치기">${esc(t.text)}</span>
+          <button type="button" class="todo-star" title="${t.star ? '중요 표시 해제' : '중요 표시 (맨 위로)'}">${t.star ? '★' : '☆'}</button>
+          <span class="delete-btn" title="삭제">❌</span>
+        </div>`;
+      }).join('');
       const done = tasks.filter(t => t.completed).length;
       status.textContent = `전체: ${tasks.length} | 완료: ${done} | 남은 할 일: ${tasks.length - done}`;
     }
 
-    window.toggleTodo = (idx) => { tasks[idx].completed = !tasks[idx].completed; save(); };
-    window.deleteTodo = (idx) => { tasks.splice(idx, 1); save(); };
-    addBtn.onclick = () => { if (input.value.trim()) { tasks.push({ text: input.value.trim(), completed: false }); input.value = ''; save(); } };
-    input.onkeypress = (e) => { if (e.key === 'Enter') addBtn.click(); };
-    resetBtn.onclick = () => { if (confirm("초기화 하시겠습니까?")) { tasks = []; save(); } };
+    // ── 추가 · 체크 · 별표 · 삭제 ──
+    function addTask() {
+      const text = input.value.trim();
+      if (!text) return;
+      tasks.push({ id: uid(), text, completed: false, star: false, completedAt: '' });
+      input.value = '';
+      save();
+    }
 
+    function toggle(id) {
+      const t = findTask(id);
+      if (!t) return;
+      t.completed = !t.completed;
+      if (t.completed) {
+        t.completedAt = stamp(new Date());
+        history.push({ id: t.id, text: t.text, at: t.completedAt });
+      } else {
+        history = history.filter(h => !(h.id === t.id && h.at === t.completedAt));
+        t.completedAt = '';
+      }
+      saveHistory();
+      save();
+    }
+
+    function toggleStar(id) {
+      const t = findTask(id);
+      if (!t) return;
+      t.star = !t.star;
+      if (t.star) tasks = [t, ...tasks.filter(x => x !== t)]; // 별표를 달면 맨 위로
+      save();
+    }
+
+    // ── 고치기 (더블클릭) ──
+    function startEdit(id) {
+      if (dragEl) return;
+      if (editingId && editingId !== id) finishEdit(true);
+      const t = findTask(id);
+      const row = list.querySelector(`.todo-item[data-id="${CSS.escape(id)}"]`);
+      if (!t || !row) return;
+      editingId = id;
+      row.className = 'todo-item editing' + (t.star ? ' starred' : '');
+      row.innerHTML = `<input type="text" class="todo-edit-text" value="${esc(t.text)}">
+        <button type="button" class="todo-edit-save">저장</button>`;
+      const textInput = row.querySelector('.todo-edit-text');
+      textInput.focus();
+      textInput.select();
+      // Enter 는 keypress 로 받아야 한글 입력 중 Enter 가 두 번 처리되지 않습니다.
+      row.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); finishEdit(true); } });
+      row.addEventListener('keydown', (e) => { if (e.key === 'Escape') finishEdit(false); });
+      row.addEventListener('focusout', (e) => { if (!row.contains(e.relatedTarget)) finishEdit(true); });
+      row.querySelector('.todo-edit-save').addEventListener('click', () => finishEdit(true));
+    }
+
+    function finishEdit(keep) {
+      const id = editingId;
+      if (!id) return;
+      editingId = null;
+      const t = findTask(id);
+      const row = list.querySelector(`.todo-item[data-id="${CSS.escape(id)}"]`);
+      if (keep && t && row) {
+        const text = row.querySelector('.todo-edit-text').value.trim();
+        if (text && text !== t.text) {
+          t.text = text;
+          const h = history.find(h => h.id === t.id && h.at === t.completedAt);
+          if (h) { h.text = text; saveHistory(); }
+        }
+      }
+      save();
+    }
+
+    list.addEventListener('change', (e) => {
+      if (e.target.matches('input[type="checkbox"]')) toggle(e.target.closest('.todo-item').dataset.id);
+    });
+
+    list.addEventListener('click', (e) => {
+      const row = e.target.closest('.todo-item');
+      if (!row || row.classList.contains('editing')) return;
+      const id = row.dataset.id;
+      if (e.target.closest('.delete-btn')) {
+        tasks = tasks.filter(t => t.id !== id);
+        save();
+      } else if (e.target.closest('.todo-star')) {
+        toggleStar(id);
+      } else if (e.target.closest('.todo-item-text')) {
+        // 한 번 클릭 = 체크, 두 번 클릭 = 고치기 → 잠깐 기다렸다가 체크합니다.
+        clearTimeout(clickTimer);
+        clickTimer = setTimeout(() => toggle(id), 250);
+      }
+    });
+
+    list.addEventListener('dblclick', (e) => {
+      const text = e.target.closest('.todo-item-text');
+      if (!text) return;
+      clearTimeout(clickTimer);
+      startEdit(text.closest('.todo-item').dataset.id);
+    });
+
+    // ── 순서 바꾸기 (⠿ 손잡이를 끌기, 마우스 · 터치 모두) ──
+    list.addEventListener('pointerdown', (e) => {
+      const handle = e.target.closest('.todo-handle');
+      if (!handle || editingId) return;
+      e.preventDefault();
+      dragEl = handle.closest('.todo-item');
+      dragEl.classList.add('dragging');
+      handle.setPointerCapture(e.pointerId);
+    });
+
+    list.addEventListener('pointermove', (e) => {
+      if (!dragEl) return;
+      const others = [...list.querySelectorAll('.todo-item:not(.dragging)')];
+      const next = others.find(el => {
+        const r = el.getBoundingClientRect();
+        return e.clientY < r.top + r.height / 2;
+      });
+      if (next) {
+        if (dragEl.nextElementSibling !== next) list.insertBefore(dragEl, next);
+      } else if (list.lastElementChild !== dragEl) {
+        list.appendChild(dragEl);
+      }
+    });
+
+    function endDrag() {
+      if (!dragEl) return;
+      const order = [...list.querySelectorAll('.todo-item')].map(el => el.dataset.id);
+      dragEl = null;
+      tasks = order.map(findTask).filter(Boolean);
+      save();
+    }
+    list.addEventListener('pointerup', endDrag);
+    list.addEventListener('pointercancel', endDrag);
+
+    // ── 완료 기록 ──
+    function renderHistory() {
+      if (historyCard.style.display === 'none') return;
+      const q = historySearch.value.trim().toLowerCase();
+      const rows = history
+        .filter(h => !q || h.text.toLowerCase().includes(q))
+        .sort((a, b) => b.at.localeCompare(a.at));
+      if (!rows.length) {
+        historyList.innerHTML = `<p class="todo-history-empty">${q ? '검색 결과가 없습니다.' : '아직 기록이 없습니다. 할 일을 체크하면 여기에 날짜별로 남습니다.'}</p>`;
+        return;
+      }
+      const days = [];
+      rows.forEach(h => {
+        const key = h.at.slice(0, 10);
+        let g = days[days.length - 1];
+        if (!g || g.key !== key) days.push(g = { key, items: [] });
+        g.items.push(h);
+      });
+      const W = ['일', '월', '화', '수', '목', '금', '토'];
+      const today = dayKey(new Date());
+      historyList.innerHTML = days.map(g => `
+        <div class="todo-history-day">
+          <div class="todo-history-date">
+            <span>${g.key.replace(/-/g, '.')} (${W[new Date(g.key + 'T00:00').getDay()]})${g.key === today ? ' · 오늘' : ''}</span>
+            <span>${g.items.length}건</span>
+          </div>
+          ${g.items.map(h => `
+            <div class="todo-history-row" data-id="${esc(h.id)}" data-at="${esc(h.at)}">
+              <span class="todo-history-time">${h.at.slice(11)}</span>
+              <span class="todo-history-text">${esc(h.text)}</span>
+              <button type="button" class="todo-history-del" title="기록에서 지우기">✕</button>
+            </div>`).join('')}
+        </div>`).join('');
+    }
+
+    historyList.addEventListener('click', (e) => {
+      if (!e.target.closest('.todo-history-del')) return;
+      const row = e.target.closest('.todo-history-row');
+      if (!confirm('이 기록을 지울까요?')) return;
+      history = history.filter(h => !(h.id === row.dataset.id && h.at === row.dataset.at));
+      saveHistory();
+    });
+
+    historyBtn.onclick = () => {
+      const open = historyCard.style.display === 'none';
+      historyCard.style.display = open ? '' : 'none';
+      if (open) {
+        renderHistory();
+        historyCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+    historySearch.addEventListener('input', renderHistory);
+
+    // ── 버튼 · 입력 ──
+    addBtn.onclick = addTask;
+    input.onkeypress = (e) => { if (e.key === 'Enter') addTask(); };
+    resetBtn.onclick = () => { if (confirm("할 일을 모두 지울까요? (완료 기록은 남습니다)")) { tasks = []; save(); } };
+
+    // 다른 창(탭)에서 바꾼 내용도 바로 반영합니다.
+    window.addEventListener('storage', (e) => {
+      if (e.key === TODO_KEY && !editingId && !dragEl) {
+        tasks = loadTasks();
+        render();
+        updateTodoNotification();
+      } else if (e.key === HISTORY_KEY) {
+        history = loadHistory();
+        renderHistory();
+      }
+    });
+
+    localStorage.setItem(TODO_KEY, JSON.stringify(tasks)); // 예전 형식에 id 부여
     render();
     updateTodoNotification(); // ⭐ 초기 로드 시 알림 업데이트 ⭐
   }
