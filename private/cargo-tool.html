@@ -6380,9 +6380,14 @@
 
 <script>
   // ============================================
-  //  📊 기본 운임표 (Basic Freight Table) 계산 로직
+  //  💲 요율 이력표 — 요율은 여기 한 곳에서만 관리합니다
+  //  기본 운임표 · B/L 총 운임 계산 · 운임 체크(자체 오류 검사 · 과거 비교 보정)가 모두 이 표를 씁니다.
+  //  요율이 바뀌면 FREIGHT_RATE_CHANGES 맨 아래에 { from: '적용 시작 입항일', 바뀐 항목만 } 한 줄을 추가합니다.
+  //  컨테이너 요율 배열 순서: 20피트, 40피트, 45피트, 20냉동, 40냉동
   // ============================================
-  const BASIC_FREIGHT_RATES = {
+
+  // 가장 오래된 요율 (첫 변경일 이전에 적용)
+  const FREIGHT_RATE_BASE = {
     sizes: ["20피트", "40피트", "45피트", "20냉동", "40냉동"],
     usd: {
       CRS: [40, 80, 80, 40, 80],
@@ -6397,10 +6402,57 @@
       CCF: [25000, 40000, 40000, 35000, 50000],
       DOC: [40000, 40000, 40000, 40000, 40000],
       WFG: [2194, 4388, 5047, 2194, 4388],
-      TSF: [145, 290, 334, 145, 290],
+      TSF: [86, 172, 198, 86, 172],
       PSC: [259, 518, 648, 259, 518]
-    }
+    },
+    // 벌크(Cargo B): WFG · TSF · PSC 는 R/T(중량톤 · CBM 중 큰 값) 당 원화, THC 는 이 금액의 배수
+    // (LCL 도 R/T 당 TSF 요율은 벌크와 같습니다. 운임 체크에서 LCL B/L 은 컨테이너 수량으로 계산합니다.)
+    bulk: { WFG: 194, TSF: 4, PSC: 38, THC: 189000, reeferTHC: 210000 }
   };
+
+  // 요율 변경 기록 (날짜 순서대로)
+  const FREIGHT_RATE_CHANGES = [
+    { from: "2026-07-01", note: "TSF 인상", krw: { TSF: [145, 290, 334, 145, 290] }, bulk: { TSF: 7 } }
+  ];
+
+  // 45피트 THC 할인가: 일부 계약 화주만 적용되던 금액 (정상가는 위 요율표의 345,000원)
+  // 기본 운임표 할인 행 · 운임 필터 강조 · 운임 체크 THC21 추출 · 과거 비교 보정에 씁니다.
+  const FREIGHT_THC45_DISCOUNT = 210000;
+  // 할인 종료일(입항일 기준): 이날부터 모든 화주에게 45' 정상가를 적용합니다.
+  // 운임 체크는 이날 이후 건만 45' THC 를 검사하고, 이전 할인 건과 비교할 때 차액(정상가 − 할인가)을 보정합니다.
+  const FREIGHT_THC45_DISCOUNT_END = "2026-10-02";
+  const FREIGHT_THC45_DISCOUNT_END_TS = (function () {
+    const [y, m, d] = FREIGHT_THC45_DISCOUNT_END.split("-").map(Number);
+    return new Date(y, m - 1, d).getTime();
+  })();
+
+  // 기간별 요율 (기본 요율에 변경 기록을 차례로 덮어씀)
+  const FREIGHT_RATE_PERIODS = (function () {
+    const periods = [{ fromTs: 0, from: "", rates: FREIGHT_RATE_BASE }];
+    FREIGHT_RATE_CHANGES.forEach(change => {
+      const prev = periods[periods.length - 1].rates;
+      const rates = { sizes: prev.sizes };
+      ["usd", "krw", "bulk"].forEach(group => {
+        rates[group] = Object.assign({}, prev[group], change[group] || {});
+      });
+      const [y, m, d] = change.from.split("-").map(Number);
+      periods.push({ fromTs: new Date(y, m - 1, d).getTime(), from: change.from, rates });
+    });
+    return periods;
+  })();
+
+  // 입항일(타임스탬프)에 적용되는 요율. 날짜가 없으면(0) 최신 요율입니다.
+  function freightRatesOn(ts) {
+    if (!ts || ts <= 0) return FREIGHT_RATE_PERIODS[FREIGHT_RATE_PERIODS.length - 1].rates;
+    let found = FREIGHT_RATE_PERIODS[0].rates;
+    FREIGHT_RATE_PERIODS.forEach(p => { if (ts >= p.fromTs) found = p.rates; });
+    return found;
+  }
+
+  // ============================================
+  //  📊 기본 운임표 (Basic Freight Table) 계산 로직 — 최신 요율
+  // ============================================
+  const BASIC_FREIGHT_RATES = freightRatesOn(0);
 
   // 달러 × 환율 → 원화(소수점 버림). 화물시스템 · 엑셀 ROUNDDOWN 과 같은 값이 나오도록 정수로 계산합니다.
   // 1351.1 같은 소수를 그대로 곱하면 256708.99999… 처럼 오차가 생겨 1원이 빠질 수 있습니다.
@@ -6471,7 +6523,7 @@
         // KRW 항목 합산
         let thcVal = krw.THC[idx];
         if (rowInfo.discount && idx === 2) {
-          thcVal = 210000; // 45피트 THC 할인 적용 (210,000원)
+          thcVal = FREIGHT_THC45_DISCOUNT; // 45피트 THC 할인 적용 (210,000원)
         }
 
         const krwSum = thcVal + krw.CCF[idx] + krw.DOC[idx] + krw.WFG[idx] + krw.TSF[idx] + krw.PSC[idx];
@@ -6558,7 +6610,7 @@
         // KRW 계산 (대당, DOC 제외)
         let thcVal = krw.THC[idx];
         if (rowInfo.discount && idx === 2) {
-          thcVal = 210000; // 45피트 THC 할인 적용
+          thcVal = FREIGHT_THC45_DISCOUNT; // 45피트 THC 할인 적용
         }
         // DOC(40,000)를 제외한 컨테이너당 원화 부대비용
         const krwPerUnitWithoutDoc = thcVal + krw.CCF[idx] + krw.WFG[idx] + krw.TSF[idx] + krw.PSC[idx];
@@ -6568,7 +6620,7 @@
       });
 
       // B/L 1건당 DOC 40,000원 1회 합산
-      const docFee = 40000;
+      const docFee = krw.DOC[0];
       totalFreight += docFee;
 
       tdTotal.textContent = `${totalFreight.toLocaleString("ko-KR")}원`;
@@ -10037,7 +10089,7 @@
     const fortyFiveVal = parseFloat(String(item.fortyFive || "").replace(/,/g, ''));
 
     if (!isNaN(thcVal) && !isNaN(fortyFiveVal) && fortyFiveVal > 0) {
-      if (thcVal / fortyFiveVal === 210000) {
+      if (thcVal / fortyFiveVal === FREIGHT_THC45_DISCOUNT) {
         thcTd.style.backgroundColor = "#2e7d32"; // 진한 초록색
         thcTd.style.color = "#ffffff";
       }
@@ -11603,6 +11655,31 @@
   const FC_MSG_NEW_COMPANY = '과거 데이터 없음 (신규 업체)';
   const FC_MSG_OLD_ONLY = `기준일(${FC_BASELINE_LABEL}) 이후 기록 없음 (이전 기록만 있음)`;
 
+  // 무비용 비엘: 비용이 없어야 하는 B/L (자체 오류 검사 · 과거 비교 공용). 업체가 바뀌면 여기만 고칩니다.
+  const FC_NO_COST_BL_SUFFIXES = ["1301", "1302", "1303", "1304", "1305", "3000", "4000",
+    "1361", "1362", "1363", "1364", "1365", "1366", "1367", "1368", "1369"]; // B/L 번호 뒤 4자리
+  const FC_NO_COST_CONSIGNEES = ["주식회사에이씨티앤코아물류", "주식회사 제이더블유티앤엘(JWTNL corp.)", "주식회사 에이씨지에이 (ACGA)"];
+  const FC_NO_COST_CONSIGNEE_NOTIFY = [{ consignee: "에이치피프린팅코리아 유한책임회사", notify: "판월드로지스틱(주)" }];
+
+  function fcIsNoCostBl(blNo, consignee, notify) {
+    const blSuffix4 = blNo.length >= 4 ? blNo.slice(-4) : '';
+    if (FC_NO_COST_BL_SUFFIXES.includes(blSuffix4)) return true;
+    if (FC_NO_COST_CONSIGNEES.includes(consignee)) return true;
+    return FC_NO_COST_CONSIGNEE_NOTIFY.some(p => p.consignee === consignee && p.notify === notify);
+  }
+
+  // 행의 입항일 타임스탬프 (I/O Date 우선, 없으면 0)
+  function fcRowIoTimestamp(r) {
+    if (!r) return 0;
+    const dStr = r['I/O Date'] || r['I/O DATE'] || r['Issue Date'] || '';
+    return parseFreightIoDate(dStr);
+  }
+
+  // 수량 × 요율 배열(20 · 40 · 45피트)
+  function fcQtyTimesRate(q20, q40, q45, rateArr) {
+    return (q20 * rateArr[0]) + (q40 * rateArr[1]) + (q45 * rateArr[2]);
+  }
+
   let g_fcInternalErrors = [];     // 자체 기준 오류 결과
   let g_fcDiscrepancies = [];      // 과거 데이터 불일치 결과
   let g_fcExtractTsList = [];      // TS 건 목록 (뒤4자리)
@@ -12140,46 +12217,21 @@
       });
     }
 
-    // 📅 검증 대상 파일의 I/O Date 기준 타임스탬프 산출 (행별 우선, 없으면 파일 전체 기준)
-    function getRowIoTimestamp(r) {
-      if (!r) return 0;
-      const dStr = r['I/O Date'] || r['I/O DATE'] || r['Issue Date'] || '';
-      return parseFreightIoDate(dStr);
-    }
-
+    // 📅 행별 입항일 기준 요율 (날짜가 없는 행은 파일의 첫 입항일, 그것도 없으면 최신 요율)
     let defaultDfTimestamp = 0;
     for (const r of df) {
-      const ts = getRowIoTimestamp(r);
+      const ts = fcRowIoTimestamp(r);
       if (ts > 0) {
         defaultDfTimestamp = ts;
         break;
       }
     }
 
-    function isOct2OrLater(timestamp) {
-      if (!timestamp || timestamp <= 0) return true; // 날짜 누락 시 최신 데이터로 간주
-      const d = new Date(timestamp);
-      const year = d.getFullYear();
-      const month = d.getMonth() + 1;
-      const day = d.getDate();
-
-      if (year > 2026) return true;
-      if (year === 2026) {
-        if (month > 10) return true;
-        if (month === 10 && day >= 2) return true;
-        return false;
-      }
-      if (year >= 2024 && year <= 2025) {
-        if (month > 10) return true;
-        if (month === 10 && day >= 2) return true;
-        return false;
-      }
-      return false;
-    }
-
     df.forEach((row, index) => {
-      const rowIoTs = getRowIoTimestamp(row) || defaultDfTimestamp;
-      const isCurrentRowOct2OrLater = isOct2OrLater(rowIoTs);
+      const rowIoTs = fcRowIoTimestamp(row) || defaultDfTimestamp;
+      const rates = freightRatesOn(rowIoTs);
+      // 45' THC 검사는 할인 종료일(10/2) 이후 건만 합니다. 날짜를 모르면 최신 건으로 보고 검사합니다.
+      const isThc45Normal = !rowIoTs || rowIoTs >= FREIGHT_THC45_DISCOUNT_END_TS;
       const bt = fcNormalizeVal(row['B/T (B/L Type)'] || row['B/T']);
       let msn = fcNormalizeVal(row['MSN']);
       const blNo = fcNormalizeVal(row['B/L NO']);
@@ -12193,18 +12245,7 @@
       if (msn.endsWith('.0')) msn = msn.slice(0, -2);
 
       // A. 무비용 비엘 여부 확인
-      const blSuffix4 = blNo.length >= 4 ? blNo.slice(-4) : '';
-      let isNoCostBl = false;
-      const noCostSuffixes = ["1301", "1302", "1303", "1304", "1305", "3000", "4000"];
-      for (let i = 1361; i <= 1369; i++) noCostSuffixes.push(String(i));
-
-      if (noCostSuffixes.includes(blSuffix4)) {
-        isNoCostBl = true;
-      } else if (["주식회사에이씨티앤코아물류", "주식회사 제이더블유티앤엘(JWTNL corp.)", "주식회사 에이씨지에이 (ACGA)"].includes(consignee)) {
-        isNoCostBl = true;
-      } else if (consignee === "에이치피프린팅코리아 유한책임회사" && notify === "판월드로지스틱(주)") {
-        isNoCostBl = true;
-      }
+      const isNoCostBl = fcIsNoCostBl(blNo, consignee, notify);
 
       // 1. MSN 오류 체크
       let msnError = null;
@@ -12290,8 +12331,8 @@
             });
           }
 
-          const expectedPsc = (totalQty20 * 259) + (totalQty40 * 518) + (totalQty45 * 648);
-          const expectedTsfCont = (totalQty20 * 145) + (totalQty40 * 290) + (totalQty45 * 334);
+          const expectedPsc = fcQtyTimesRate(totalQty20, totalQty40, totalQty45, rates.krw.PSC);
+          const expectedTsfCont = fcQtyTimesRate(totalQty20, totalQty40, totalQty45, rates.krw.TSF);
 
           if (Math.abs(actualPscSum - expectedPsc) > 0.01) {
             if (!(isNoCostBl && actualPscSum === 0)) {
@@ -12313,8 +12354,8 @@
         } catch (e) {}
       }
 
-      // 3-1. 45' THC 34.5만원 요율 오류 체크 (컨테이너 건만 해당, 10월 2일 이후 적용)
-      if (isCurrentRowOct2OrLater && isPartOf[index] === undefined && cargo !== "B" && !isNoCostBl) {
+      // 3-1. 45' THC 정상 요율 오류 체크 (컨테이너 건만 해당, 10월 2일 이후 적용)
+      if (isThc45Normal && isPartOf[index] === undefined && cargo !== "B" && !isNoCostBl) {
         let totalQty20 = fcNormalizeVal(row["20'"], true);
         let totalQty40 = fcNormalizeVal(row["40'"], true);
         let totalQty45 = fcNormalizeVal(row["45'"], true);
@@ -12332,15 +12373,16 @@
         }
 
         if (totalQty45 > 0) {
-          // 45' 정상 단가: 345,000원, 과거 할인 단가: 210,000원
-          // 20' 정상 단가: 150,000원, 40' 정상 단가: 210,000원
-          const expectedThc = (totalQty20 * 150000) + (totalQty40 * 210000) + (totalQty45 * 345000);
-          const discountedThc = (totalQty20 * 150000) + (totalQty40 * 210000) + (totalQty45 * 210000);
+          // 요율 이력표의 THC (20' · 40' · 45'), 할인가는 45'만 FREIGHT_THC45_DISCOUNT
+          const thcRates = rates.krw.THC;
+          const expectedThc = fcQtyTimesRate(totalQty20, totalQty40, totalQty45, thcRates);
+          const discountedThc = fcQtyTimesRate(totalQty20, totalQty40, totalQty45, [thcRates[0], thcRates[1], FREIGHT_THC45_DISCOUNT]);
+          const thc45Label = `${fcFormatNum(thcRates[2])}원`;
 
           if (Math.abs(actualThcSum - expectedThc) > 0.01) {
-            let errorMsg = `45' THC가 345,000원이 아님 (예상: ${fcFormatNum(expectedThc)}, 현재: ${fcFormatNum(actualThcSum)})`;
+            let errorMsg = `45' THC가 ${thc45Label}이 아님 (예상: ${fcFormatNum(expectedThc)}, 현재: ${fcFormatNum(actualThcSum)})`;
             if (Math.abs(actualThcSum - discountedThc) <= 0.01) {
-              errorMsg = `45' THC가 345,000원이 아님 (과거 할인가 210,000원 적용됨, 예상: ${fcFormatNum(expectedThc)}, 현재: ${fcFormatNum(actualThcSum)})`;
+              errorMsg = `45' THC가 ${thc45Label}이 아님 (과거 할인가 ${fcFormatNum(FREIGHT_THC45_DISCOUNT)}원 적용됨, 예상: ${fcFormatNum(expectedThc)}, 현재: ${fcFormatNum(actualThcSum)})`;
             }
             errors.push({
               'B/L NO': blNo,
@@ -12388,11 +12430,11 @@
       if (cargo === "B") {
         if (remark.includes("냉동")) {
           const actualThc = fcNormalizeVal(row['THC'], true);
-          if (actualThc % 210000 !== 0) {
+          if (actualThc % rates.bulk.reeferTHC !== 0) {
             errors.push({
               'B/L NO': blNo,
               '오류 구분': '냉동컨테이너 벌크 THC 오류',
-              '오류 내용': `THC 값이 210,000의 배수가 아님 (현재: ${fcFormatNum(actualThc)})`
+              '오류 내용': `THC 값이 ${fcFormatNum(rates.bulk.reeferTHC)}의 배수가 아님 (현재: ${fcFormatNum(actualThc)})`
             });
           }
         } else {
@@ -12401,9 +12443,9 @@
           const weightTon = weight / 1000.0;
           const rTon = Math.max(weightTon, measure);
 
-          const expectedWfg = Math.floor(194 * rTon);
-          const expectedTsf = Math.floor(7 * rTon);
-          const expectedPsc = Math.floor(38 * rTon);
+          const expectedWfg = Math.floor(rates.bulk.WFG * rTon);
+          const expectedTsf = Math.floor(rates.bulk.TSF * rTon);
+          const expectedPsc = Math.floor(rates.bulk.PSC * rTon);
 
           const actualWfg = fcNormalizeVal(row['WFG'], true);
           const actualTsf = fcNormalizeVal(row['TSF'], true);
@@ -12434,11 +12476,11 @@
             });
           }
 
-          if (actualThc % 189000 !== 0) {
+          if (actualThc % rates.bulk.THC !== 0) {
             errors.push({
               'B/L NO': blNo,
               '오류 구분': '로베드벌크 THC 오류',
-              '오류 내용': `THC 값이 189,000의 배수가 아님 (현재: ${fcFormatNum(actualThc)})`
+              '오류 내용': `THC 값이 ${fcFormatNum(rates.bulk.THC)}의 배수가 아님 (현재: ${fcFormatNum(actualThc)})`
             });
           }
         }
@@ -12490,66 +12532,27 @@
       { name: 'PSC', type: 'fixed' }
     ];
 
-    // 📅 검증 대상 파일의 I/O Date 기준 타임스탬프 산출 (행별 우선, 없으면 파일 전체 기준)
-    function getRowIoTimestamp(r) {
-      if (!r) return 0;
-      const dStr = r['I/O Date'] || r['I/O DATE'] || r['Issue Date'] || '';
-      return parseFreightIoDate(dStr);
-    }
-
+    // 📅 검증 대상 행의 입항일 (날짜가 없는 행은 파일의 첫 입항일, 그것도 없으면 최신 요율)
     let defaultDfTimestamp = 0;
     for (const r of df) {
-      const ts = getRowIoTimestamp(r);
+      const ts = fcRowIoTimestamp(r);
       if (ts > 0) {
         defaultDfTimestamp = ts;
         break;
       }
     }
 
-    // 10월 2일 이후 여부 판별 (2026년 또는 연도 무관 10월 2일 이후 항차)
-    function isOct2OrLater(timestamp) {
-      if (!timestamp || timestamp <= 0) return true; // 날짜 컬럼 누락 시 최신 데이터로 간주하여 보정 적용
-      const d = new Date(timestamp);
-      const year = d.getFullYear();
-      const month = d.getMonth() + 1;
-      const day = d.getDate();
-
-      if (year > 2026) return true;
-      if (year === 2026) {
-        if (month > 10) return true;
-        if (month === 10 && day >= 2) return true;
-        return false;
-      }
-      if (year >= 2024 && year <= 2025) {
-        if (month > 10) return true;
-        if (month === 10 && day >= 2) return true;
-        return false;
-      }
-      return false;
-    }
-
     df.forEach(row => {
       const consignee = fcNormalizeVal(row['Consignee']);
       const blNo = fcNormalizeVal(row['B/L NO']);
       const notify = fcNormalizeVal(row['Notify']);
-      const rowIoTs = getRowIoTimestamp(row) || defaultDfTimestamp;
-      const isCurrentRowOct2OrLater = isOct2OrLater(rowIoTs);
+      const rowIoTs = fcRowIoTimestamp(row) || defaultDfTimestamp;
+      const currentRates = freightRatesOn(rowIoTs);
 
       if (!consignee || !blNo) return;
 
       // 무비용 비엘 판별
-      const blSuffix4 = blNo.length >= 4 ? blNo.slice(-4) : '';
-      let isNoCostBl = false;
-      const noCostSuffixes = ["1301", "1302", "1303", "1304", "1305", "3000", "4000"];
-      for (let i = 1361; i <= 1369; i++) noCostSuffixes.push(String(i));
-
-      if (noCostSuffixes.includes(blSuffix4)) {
-        isNoCostBl = true;
-      } else if (["주식회사에이씨티앤코아물류", "주식회사 제이더블유티앤엘(JWTNL corp.)", "주식회사 에이씨지에이 (ACGA)"].includes(consignee)) {
-        isNoCostBl = true;
-      } else if (consignee === "에이치피프린팅코리아 유한책임회사" && notify === "판월드로지스틱(주)") {
-        isNoCostBl = true;
-      }
+      const isNoCostBl = fcIsNoCostBl(blNo, consignee, notify);
 
       // 과거 데이터에서 Consignee 일치 행 필터링
       const pastRows = pastDf.filter(pRow => fcNormalizeVal(pRow['Consignee']) === consignee);
@@ -12665,19 +12668,30 @@
 
             currentOrderedData[colName] = cVal;
 
-            // THC 45피트 요율 정상화(21만 -> 34.5만) 보정 적용 (10월 2일 이후 건)
+            // THC 보정: 과거 금액에 아래 차액을 더한 금액과 같아도 일치로 봅니다. (과거 금액 그대로 같아도 일치)
+            //  ① 요율 변경: 과거 건 입항일 요율 → 이번 건 입항일 요율 차이
+            //  ② 45' 할인 종료: 과거 건이 종료일(10/2) 이전, 이번 건이 이후면 45' 1대당 (정상가 − 할인가) = 135,000원
+            //     (과거에 할인가였던 화주는 ①+② 금액, 정상가였던 화주는 ① 금액과 맞게 됩니다)
             if (colName === 'THC') {
-              const cQty45 = fcNormalizeVal(row["45'"], true);
-              const pQty45 = fcNormalizeVal(pRow["45'"], true);
+              const pQtys = ["20'", "40'", "45'"].map(c => fcNormalizeVal(pRow[c], true));
+              const cQtys = ["20'", "40'", "45'"].map(c => fcNormalizeVal(row[c], true));
+              const sameQty = pQtys.every((q, i) => q === cQtys[i]);
 
-              // 10월 2일 이후 건이며, 45피트 컨테이너가 존재하고 수량이 일치하는 경우
-              if (isCurrentRowOct2OrLater && pQty45 > 0 && cQty45 === pQty45) {
-                const diffPerUnit = 135000; // 345,000(정상가) - 210,000(할인가) = 135,000원
-                const normalizedPastThc = pValOriginal + (pQty45 * diffPerUnit);
+              if (sameQty) {
+                // 과거 건 입항일을 모르면 가장 오래된 요율 · 할인 종료일 이전으로 봅니다 (보정 전 금액도 일치로 인정되므로 안전)
+                const pastTs = parseFreightIoDate(pRow['I/O Date']);
+                const pastThc = pastTs > 0 ? freightRatesOn(pastTs).krw.THC : FREIGHT_RATE_BASE.krw.THC;
+                const curThc = currentRates.krw.THC;
+                const rateDiff = fcQtyTimesRate(pQtys[0], pQtys[1], pQtys[2], curThc.map((v, i) => v - pastThc[i]));
 
-                // 현재 행(cVal)이 과거 할인가에서 45피트 정상가로 보정된 금액과 일치하는 경우 일치 처리
-                if (Math.abs(cVal - normalizedPastThc) <= 0.01) {
-                  pVal = normalizedPastThc;
+                const pastBeforeEnd = !(pastTs > 0) || pastTs < FREIGHT_THC45_DISCOUNT_END_TS;
+                const curAfterEnd = !rowIoTs || rowIoTs >= FREIGHT_THC45_DISCOUNT_END_TS;
+                const discountDiff = (pastBeforeEnd && curAfterEnd) ? pQtys[2] * (curThc[2] - FREIGHT_THC45_DISCOUNT) : 0;
+
+                const match = [rateDiff, rateDiff + discountDiff]
+                  .find(diff => diff !== 0 && Math.abs(cVal - (pValOriginal + diff)) <= 0.01);
+                if (match !== undefined) {
+                  pVal = pValOriginal + match;
                 }
               }
 
@@ -12688,7 +12702,7 @@
               return;
             }
 
-            // TSF 신규 요율 인상 강제 반영
+            // TSF: 과거 금액 대신 이번 건 입항일의 TSF 요율로 다시 계산해서 비교 (7/1 인상 반영)
             if (colName === 'TSF') {
               let expectedCTsf = 0;
               if (isNoCostBl) {
@@ -12696,15 +12710,18 @@
               } else {
                 const pCargo = fcNormalizeVal(pRow['Cargo']);
                 if (pCargo === "B") {
-                  const pWeight = fcNormalizeVal(pRow['Weight'], true);
-                  const pMeasure = fcNormalizeVal(pRow['Measure'], true);
+                  // 클라우드 과거 데이터에는 중량 · 용적이 없으므로 그때는 이번 건의 중량 · 용적을 씁니다.
+                  const hasPastSize = String(pRow['Weight'] ?? '').trim() !== '' || String(pRow['Measure'] ?? '').trim() !== '';
+                  const sizeRow = hasPastSize ? pRow : row;
+                  const pWeight = fcNormalizeVal(sizeRow['Weight'], true);
+                  const pMeasure = fcNormalizeVal(sizeRow['Measure'], true);
                   const pRTon = Math.max(pWeight / 1000.0, pMeasure);
-                  expectedCTsf = Math.floor(7 * pRTon);
+                  expectedCTsf = Math.floor(currentRates.bulk.TSF * pRTon);
                 } else {
                   const pQty20 = fcNormalizeVal(pRow["20'"], true);
                   const pQty40 = fcNormalizeVal(pRow["40'"], true);
                   const pQty45 = fcNormalizeVal(pRow["45'"], true);
-                  expectedCTsf = (pQty20 * 145) + (pQty40 * 290) + (pQty45 * 334);
+                  expectedCTsf = fcQtyTimesRate(pQty20, pQty40, pQty45, currentRates.krw.TSF);
                 }
               }
 
@@ -12786,12 +12803,13 @@
         listA.push(blRight4);
       }
 
-      // 조건 2: 45' 열이 0이 아니고, THC가 210,000의 배수(단, 0이 아님)
+      // 조건 2: 45' 열이 0이 아니고, THC가 45' 할인가(210,000)의 배수(단, 0이 아님)
       const val45 = fcNormalizeVal(row["45'"], true);
       const valThc = fcNormalizeVal(row['THC'], true);
 
       if (val45 !== 0 && valThc !== 0) {
-        if (Math.abs(valThc % 210000) < 1e-4 || Math.abs((valThc % 210000) - 210000) < 1e-4) {
+        const unit = FREIGHT_THC45_DISCOUNT;
+        if (Math.abs(valThc % unit) < 1e-4 || Math.abs((valThc % unit) - unit) < 1e-4) {
           listB.push(blRight4);
         }
       }
