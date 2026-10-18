@@ -3953,6 +3953,204 @@
       appearance: textfield;
     }
 
+    /* ============================================ */
+    /* 넓은 결과 표 (운임 필터 · 화물 검증 · 운임 체크) */
+    /* ============================================ */
+    /* 1. 결과 표는 화면 너비를 모두 씁니다. 위쪽 설명 · 업로드 영역만 1280px 로 둡니다. */
+    .edi-val-container,
+    .fc-container {
+      max-width: none;
+    }
+
+    .edi-val-header,
+    .edi-upload-grid,
+    .fc-header,
+    .fc-upload-grid {
+      max-width: 1280px;
+    }
+
+    /* 2. 표 높이를 화면에 맞춤 → 좌우 스크롤바가 항상 화면 안에 보이고, 머리글은 위에 고정 */
+    .edi-table-container,
+    .fc-table-container,
+    #freightTableScroll {
+      max-height: calc(100vh - 120px);
+      overflow: auto;
+    }
+
+    .edi-result-table thead th,
+    .fc-result-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    #freightTable thead th {
+      position: sticky !important;
+      top: 0;
+      z-index: 2;
+    }
+
+    #freightTable {
+      overflow: clip !important; /* hidden 이면 머리글 고정이 동작하지 않습니다 */
+    }
+
+    /* 3. 왼쪽 두 열 고정 (No · B/L NO, 운임 필터는 I/O Date · B/L NO). 두 번째 열 위치는 JS 가 --sticky-left-2 로 넣습니다. */
+    .sticky-cols-2 tr > :nth-child(1),
+    .sticky-cols-2 tr > :nth-child(2) {
+      position: sticky;
+      z-index: 1;
+    }
+
+    .sticky-cols-2 tr > :nth-child(1) {
+      left: 0;
+    }
+
+    .sticky-cols-2 tr > :nth-child(2) {
+      left: var(--sticky-left-2, 0px);
+      box-shadow: 4px 0 6px -4px rgba(15, 23, 42, 0.18);
+    }
+
+    .sticky-cols-2 thead tr > :nth-child(-n+2) {
+      z-index: 3;
+    }
+
+    /* 테두리 겹침(collapse) 방식이면 뒤로 지나가는 칸의 선이 고정 열 위에 비칩니다 */
+    .edi-result-table.sticky-cols-2,
+    .fc-result-table.sticky-cols-2 {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    #freightTable.sticky-cols-2 thead tr > :nth-child(-n+2) {
+      z-index: 3 !important;
+    }
+
+    /* 고정 열 바탕색 (다른 강조 색이 있으면 그 색이 우선) */
+    :where(.sticky-cols-2 tbody tr > td:nth-child(-n+2)) {
+      background-color: #ffffff;
+    }
+
+    :where(.dark-mode .sticky-cols-2 tbody tr > td:nth-child(-n+2)) {
+      background-color: #1e1e1e;
+    }
+
+    /* 화물 검증(EDI): 엑셀 내부오류 검사 안내 */
+    #ediInternalCheckNotice {
+      max-width: 1280px;
+      margin-bottom: 16px;
+    }
+
+    .edi-check-notice {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+
+    .edi-check-notice.ok {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+
+    .edi-check-notice.warn {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+      font-weight: 600;
+    }
+
+    .dark-mode .edi-check-notice.ok {
+      background: #052e1f;
+      border-color: #065f46;
+      color: #a7f3d0;
+    }
+
+    .dark-mode .edi-check-notice.warn {
+      background: #3a2a05;
+      border-color: #92400e;
+      color: #fde68a;
+    }
+
+    /* 운임 체크 · 과거 불일치: 다른 항목만 보기 */
+    .fc-history-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 13px;
+      color: #475569;
+      position: sticky;
+      left: 0;
+    }
+
+    .dark-mode .fc-history-bar {
+      background: #242427;
+      border-color: #2e2e2e;
+      color: #cbd5e1;
+    }
+
+    .fc-result-table td.fc-diff-chips-cell {
+      white-space: normal;
+    }
+
+    .fc-diff-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .fc-diff-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #7f1d1d;
+      font-size: 12.5px;
+      white-space: nowrap;
+    }
+
+    .fc-diff-chip b {
+      color: #b91c1c;
+      font-weight: 700;
+    }
+
+    .fc-diff-chip .fc-diff-now {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fc-diff-chip .fc-diff-prev {
+      color: #64748b;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .dark-mode .fc-diff-chip {
+      background: #3b1414;
+      border-color: #7f1d1d;
+      color: #fecaca;
+    }
+
+    .dark-mode .fc-diff-chip b {
+      color: #fca5a5;
+    }
+
+    .dark-mode .fc-diff-chip .fc-diff-prev {
+      color: #94a3b8;
+    }
+
+    .fc-diff-none {
+      color: #94a3b8;
+      font-size: 12.5px;
+    }
+
   </style>
 </head>
 
@@ -4670,8 +4868,8 @@
             </button>
           </div>
         </div>
-        <div style="overflow-x: auto;">
-          <table id="freightTable"
+        <div id="freightTableScroll">
+          <table id="freightTable" class="sticky-cols-2"
             style="width: 100%; border-collapse: collapse; display: none; margin-top: 10px; font-size: 14px; white-space: nowrap;">
             <thead>
               <tr>
@@ -5203,6 +5401,9 @@
 
         </div>
 
+        <!-- 엑셀 내부오류 검사 안내 (검사 완료 · 검사하지 못한 항목) -->
+        <div id="ediInternalCheckNotice" style="display: none;"></div>
+
         <!-- 2. 실행 액션 바 -->
         <div class="edi-action-bar" style="margin-bottom: 20px;">
           <div style="display: flex; gap: 8px; align-items: center;">
@@ -5237,7 +5438,7 @@
 
             <!-- 데이터 테이블 -->
             <div class="edi-table-container">
-              <table class="edi-result-table">
+              <table class="edi-result-table sticky-cols-2">
                 <thead>
                   <tr>
                     <th style="width: 40px; text-align: center;">No</th>
@@ -5406,7 +5607,7 @@
 
             <!-- 뷰 1: 자체 기준 오류 테이블 (MSN, ESC, PSC, 무비용, 벌크 등) -->
             <div id="fcViewInternal" class="fc-table-container">
-              <table class="fc-result-table">
+              <table class="fc-result-table sticky-cols-2">
                 <thead>
                   <tr>
                     <th style="width: 50px; text-align: center;">No</th>
@@ -5428,8 +5629,12 @@
 
             <!-- 뷰 2: 과거 데이터 불일치건 테이블 (파이썬 결과 시트와 동일) -->
             <div id="fcViewHistory" class="fc-table-container" style="display: none;">
-              <table class="fc-result-table">
-                <thead>
+              <div class="fc-history-bar">
+                <span id="fcHistoryModeText">과거 건과 <b>다른 항목만</b> 보여 줍니다. (이번 값 ← 과거 값)</span>
+                <button type="button" id="fcHistoryModeBtn" class="edi-btn edi-btn-secondary" style="padding: 6px 14px !important; font-size: 13px !important;" onclick="toggleFcHistoryMode()">전체 열 보기</button>
+              </div>
+              <table class="fc-result-table sticky-cols-2">
+                <thead id="fcHistoryHead">
                   <tr>
                     <th style="width: 50px; text-align: center;">No</th>
                     <th style="min-width: 130px;">B/L NO</th>
@@ -5501,7 +5706,7 @@
 
             <!-- 뷰 4: 전체 B/L 종합 테이블 -->
             <div id="fcViewAll" class="fc-table-container" style="display: none;">
-              <table class="fc-result-table">
+              <table class="fc-result-table sticky-cols-2">
                 <thead>
                   <tr>
                     <th style="width: 50px; text-align: center;">No</th>
@@ -5700,7 +5905,9 @@
         
         const parsed = parseFreightExcel(workbook);
         g_excelData = parsed.excelSub;
-        g_excelInternalErrors = checkExcelInternalErrors(workbook, parsed.df_cntr2);
+        const internalCheck = checkExcelInternalErrors(workbook, parsed);
+        g_excelInternalErrors = internalCheck.errors;
+        renderEdiInternalCheckNotice(internalCheck.notices);
 
         const dropZone = document.getElementById('excelFileDropZone');
         const infoBox = document.getElementById('excelFileInfoBox');
@@ -5725,6 +5932,7 @@
   function clearCargoExcelFile() {
     g_excelData = null;
     g_excelInternalErrors = [];
+    renderEdiInternalCheckNotice(null);
     const input = document.getElementById('cargoExcelInput');
     if (input) input.value = '';
     const dropZone = document.getElementById('excelFileDropZone');
@@ -5850,8 +6058,10 @@
       df_seal = XLSX.utils.sheet_to_json(workbook.Sheets['BL+CNTR'], { defval: '', raw: false });
     }
 
+    // B/L별 컨테이너 · 씰번호 목록 (CNTR_2 + BL+CNTR). 엑셀 내부오류의 수화물(E3000) 검사에도 씁니다.
+    const blCntrListMap = {};
     const cntrAgg = {};
-    if (df_cntr2.length > 0 && df_seal.length > 0) {
+    if (df_cntr2.length > 0) {
       const sealMap = {};
       df_seal.forEach(row => {
         let cntrKey = '';
@@ -5869,7 +6079,6 @@
         }
       });
 
-      const blCntrListMap = {};
       df_cntr2.forEach(row => {
         let blKey = '';
         let cntrKey = '';
@@ -5892,13 +6101,16 @@
         }
       });
 
-      Object.keys(blCntrListMap).forEach(bl => {
-        const items = blCntrListMap[bl].sort((a, b) => a.cntr.localeCompare(b.cntr));
-        cntrAgg[bl] = {
-          EXCEL_Container_NO: items.map(x => x.cntr).filter(Boolean).join(', '),
-          EXCEL_Seal_NO: items.map(x => x.seal).filter(Boolean).join(', ')
-        };
-      });
+      // EDI 와 비교할 컨테이너 · 씰번호 값은 기존처럼 두 시트가 모두 있을 때만 만듭니다.
+      if (df_seal.length > 0) {
+        Object.keys(blCntrListMap).forEach(bl => {
+          const items = blCntrListMap[bl].sort((a, b) => a.cntr.localeCompare(b.cntr));
+          cntrAgg[bl] = {
+            EXCEL_Container_NO: items.map(x => x.cntr).filter(Boolean).join(', '),
+            EXCEL_Seal_NO: items.map(x => x.seal).filter(Boolean).join(', ')
+          };
+        });
+      }
     }
 
     const excelSub = [];
@@ -5928,21 +6140,67 @@
       }
     });
 
-    return { targetSheetName, excelSub, df_cntr2 };
+    return {
+      targetSheetName, excelSub, df_cntr2, blCntrListMap,
+      hasCntrSheet: workbook.SheetNames.includes('CNTR_2'),
+      hasSealSheet: workbook.SheetNames.includes('BL+CNTR')
+    };
   }
 
-  // 5. 파이썬 엑셀 내부 무결성 검사
-  function checkExcelInternalErrors(workbook, df_cntr2) {
+  // 5. 엑셀 내부 무결성 검사 (M-BL 시트의 B/L 번호 · MSN · BL_TYPE, 수화물 B/L 컨테이너 · 씰번호)
+  // 돌려주는 값: { errors: B/L별 오류 목록, notices: 화면 위 안내 [{ level: 'ok' | 'warn', text }] }
+  // 검사를 못 했거나 일부만 했으면 notices 에 이유를 적어, "오류 0건"이 정상인지 검사를 못 한 것인지 구분되게 합니다.
+  const EDI_SPECIAL_RULE = "특송은 B/L 번호 'E15' · BL_TYPE 'X' · MSN '30…' 세 가지가 모두 맞아야 함";
+  const EDI_CONTAINER_NO_RE = /^[A-Z]{4}\d{7}$/; // 컨테이너 번호: 영문 4자리 + 숫자 7자리
+  const EDI_TEMP_SEAL_VALUES = ['1'];            // 수화물 씰번호를 받기 전 임시로 넣는 값
+
+  function checkExcelInternalErrors(workbook, parsed) {
     const internalErrors = [];
-    if (!workbook.SheetNames.includes('M-BL')) return internalErrors;
+    const notices = [];
+    const result = { errors: internalErrors, notices };
+    const sheetList = workbook.SheetNames.join(', ');
+
+    if (!workbook.SheetNames.includes('M-BL')) {
+      notices.push({ level: 'warn', text: `엑셀 내부오류 검사를 하지 못했습니다: 'M-BL' 시트가 없습니다. (이 파일의 시트: ${sheetList})` });
+      return result;
+    }
 
     const df_mbl_chk = XLSX.utils.sheet_to_json(workbook.Sheets['M-BL'], { defval: '', raw: false });
-    if (df_mbl_chk.length === 0) return internalErrors;
+    if (df_mbl_chk.length === 0) {
+      notices.push({ level: 'warn', text: "엑셀 내부오류 검사를 하지 못했습니다: 'M-BL' 시트가 비어 있습니다." });
+      return result;
+    }
 
     const blCandidates = ['B/L NO', 'B/LNO', 'B/L No.', 'B/L No', 'MBL번호', 'MBL NO', 'BL NO', 'M-BL', 'MBL'];
+    const msnCandidates = ['MSN', 'MSN NO', 'MSN번호'];
+    const typeCandidates = ['BL_TYPE', 'TYPE', 'BL TYPE', 'B/T (B/L Type)', 'B/T'];
+
+    // 열 찾기 (모든 행의 열 이름이 같으므로 첫 행 기준)
+    const headers = Object.keys(df_mbl_chk[0]);
+    const findCol = candidates => headers.filter(k => matchColName(k, candidates)).pop() || '';
+    const mblCol = findCol(blCandidates);
+    const msnCol = findCol(msnCandidates);
+    const typeCol = findCol(typeCandidates);
+
+    const missing = [];
+    if (!mblCol) missing.push('B/L 번호(B/L NO · MBL번호 · M-BL 등)');
+    if (!msnCol) missing.push('MSN');
+    if (!typeCol) missing.push('BL_TYPE(TYPE · B/T 등)');
+    if (missing.length > 0) {
+      notices.push({ level: 'warn', text: `엑셀 내부오류 검사를 하지 못했습니다: 'M-BL' 시트에서 ${missing.join(', ')} 열을 찾지 못했습니다. (M-BL 열: ${headers.slice(0, 20).join(', ')}${headers.length > 20 ? ' …' : ''})` });
+      return result;
+    }
+
+    const df_cntr2 = parsed.df_cntr2 || [];
+    const blCntrListMap = parsed.blCntrListMap || {};
+    if (!parsed.hasCntrSheet) {
+      notices.push({ level: 'warn', text: "'CNTR_2' 시트가 없어 환적(TS) 판단과 수화물(E3000) 컨테이너 번호 검사를 하지 못했습니다." });
+    } else if (!parsed.hasSealSheet) {
+      notices.push({ level: 'warn', text: "'BL+CNTR' 시트가 없어 수화물(E3000) 씰번호 검사를 하지 못했습니다." });
+    }
 
     const mblToCargoType = {};
-    if (df_cntr2 && df_cntr2.length > 0) {
+    if (df_cntr2.length > 0) {
       df_cntr2.forEach(row => {
         let blKey = '';
         let cargoTypeKey = '';
@@ -5960,35 +6218,21 @@
       });
     }
 
+    let checkedCount = 0;
     df_mbl_chk.forEach(row => {
-      let mblCol = '';
-      let msnCol = '';
-      let typeCol = '';
-
-      for (const k of Object.keys(row)) {
-        if (matchColName(k, blCandidates)) mblCol = k;
-        if (matchColName(k, ['MSN', 'MSN NO', 'MSN번호'])) msnCol = k;
-        if (matchColName(k, ['BL_TYPE', 'TYPE', 'BL TYPE', 'B/T (B/L Type)', 'B/T'])) typeCol = k;
-      }
-
-      if (!mblCol || !msnCol || !typeCol) return;
-
       const mblNo = cleanVal(row[mblCol]);
       const msn = cleanVal(row[msnCol]);
       const blType = cleanVal(row[typeCol]);
 
       if (!mblNo) return;
+      checkedCount++;
 
-      // 1. 특송건 여부 (E 뒤의 두 자리가 15)
-      let isSpecial = false;
-      const idxE = mblNo.indexOf('E');
-      if (idxE !== -1 && mblNo.length > idxE + 2) {
-        if (mblNo.slice(idxE + 1, idxE + 3) === '15') {
-          isSpecial = true;
-        }
-      }
+      // 1. 특송: B/L 번호 E15 · BL_TYPE X · MSN 30… 중 하나라도 해당하면 세 가지가 모두 맞아야 합니다 (운임 체크와 같은 기준)
+      const isE15 = mblNo.includes('E15');
+      const isBtX = blType === 'X';
+      const isMsn30 = msn.startsWith('30');
 
-      // 2. 고정 MSN 체크
+      // 2. 고정 MSN: E3000 = 수화물 B/L, E4000 = 공샤시 B/L (한국 화물시스템에서 만드는 B/L)
       const isFixed3000 = mblNo.endsWith('E3000');
       const isFixed4000 = mblNo.endsWith('E4000');
 
@@ -5996,13 +6240,19 @@
       const isTs = (mblToCargoType[mblNo] === 'T');
 
       const errors = [];
-      if (isSpecial) {
-        if (blType !== 'X') errors.push(`특송건이나 BL_TYPE이 'X'가 아님 (현재: ${blType})`);
-        if (!msn.startsWith('30')) errors.push(`특송건이나 MSN이 '30'으로 시작하지 않음 (현재: ${msn})`);
+      if (isE15 || isBtX || isMsn30) {
+        if (!(isE15 && isBtX && isMsn30)) {
+          const active = [];
+          const wrong = [];
+          if (isE15) active.push("B/L 번호에 'E15' 있음"); else wrong.push("B/L 번호에 'E15' 없음");
+          if (isBtX) active.push("BL_TYPE 'X'"); else wrong.push(`BL_TYPE이 'X'가 아님 (현재: ${blType || '없음'})`);
+          if (isMsn30) active.push(`MSN '${msn}'`); else wrong.push(`MSN이 '30'으로 시작하지 않음 (현재: ${msn || '없음'})`);
+          errors.push(`특송 조건 불일치: ${active.join(', ')} → ${wrong.join(', ')} (${EDI_SPECIAL_RULE})`);
+        }
       } else if (isFixed3000) {
-        if (msn !== '4000') errors.push(`E3000건이나 MSN이 '4000'이 아님 (현재: ${msn})`);
+        if (msn !== '4000') errors.push(`수화물(E3000) B/L이나 MSN이 '4000'이 아님 (현재: ${msn})`);
       } else if (isFixed4000) {
-        if (msn !== '5000') errors.push(`E4000건이나 MSN이 '5000'이 아님 (현재: ${msn})`);
+        if (msn !== '5000') errors.push(`공샤시(E4000) B/L이나 MSN이 '5000'이 아님 (현재: ${msn})`);
       } else if (isTs) {
         if (!msn.startsWith('6')) errors.push(`TS건이나 MSN이 '6'으로 시작하지 않음 (현재: ${msn})`);
       } else {
@@ -6018,6 +6268,26 @@
         }
       }
 
+      // 4. 수화물(E3000): 컨테이너 번호(영문 4 + 숫자 7)와 씰번호가 실제 값으로 들어가 있어야 합니다.
+      //    오후 늦게 번호를 받기 전에는 임시로 컨테이너 '1' · 씰 '1'을 넣어 두므로, 그 상태면 오류로 알려 줍니다.
+      if (isFixed3000 && parsed.hasCntrSheet) {
+        const cntrList = blCntrListMap[mblNo] || [];
+        if (cntrList.length === 0) {
+          errors.push("수화물(E3000) B/L에 컨테이너 번호가 없음 ('CNTR_2' 시트)");
+        }
+        cntrList.forEach(({ cntr, seal }) => {
+          if (!EDI_CONTAINER_NO_RE.test(String(cntr).toUpperCase())) {
+            errors.push(`수화물 컨테이너 번호가 정상 형식(영문 4자리 + 숫자 7자리)이 아님 (현재: ${cntr})`);
+          }
+          if (parsed.hasSealSheet) {
+            const sealVal = String(seal || '').trim();
+            if (!sealVal || EDI_TEMP_SEAL_VALUES.includes(sealVal)) {
+              errors.push(`수화물 씰번호가 입력되지 않음 (컨테이너 ${cntr}, 현재: ${sealVal || '없음'})`);
+            }
+          }
+        });
+      }
+
       if (errors.length > 0) {
         internalErrors.push({
           'B/L NO': mblNo,
@@ -6027,7 +6297,26 @@
       }
     });
 
-    return internalErrors;
+    if (!notices.some(n => n.level === 'warn')) {
+      notices.push({ level: 'ok', text: `엑셀 내부오류 검사 완료: 'M-BL' ${checkedCount}건 검사 (MSN · BL_TYPE · 특송 · 수화물 컨테이너/씰번호)` });
+    } else {
+      notices.unshift({ level: 'ok', text: `엑셀 내부오류 검사: 'M-BL' ${checkedCount}건 검사 (MSN · BL_TYPE · 특송)` });
+    }
+    return result;
+  }
+
+  // 엑셀 내부오류 검사 안내 (검사 완료 · 검사하지 못한 항목)
+  function renderEdiInternalCheckNotice(notices) {
+    const box = document.getElementById('ediInternalCheckNotice');
+    if (!box) return;
+    if (!notices || notices.length === 0) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      return;
+    }
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    box.innerHTML = notices.map(n => `<div class="edi-check-notice ${n.level}">${n.level === 'ok' ? '✓' : '⚠'} ${esc(n.text)}</div>`).join('');
+    box.style.display = 'block';
   }
 
   // 6. 교차 검증 실행
@@ -6070,14 +6359,26 @@
       }
 
       let diffType = 'normal';
+      let note = '';
+
+      // 수화물(E3000) · 공샤시(E4000) B/L은 한국 화물시스템에서 만드는 B/L → 엑셀에만 있고 EDI에는 없는 것이 정상
+      const koreaOnlyName = blNo.endsWith('E3000') ? '수화물(E3000)' : (blNo.endsWith('E4000') ? '공샤시(E4000)' : '');
+      const koreaOnlyMsg = `${koreaOnlyName} B/L은 한국 화물시스템에서 만드는 B/L이라 중국 EDI에 없어야 함 (EDI에 있음)`;
 
       if (!excelRow) {
         diffs.push('EDI에만 존재함 (엑셀에 없음)');
+        if (koreaOnlyName) diffs.push(koreaOnlyMsg);
         diffType = 'edi-only';
       } else if (!ediRow) {
-        diffs.push('Excel에만 존재함 (EDI에 없음)');
-        diffType = 'excel-only';
+        if (koreaOnlyName) {
+          diffType = 'korea-only';
+          note = `${koreaOnlyName} B/L: 한국 화물시스템에서 만드는 B/L이라 엑셀에만 있는 것이 정상`;
+        } else {
+          diffs.push('Excel에만 존재함 (EDI에 없음)');
+          diffType = 'excel-only';
+        }
       } else {
+        if (koreaOnlyName) diffs.push(koreaOnlyMsg);
         const compareKeys = ['PKG', 'Weight', 'Measure', 'Container_NO', 'Seal_NO'];
         for (const key of compareKeys) {
           if (key === 'Container_NO' || key === 'Seal_NO') {
@@ -6118,12 +6419,15 @@
       } else if (hasError) {
         statusBadgeText = '불일치';
         statusBadgeClass = 'edi-badge-danger';
+      } else if (diffType === 'korea-only') {
+        statusBadgeText = '정상 (엑셀 전용)';
       }
 
       const resultItem = {
         'B/L NO': blNo,
         'statusText': statusBadgeText,
         'statusClass': statusBadgeClass,
+        'note': note,
         '불일치 항목 내역': diffs.join('  |  '),
         'diffList': diffs,
         'diffKeys': diffKeys || [],
@@ -6242,6 +6546,8 @@
           const isInternal = d.startsWith('[엑셀내부오류]');
           return `<span class="edi-diff-item ${isInternal ? 'internal' : ''}">${d}</span>`;
         }).join('');
+      } else if (row.note) {
+        diffHtml = `<span style="color: #10b981; font-weight: 500;">✓ ${row.note}</span>`;
       } else {
         diffHtml = '<span style="color: #10b981; font-weight: 500;">✓ 모든 항목 완벽 일치</span>';
       }
@@ -13038,6 +13344,66 @@
     renderCurrentFreightCheckTable();
   }
 
+  // 과거 불일치 표 보기 방식: true = 다른 항목만 보기(기본), false = 전체 열 보기. 이 PC 브라우저에 기억합니다.
+  let g_fcHistoryCompact = true;
+  try { g_fcHistoryCompact = localStorage.getItem('fcHistoryCompact') !== '0'; } catch (e) { }
+  let g_fcHistoryFullHead = null; // 전체 열 머리글 (HTML 에 적힌 원래 머리글)
+
+  const FC_HISTORY_COMPACT_HEAD = `
+    <tr>
+      <th style="width: 50px; text-align: center;">No</th>
+      <th style="min-width: 130px;">B/L NO</th>
+      <th style="min-width: 160px;">Consignee</th>
+      <th style="min-width: 180px;">불일치 내용</th>
+      <th style="width: 100%;">다른 항목 (이번 값 ← 과거 값)</th>
+    </tr>`;
+
+  // 머리글 · 버튼 문구를 보기 방식에 맞추고, 표의 열 개수를 돌려줍니다.
+  function fcApplyHistoryMode() {
+    const head = document.getElementById('fcHistoryHead');
+    const btn = document.getElementById('fcHistoryModeBtn');
+    const text = document.getElementById('fcHistoryModeText');
+    if (head && g_fcHistoryFullHead === null) g_fcHistoryFullHead = head.innerHTML;
+    if (head) head.innerHTML = g_fcHistoryCompact ? FC_HISTORY_COMPACT_HEAD : g_fcHistoryFullHead;
+    if (btn) btn.textContent = g_fcHistoryCompact ? '전체 열 보기' : '다른 항목만 보기';
+    if (text) {
+      text.innerHTML = g_fcHistoryCompact
+        ? '과거 건과 <b>다른 항목만</b> 보여 줍니다. (이번 값 ← 과거 값)'
+        : '<b>전체 열</b>을 보여 줍니다. 빨간 칸이 과거와 다른 항목입니다 (칸에 마우스를 올리면 과거 값).';
+    }
+    return g_fcHistoryCompact ? 5 : 27;
+  }
+
+  function toggleFcHistoryMode() {
+    g_fcHistoryCompact = !g_fcHistoryCompact;
+    try { localStorage.setItem('fcHistoryCompact', g_fcHistoryCompact ? '1' : '0'); } catch (e) { }
+    renderCurrentFreightCheckTable();
+  }
+
+  function fcEscapeHtml(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // 글자 항목(나머지는 숫자로 표시)
+  const FC_HISTORY_TEXT_COLS = ['Cargo', 'B/T (B/L Type)', 'T/S', 'Consignee', 'Consignee Code', 'Notify', 'Actual Shipper', 'A/Shipper Code'];
+
+  // 다른 항목 1개 → "THC 630,000 ← 과거 360,000"
+  function fcHistoryDiffChip(colKey, nowVal, detail) {
+    // 'B/T (B/L Type)' → B/T, 'FRT(＄) C (COLLECT)' → FRT, 'CRS($) C' → CRS
+    const label = String(colKey).replace(/\s*\(.*?\)/g, '').replace(/\s+C$/, '').trim() || colKey;
+    const isText = FC_HISTORY_TEXT_COLS.includes(colKey);
+    const now = isText ? (nowVal || '(공백)') : fcFormatNum(nowVal === '' || nowVal == null ? 0 : nowVal);
+
+    let prev = String(detail || '');
+    const expected = prev.match(/예상:\s*([^)]+)\)/);
+    if (prev.startsWith('과거:')) prev = '과거 ' + prev.slice(3).trim();
+    else if (expected) prev = `예상 ${expected[1].trim()}${prev.includes('무비용') ? ' (무비용)' : ''}`;
+
+    return `<span class="fc-diff-chip" title="${fcEscapeHtml(colKey + ': ' + (detail || ''))}">`
+      + `<b>${fcEscapeHtml(label)}</b><span class="fc-diff-now">${fcEscapeHtml(now)}</span>`
+      + `<span class="fc-diff-prev">← ${fcEscapeHtml(prev)}</span></span>`;
+  }
+
   // 10. 각 테이블 상세 렌더링 (대용량 분할 렌더링 적용)
   let g_fcRenderLimit = 100;
   function renderCurrentFreightCheckTable() {
@@ -13079,6 +13445,7 @@
     } else if (g_fcCurrentFilter === 'history') {
       const tbody = document.getElementById('fcHistoryResultBody');
       if (!tbody) return;
+      const histColspan = fcApplyHistoryMode();
 
       let list = g_fcDiscrepancies;
       if (kw) {
@@ -13096,7 +13463,7 @@
           : '비교할 과거 운임 데이터가 없습니다.';
         tbody.innerHTML = `
           <tr>
-            <td colspan="27" class="edi-empty-state">
+            <td colspan="${histColspan}" class="edi-empty-state">
               <span class="edi-empty-icon">📊</span>
               ${msg}
             </td>
@@ -13111,6 +13478,22 @@
         const data = disc.data;
         const mismatches = disc.mismatchedCols || [];
         const diffDetails = disc.diffDetails || {};
+
+        // 다른 항목만 보기: No · B/L NO · Consignee · 불일치 내용 · 다른 항목(이번 값 ← 과거 값)
+        if (g_fcHistoryCompact) {
+          const isNoBaseline = !!disc.noBaseline;
+          const chips = isNoBaseline ? '' : mismatches.map(colKey => fcHistoryDiffChip(colKey, data[colKey], diffDetails[colKey])).join('');
+          html += `
+          <tr>
+            <td style="text-align: center; color: #94a3b8;">${idx + 1}</td>
+            <td style="font-weight: 700; font-family: monospace; color: #3949ab;">${data['B/L NO']}</td>
+            <td>${fcEscapeHtml(data['Consignee'] || '-')}</td>
+            <td><span class="fc-badge ${isNoBaseline ? 'fc-badge-warning' : 'fc-badge-danger'}">${data['불일치 내용']}</span></td>
+            <td class="fc-diff-chips-cell">${chips ? `<div class="fc-diff-chips">${chips}</div>` : '<span class="fc-diff-none">비교할 과거 기록 없음</span>'}</td>
+          </tr>
+        `;
+          return;
+        }
 
         const renderCell = (colKey, isNum = false) => {
           const isDiff = mismatches.includes(colKey);
@@ -13160,7 +13543,7 @@
       if (list.length > g_fcRenderLimit) {
         html += `
           <tr>
-            <td colspan="27" style="text-align: center; padding: 16px; background-color: #f8fafc;">
+            <td colspan="${histColspan}" style="text-align: center; padding: 16px; background-color: #f8fafc;">
               <button type="button" class="edi-btn" onclick="g_fcRenderLimit += 100; renderCurrentFreightCheckTable();" style="padding: 9px 24px; font-weight: 600; cursor: pointer; background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; border-radius: 8px;">
                 ➕ 더보기 (${visibleList.length}건 / 총 ${list.length}건 표시 중)
               </button>
@@ -13393,6 +13776,29 @@
       }
     }, 100);
   });
+
+  // 왼쪽 두 열 고정(.sticky-cols-2): 두 번째 열의 고정 위치 = 첫 번째 열 너비.
+  // 표 크기가 바뀔 때마다(결과 표시 · 열 숨기기 · 탭 전환) 다시 잽니다. 첫 열이 숨겨지면 0 입니다.
+  (function setupStickyColumns() {
+    const update = table => {
+      const first = table.querySelector('thead tr > :first-child');
+      table.style.setProperty('--sticky-left-2', `${first ? first.offsetWidth : 0}px`);
+    };
+    const tables = document.querySelectorAll('table.sticky-cols-2');
+    if (typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(entries => entries.forEach(e => update(e.target)));
+      tables.forEach(t => ro.observe(t));
+    }
+    tables.forEach(update);
+
+    // 운임 필터 표를 스크롤하면 열린 필터 팝업은 닫습니다 (팝업이 표와 따로 떠 있지 않게).
+    const freightScroll = document.getElementById('freightTableScroll');
+    if (freightScroll) {
+      freightScroll.addEventListener('scroll', () => {
+        if (typeof closeActiveFreightPopup === 'function') closeActiveFreightPopup();
+      }, { passive: true });
+    }
+  })();
 
 </script>
 </html>
