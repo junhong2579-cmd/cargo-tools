@@ -12377,14 +12377,30 @@
     updateFreightCheckBtnState();
   }
 
-  // Supabase RPC를 통해 검증 대상 화주들의 모든 과거 기록 핀포인트 실시간 조회 (로컬 다운로드 0MB 유지)
+  // 검증 대상 화주들의 과거 기록 조회 → { rows, oldOnly: 기준일 이전 기록만 있는 화주, oldCount: 서버에서 뺀 건수 }
+  // 새 함수 get_past_freight_since(supabase/freight_check_past.sql)는 기준일 이후 입항분만 보냅니다.
+  // 새 함수가 없거나 오류가 나면 기존 get_past_freight_by_consignees(전체 기록)로 받고 화면에서 거릅니다.
   async function fetchTargetPastDataFromSupabase(consignees) {
     if (!supabaseClient) {
       throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
     }
     if (!consignees || consignees.length === 0) {
-      return [];
+      return { rows: [], oldOnly: [], oldCount: 0 };
     }
+
+    const pad = n => String(n).padStart(2, '0');
+    const since = await supabaseClient.rpc('get_past_freight_since', {
+      p_consignees: consignees,
+      p_from: `${FC_BASELINE_FROM.year}-${pad(FC_BASELINE_FROM.month)}-${pad(FC_BASELINE_FROM.day)}`
+    });
+    if (!since.error && since.data && Array.isArray(since.data.rows)) {
+      return {
+        rows: mapPastFreightRows(since.data.rows),
+        oldOnly: (since.data.oldOnly || []).map(c => fcNormalizeVal(c)),
+        oldCount: Number(since.data.oldCount) || 0
+      };
+    }
+    console.warn('[Supabase] get_past_freight_since 사용 불가 → 기존 함수로 조회합니다. supabase/freight_check_past.sql 을 실행하세요.', since.error);
 
     const { data, error } = await supabaseClient.rpc('get_past_freight_by_consignees', {
       p_consignees: consignees
@@ -12408,10 +12424,10 @@
       rawList = [data];
     }
 
-    if (!rawList || rawList.length === 0) {
-      return [];
-    }
+    return { rows: mapPastFreightRows(rawList || []), oldOnly: [], oldCount: 0 };
+  }
 
+  function mapPastFreightRows(rawList) {
     return rawList.map(item => ({
       'I/O Date': item.io_date || '',
       'B/L NO': item.bl_no || '',
@@ -13150,12 +13166,14 @@
         ));
 
         if (targetConsignees.length > 0) {
-          // 2. Supabase RPC로 해당 화주들의 모든 과거 기록 핀포인트 쿼리 (로컬 다운로드 0MB)
-          const pastAll = await fetchTargetPastDataFromSupabase(targetConsignees);
+          // 2. Supabase RPC로 해당 화주들의 과거 기록 조회 (서버에서 기준일 이전 입항분을 먼저 거름)
+          const past = await fetchTargetPastDataFromSupabase(targetConsignees);
+          const pastAll = past.rows;
 
           // 3. 기준일 이전 입항분은 비교 기준에서 제외 (날짜를 읽을 수 없는 행은 그대로 둠)
+          //    새 함수는 이미 걸러서 보내므로 여기서는 기존 함수로 받은 경우에만 실제로 빠짐
           const pastData = [];
-          const oldConsignees = new Set();
+          const oldConsignees = new Set(past.oldOnly);
           pastAll.forEach(r => {
             const ts = parseFreightIoDate(r['I/O Date']);
             if (ts > 0 && ts < FC_BASELINE_TS) oldConsignees.add(fcNormalizeVal(r['Consignee']));
@@ -13167,7 +13185,7 @@
 
           const statsSpan = document.getElementById('fcPastFileStats');
           if (statsSpan) {
-            const excluded = pastAll.length - pastData.length;
+            const excluded = past.oldCount + pastAll.length - pastData.length;
             statsSpan.textContent = `${pastData.length.toLocaleString()}건 (타겟 화주 ${targetConsignees.length}개사 연동`
               + (excluded > 0 ? `, ${FC_BASELINE_LABEL} 이전 ${excluded.toLocaleString()}건 제외)` : ')');
           }

@@ -38,7 +38,11 @@ document.addEventListener('dash:ready', () => {
     const my = ++hintSeq;
     $('rm-detail-hint').textContent = '';
     X.fetchTotals(reportScope().s).then((t) => {
-      if (my === hintSeq && t.bl) $('rm-detail-hint').textContent = `(${fmt.int(t.bl)}건, 약 ${Math.max(1, Math.ceil(t.bl / 38))}쪽 추가)`;
+      if (!(my === hintSeq && t.bl)) return;
+      const n = Math.min(t.bl, X.DETAIL_MAX);
+      $('rm-detail-hint').textContent = t.bl > X.DETAIL_MAX
+        ? `(${fmt.int(t.bl)}건 중 입항일 순 앞의 ${fmt.int(n)}건만, 약 ${Math.ceil(n / 38)}쪽 추가)`
+        : `(${fmt.int(t.bl)}건, 약 ${Math.max(1, Math.ceil(n / 38))}쪽 추가)`;
     }).catch(() => {});
   }
 
@@ -151,7 +155,7 @@ document.addEventListener('dash:ready', () => {
       [S, prev, list] = await Promise.all([
         X.fetchSummary(s),
         cmp && cmp.available ? X.fetchTotals(s, cmp) : null,
-        cfg.detail ? X.fetchDetail(s, { sort: 'date', dir: 'asc', limit: 100000, offset: 0 }).then((r) => r.rows) : null,
+        cfg.detail ? X.fetchDetail(s, { sort: 'date', dir: 'asc', limit: X.DETAIL_MAX, offset: 0 }) : null,
       ]);
     } catch (e) {
       X.toast('보고서를 만들지 못했습니다: ' + e.message);
@@ -293,7 +297,9 @@ document.addEventListener('dash:ready', () => {
 
       // 7. B/L 상세
       if (list) {
-        html.push(`<section class="rpt-sec flow">${H(`B/L 상세 목록 (${fmt.int(list.length)}건)`)}
+        const cutNote = list.total > list.rows.length
+          ? `<p class="rpt-note">전체 ${fmt.int(list.total)}건 중 입항일 순으로 앞의 ${fmt.int(list.rows.length)}건만 수록했습니다. 나머지는 기간을 나눠 보고서를 만드세요.</p>` : '';
+        html.push(`<section class="rpt-sec flow">${H(`B/L 상세 목록 (${fmt.int(list.rows.length)}건${list.total > list.rows.length ? ` / 전체 ${fmt.int(list.total)}건` : ''})`)}${cutNote}
           ${table([
             { l: 'No', r: true, v: (r, i) => fmt.int(i + 1) },
             { l: '입항일', v: (r) => r.date || '' }, { l: 'B/L NO', v: (r) => esc(r.bl) },
@@ -303,7 +309,7 @@ document.addEventListener('dash:ready', () => {
             { l: "20'", r: true, v: (r) => fmt.int(r.c20) }, { l: "40'", r: true, v: (r) => fmt.int(r.c40) }, { l: "45'", r: true, v: (r) => fmt.int(r.c45) },
             { l: 'TEU', r: true, v: (r) => fmt.int(r.teu) },
             { l: '총 청구액(원)', r: true, v: (r) => fmt.won(r.total) },
-          ], list, null, 'detail')}
+          ], list.rows, null, 'detail')}
           <p class="rpt-note">업체명은 "주식회사 · (주)"를 빼고, 길면 줄여서 표시했습니다.</p></section>`);
       }
     }

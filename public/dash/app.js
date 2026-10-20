@@ -21,6 +21,8 @@
     ts: { name: '환적', note: 'T/S', teuKey: 'tsTeu', blKey: 'ts', dim: 'tsConsignee' },
     ex: { name: '특송', note: 'B/L Type X', teuKey: 'exTeu', blKey: 'ex', dim: 'exConsignee' },
   };
+  // CSV · 보고서 B/L 상세 목록 최대 건수 (한 번에 내려받는 양 제한. 1,000건 ≈ 0.3MB)
+  const DETAIL_MAX = 1000;
   const NONE = ''; // 값 없음: (Notify 없음) · (미지정) 등
   const COLORS = {
     navy900: '#13243b', navy700: '#1f3a5f', navy500: '#456789', navy300: '#9fb3c8', navy100: '#e5ecf3',
@@ -1187,10 +1189,15 @@
     let { rows, cols, def } = tableCache;
     if (!def) return;
     if (def.server) {
-      toast('B/L 목록 전체를 내려받는 중입니다…');
+      toast('B/L 목록을 내려받는 중입니다…');
+      let total;
       try {
-        rows = (await fetchDetail(state, { ...detailOpt(view.sort.detail || def.sort), limit: 100000, offset: 0 })).rows;
+        ({ rows, total } = await fetchDetail(state, { ...detailOpt(view.sort.detail || def.sort), limit: DETAIL_MAX, offset: 0 }));
       } catch (e) { toast('내보내기 실패: ' + e.message); return; }
+      if (total > DETAIL_MAX && !confirm(`B/L ${fmt.int(total)}건 중 현재 정렬 순서로 앞의 ${fmt.int(DETAIL_MAX)}건만 내보냅니다.
+전체가 필요하면 기간 · 조건을 좁혀서 나눠 내보내세요.
+
+계속할까요?`)) return;
     }
     const header = cols.map((c) => c.label).concat((def.csvExtra || []).map(([l]) => l));
     const lines = rows.map((r) => cols.map((c) => {
@@ -1768,7 +1775,7 @@
     showNotice();
 
     window.Dash = {
-      META, MONTHS, YEARS, CARGO, RF, KRW_CHARGES, USD_CHARGES, NONE, METRICS, COLORS, QC,
+      META, MONTHS, YEARS, CARGO, DETAIL_MAX, RF, KRW_CHARGES, USD_CHARGES, NONE, METRICS, COLORS, QC,
       state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, subsetTop, SUBSETS, RF_TEU, rate, shortName, chartOptions,
       consigneeName, consigneeCode, notifyName, companyName, placeName, vesselLabel,
       companyList: (basis) => (basis === 'notify'
