@@ -47,6 +47,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **결과 표 공통**: `.sticky-cols-2` 클래스 = 왼쪽 두 열 고정(두 번째 열 위치는 파일 끝 `setupStickyColumns`가 `--sticky-left-2`로 넣음). 표 상자(`.edi-table-container` · `.fc-table-container` · `#freightTableScroll`)는 `max-height: calc(100vh - 120px)`.
 - **EDI 내부오류**(`checkExcelInternalErrors`): `{ errors, notices }`를 돌려주고 `notices`는 `#ediInternalCheckNotice`에 표시. E3000=수화물(컨테이너 영문4+숫자7, 씰 `1`은 임시값), E4000=공샤시. 둘 다 엑셀 전용 B/L(EDI에 없어야 정상).
 - **요율**: `cargo-tool.html`의 `FREIGHT_RATE_BASE`(가장 오래된 요율) + `FREIGHT_RATE_CHANGES`(변경일별 바뀐 항목) → `freightRatesOn(입항일)`. 기본 운임표 · 운임 체크가 모두 이것만 씁니다. 45' THC 계약 할인(210,000)은 `FREIGHT_THC45_DISCOUNT_END`(2026-10-02) 로 따로 관리합니다. 요율 숫자를 다른 곳에 직접 쓰지 않습니다.
+- **운임 체크 과거 기록**: `supabase/freight_check_past.sql`의 `get_past_freight_since(화주 목록, 기준일)`이 기준일(`FC_BASELINE_FROM`) 이후 입항분만 보냅니다(입항일 해석은 `dash_date`). 함수가 없거나 오류면 화면이 기존 `get_past_freight_by_consignees`(Supabase 에만 있음, 전체 기록)로 받아 화면에서 거릅니다.
+- **대시보드 CSV · 보고서 B/L 상세 목록**은 `DETAIL_MAX`(1,000건, `app.js`)까지만 받습니다(1,000건 ≈ 0.4MB). 운임 필터 검색은 500건 제한을 유지합니다(사용자 결정).
 - **[시험] 고객 변화 · Shipper 연결 탭**: `supabase/stats_customers.sql` · `stats_shippers.sql`(새 함수만), 되돌리기 `stats_rollback.sql`. 코드에는 `[실험]` 표시. 기존 `dashboard.sql` 함수는 바꾸지 않습니다.
 - **되돌리기**
   - 화면만: Vercel → Deployments → 이전 배포 → Promote to Production.
