@@ -12391,15 +12391,18 @@
     }
 
     const pad = n => String(n).padStart(2, '0');
+    // 같은 운임은 서버에서 한 건만 보냄. 요율이 바뀐 날(요율 변경일 · 45' 할인 종료일)을 경계로 나눠 합쳐야 입항일 요율 보정 결과가 같음
     const since = await supabaseClient.rpc('get_past_freight_since', {
       p_consignees: consignees,
-      p_from: `${FC_BASELINE_FROM.year}-${pad(FC_BASELINE_FROM.month)}-${pad(FC_BASELINE_FROM.day)}`
+      p_from: `${FC_BASELINE_FROM.year}-${pad(FC_BASELINE_FROM.month)}-${pad(FC_BASELINE_FROM.day)}`,
+      p_breaks: [...FREIGHT_RATE_CHANGES.map(c => c.from), FREIGHT_THC45_DISCOUNT_END]
     });
     if (!since.error && since.data && Array.isArray(since.data.rows)) {
       return {
         rows: mapPastFreightRows(since.data.rows),
         oldOnly: (since.data.oldOnly || []).map(c => fcNormalizeVal(c)),
-        oldCount: Number(since.data.oldCount) || 0
+        oldCount: Number(since.data.oldCount) || 0,
+        merged: Math.max(0, (Number(since.data.total) || 0) - since.data.rows.length) // 같은 운임이라 합친 건수
       };
     }
     console.warn('[Supabase] get_past_freight_since 사용 불가 → 기존 함수로 조회합니다. supabase/freight_check_past.sql 을 실행하세요.', since.error);
@@ -12426,7 +12429,7 @@
       rawList = [data];
     }
 
-    return { rows: mapPastFreightRows(rawList || []), oldOnly: [], oldCount: 0 };
+    return { rows: mapPastFreightRows(rawList || []), oldOnly: [], oldCount: 0, merged: 0 };
   }
 
   function mapPastFreightRows(rawList) {
@@ -13189,6 +13192,7 @@
           if (statsSpan) {
             const excluded = past.oldCount + pastAll.length - pastData.length;
             statsSpan.textContent = `${pastData.length.toLocaleString()}건 (타겟 화주 ${targetConsignees.length}개사 연동`
+              + (past.merged > 0 ? `, 같은 운임 ${past.merged.toLocaleString()}건 합침` : '')
               + (excluded > 0 ? `, ${FC_BASELINE_LABEL} 이전 ${excluded.toLocaleString()}건 제외)` : ')');
           }
         } else {
