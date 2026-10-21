@@ -51,6 +51,32 @@
     return body;
   }
 
+  /** 표에 행 올리기 (같은 bl_no 는 덮어쓰기). 데이터 올리기(관리자) 전용, 권한은 Supabase 정책이 검사 */
+  async function upsert(table, rows, retried = false) {
+    const a = await getAuth();
+    const res = await fetch(`${a.url}/rest/v1/${table}?on_conflict=bl_no`, {
+      method: 'POST',
+      headers: {
+        apikey: a.anonKey, Authorization: `Bearer ${a.accessToken}`, 'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify(rows),
+    });
+    if (res.status === 401 && !retried) {
+      await getAuth(true);
+      return upsert(table, rows, true);
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      const err = new Error(res.status === 404 || body?.code === '42P01' || body?.code === 'PGRST205'
+        ? `Supabase에 ${table} 표가 없습니다. supabase/dashboard.sql 을 SQL Editor에서 실행해 주세요.`
+        : body?.code === '42501' || res.status === 403 ? '데이터는 관리자만 올릴 수 있습니다.'
+          : body?.message || `${res.status} ${res.statusText}`);
+      err.code = body?.code;
+      throw err;
+    }
+  }
+
   // 화물 업무 도구의 3시간 비활동 로그아웃 기준(cargo_last_active)에 대시보드 사용 시간도 포함한다.
   let lastPing = 0;
   ['pointerdown', 'keydown', 'wheel'].forEach((ev) => window.addEventListener(ev, () => {
@@ -71,5 +97,8 @@
     detail: (f, opt) => rpc('dash_detail', { f, opt }),
     customers: (f, opt) => rpc('dash_customers', { f, opt }), // [실험] supabase/stats_customers.sql
     shippers: (f, opt) => rpc('dash_shippers', { f, opt }),   // [실험] supabase/stats_shippers.sql
+    uploadExport: (rows) => upsert('export_records', rows),  // 수출 원본 (관리자 전용)
+    uploadImport: (rows) => upsert('freight_records', rows), // 수입 원본 = 화물 도구 [클라우드 동기화]와 같은 표
+    email: () => getAuth().then((a) => a.email || ''),
   };
 })();

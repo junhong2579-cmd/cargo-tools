@@ -12,4 +12,5 @@ node_modules
 # 로컬 검증 도구(scripts/dash-test)가 만드는 테스트 DB · 스크린샷
 scripts/dash-test/pgdata/
 scripts/dash-test/pgrb/
+scripts/dash-test/pgex/
 scripts/dash-test/shots/

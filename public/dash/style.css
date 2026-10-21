@@ -65,6 +65,12 @@ button { cursor: pointer; }
 .topbar .btn:hover { background: rgba(255,255,255,.08); }
 .topbar .btn.primary { background: #fff; color: var(--navy-900); border-color: #fff; }
 .topbar .btn.primary:hover { background: var(--navy-100); }
+.xu-status { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+/* 수입 · 수출 · 전체 전환 (머리 띠 안) */
+.topbar .dir-switch { flex: none; flex-wrap: nowrap; background: transparent; border-color: rgba(255,255,255,.35); }
+.topbar .dir-switch button { color: #dfe7f0; border-left-color: rgba(255,255,255,.25); padding: 6px 14px; font-size: 13px; font-weight: 500; }
+.topbar .dir-switch button:hover { background: rgba(255,255,255,.08); color: #fff; }
+.topbar .dir-switch button[aria-pressed="true"] { background: #fff; color: var(--navy-900); }
 .btn.link { border: 0; background: none; padding: 2px 4px; color: var(--navy-500); text-decoration: underline; text-underline-offset: 3px; }
 .only-mobile { display: none; }
 
@@ -249,7 +255,7 @@ table.data td.muted { color: var(--faint); }
   .filters.open { transform: none; }
   main { padding: 16px 16px 40px; }
   .topbar { padding-inline: 16px; gap: 10px; }
-  .brand-mark, #btn-share { display: none; }
+  .brand-mark, #btn-share, #btn-export-upload { display: none; } /* 수출 데이터 올리기는 PC 에서 */
 }
 @media (max-width: 600px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -257,6 +263,8 @@ table.data td.muted { color: var(--faint); }
   .kpi .k-value { font-size: 19px; }
   .brand h1 { font-size: 15px; }
   .brand p { display: none; }
+  .topbar:has(.dir-switch:not([hidden])) .brand { display: none; } /* 좁은 화면: 제목 대신 수입 · 수출 · 전체 */
+  .topbar .dir-switch button { padding: 6px 10px; }
   .chart { height: 260px; }
   .sub-table { max-height: 260px; }
   /* 모바일: 표가 화면 폭에 들어오도록 칸 간격 · 업체명 · 막대를 줄인다 */

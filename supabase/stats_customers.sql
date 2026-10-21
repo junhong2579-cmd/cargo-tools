@@ -27,7 +27,9 @@ declare
   basis text := coalesce(opt ->> 'basis', 'consignee');
 begin
   perform public.dash_assert();
-  select min(d), max(d) into gmin, gmax from public.dash_rows;
+  -- 데이터 범위도 조회 조건의 수출입 구분(dir, 없으면 수입)을 따름
+  select min(d), max(d) into gmin, gmax from public.dash_rows
+  where upper(coalesce(nullif(f ->> 'dir', ''), 'IN')) in ('ALL', dir);
   pf   := coalesce(nullif(opt ->> 'from', '')::date, gmin);
   pt   := coalesce(nullif(opt ->> 'to', '')::date, gmax);
   asof := least(pt, gmax);

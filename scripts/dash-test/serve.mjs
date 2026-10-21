@@ -1,5 +1,6 @@
 // 로컬 테스트 서버: Next.js(/dash 정적 파일, /api/auth/token, 화물도구 본문) + Supabase PostgREST(/rest/v1/rpc/*) 흉내.
 // 사용: node serve.mjs [포트]   (먼저 setup.mjs 로 pgdata/ 를 만든다) → http://localhost:5179/dash/index.html , /tool
+//   DASH_DB=pgex  : export.mjs 가 만든 수입+수출 DB 사용,  DASH_ADMIN=1 : 관리자로 로그인한 것처럼 (수출 데이터 올리기)
 import { PGlite } from '@electric-sql/pglite';
 import http from 'http';
 import fs from 'fs';
@@ -7,13 +8,34 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const TOOL = path.resolve(HERE, '../..'); // 저장소 루트
-const dir = path.join(HERE, 'pgdata');
+const TOOL = process.env.DASH_ROOT || path.resolve(HERE, '../..'); // 저장소 루트 (DASH_ROOT: 예전 화면 코드와 비교할 때)
+const dir = path.join(HERE, process.env.DASH_DB || 'pgdata');
 const PORT = Number(process.argv[2] || 5179);
 const db = new PGlite(dir);
-const CLAIMS = { sub: '11111111-1111-1111-1111-111111111111', email: 'ok@test', role: 'authenticated' };
+const CLAIMS = process.env.DASH_ADMIN
+  ? { sub: '33333333-3333-3333-3333-333333333333', email: 'junhong2579@gmail.com', role: 'authenticated' }
+  : { sub: '11111111-1111-1111-1111-111111111111', email: 'ok@test', role: 'authenticated' };
+
+// PostgREST 의 표 upsert 흉내 (POST /rest/v1/export_records?on_conflict=bl_no). 권한은 DB 정책이 검사
+async function upsertTable(table, rows) {
+  if (!['export_records', 'freight_records'].includes(table)) { const e = new Error('table not found'); e.code = 'PGRST205'; e.status = 404; throw e; }
+  return db.transaction(async (tx) => {
+    await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(CLAIMS)]);
+    await tx.exec('set local role authenticated');
+    const cols = Object.keys(rows[0] || {}).filter((c) => /^[a-z0-9_]+$/.test(c));
+    for (const r of rows) {
+      await tx.query(`insert into public.${table} (${cols.join(',')}) values (${cols.map((_, i) => '$' + (i + 1)).join(',')})
+        on conflict (bl_no) do update set ${cols.filter((c) => c !== 'bl_no').map((c) => `${c} = excluded.${c}`).join(', ')}`, cols.map((c) => r[c]));
+    }
+  });
+}
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.webp': 'image/webp' };
 let rpcLog = [];
+// 로컬 시험 DB 에는 Supabase 의 freight_records 쓰기 정책이 없으므로 관리자 쓰기만 흉내 낸다 (데이터 올리기 · 수입)
+await db.exec(`grant select, insert, update on public.freight_records to authenticated;
+  drop policy if exists t_admin_rw on public.freight_records;
+  create policy t_admin_rw on public.freight_records for all to authenticated
+    using (coalesce(lower(auth.jwt() ->> 'email') = 'junhong2579@gmail.com', false)) with check (coalesce(lower(auth.jwt() ->> 'email') = 'junhong2579@gmail.com', false));`);
 
 async function rpc(fn, args) {
   if (!/^dash_[a-z]+$/.test(fn)) { const e = new Error('Could not find the function'); e.code = 'PGRST202'; e.status = 404; throw e; }
@@ -45,6 +67,16 @@ http.createServer(async (req, res) => {
         return send(200, v);
       } catch (e) {
         return send(e.status || (e.code === '42501' ? 403 : 400), { message: e.message, code: e.code });
+      }
+    }
+    if (req.method === 'POST' && url.pathname.startsWith('/rest/v1/') && !url.pathname.startsWith('/rest/v1/rpc/')) {
+      let body = ''; for await (const c of req) body += c;
+      try {
+        await upsertTable(url.pathname.slice('/rest/v1/'.length), JSON.parse(body));
+        return send(201, '');
+      } catch (e) {
+        const rls = /row-level security|permission denied/.test(e.message);
+        return send(e.status || (rls ? 403 : 400), { message: e.message, code: e.code || (rls ? '42501' : undefined) });
       }
     }
     if (url.pathname === '/' || url.pathname === '/tool') { // 화물 도구 본문 (서버 주입 흉내)

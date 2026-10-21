@@ -20,7 +20,9 @@
       <p id="data-meta"></p>
     </div>
   </div>
+  <div class="seg dir-switch" id="dir-switch" role="group" aria-label="수입 · 수출 · 전체 보기" hidden></div>
   <div class="top-actions">
+    <button type="button" class="btn" id="btn-export-upload" hidden>데이터 올리기</button>
     <button type="button" class="btn" id="btn-share">조회 링크 복사</button>
     <button type="button" class="btn primary" id="btn-report">보고서 출력</button>
   </div>
@@ -48,13 +50,13 @@
 
     <section class="fgroup">
       <h3>업체</h3>
-      <div class="flabel"><span>Consignee</span><button type="button" class="btn link" data-clear="consignee">선택 해제</button></div>
+      <div class="flabel"><span data-ax="c">Consignee</span><button type="button" class="btn link" data-clear="consignee">선택 해제</button></div>
       <div class="msel" id="ms-consignee"></div>
-      <div class="flabel"><span>Notify</span><button type="button" class="btn link" data-clear="notify">선택 해제</button></div>
+      <div class="flabel"><span data-ax="n">Notify</span><button type="button" class="btn link" data-clear="notify">선택 해제</button></div>
       <div class="msel" id="ms-notify"></div>
       <div class="flabel"><span>두 조건을 함께 선택했을 때</span></div>
       <div class="seg block small" id="company-mode"></div>
-      <p class="hint">"하나라도"를 고르면 Consignee 또는 Notify 중 한쪽만 맞아도 조회됩니다.</p>
+      <p class="hint" id="hint-company">"하나라도"를 고르면 Consignee 또는 Notify 중 한쪽만 맞아도 조회됩니다.</p>
     </section>
 
     <section class="fgroup">
@@ -73,7 +75,7 @@
     </section>
 
     <section class="fgroup">
-      <h3>냉동 <small>선어 · 활어 포함 · B/L 번호 E12</small></h3>
+      <h3>냉동 <small id="rf-filter-note">선어 · 활어 포함 · B/L 번호 E12</small></h3>
       <div class="seg block small" id="f-rf"></div>
     </section>
 
@@ -82,7 +84,7 @@
       <div class="seg block small" id="f-ts"></div>
     </section>
 
-    <section class="fgroup">
+    <section class="fgroup" id="sec-ex">
       <h3>특송 <small>B/L Type X</small></h3>
       <div class="seg block small" id="f-ex"></div>
     </section>
@@ -211,6 +213,24 @@
         </header>
         <div class="chart" id="ch-trend"></div>
         <div class="table-wrap trend-table" id="trend-table"></div>
+        <p class="chart-note" id="trend-note" hidden></p>
+      </article>
+      <!-- 수출 · 전체 보기 전용 -->
+      <article class="panel" id="card-money" hidden>
+        <header><h3 id="money-title">한국 · 중국 금액</h3></header>
+        <div class="chart" id="ch-money"></div>
+        <p class="chart-note" id="money-sum"></p>
+        <p class="chart-note">한국 금액 = 수입 Collect + 수출 Prepaid, 중국 금액 = 수출 Collect. 수입 Prepaid(중국 지불)는 저장하지 않아 미집계입니다.</p>
+      </article>
+      <article class="panel" id="card-mt" hidden>
+        <header>
+          <h3 id="mt-title">공컨 이송</h3>
+          <span class="seg small" id="mt-view"></span>
+        </header>
+        <div class="chart" id="ch-mt"></div>
+        <div class="table-wrap sub-table" id="mt-table" hidden></div>
+        <p class="chart-note" id="mt-sum"></p>
+        <p class="chart-note">공컨 B/L(B/L Type E)은 물동량 TEU 에 넣지 않고 여기서만 TEU 로 셉니다. TEU = 20'·20RF ×1 + 40'·40RF·45' ×2. 표의 증감률은 TEU 기준 직전 월(항차) 대비입니다.</p>
       </article>
       <article class="panel">
         <header><h3 id="top-title">Consignee 상위 10</h3></header>
@@ -241,7 +261,7 @@
         <p class="chart-note" id="rf-note"></p>
       </article>
       <article class="panel">
-        <header><h3>냉동 Consignee 상위 10 <small>선어 · 활어 포함 · TEU 기준</small></h3></header>
+        <header><h3>냉동 <span data-ax="c">Consignee</span> 상위 10 <small id="rf-top-note">선어 · 활어 포함 · TEU 기준</small></h3></header>
         <div class="table-wrap top-table" id="rf-top"></div>
         <p class="chart-note">줄을 누르면 해당 업체로 조회합니다. 비중 · 누적 비중 = 해당 화물 전체 TEU 중.</p>
       </article>
@@ -256,11 +276,11 @@
         <p class="chart-note" id="ts-note"></p>
       </article>
       <article class="panel">
-        <header><h3>환적 Consignee 상위 10 <small>T/S · TEU 기준</small></h3></header>
+        <header><h3>환적 <span data-ax="c">Consignee</span> 상위 10 <small>T/S · TEU 기준</small></h3></header>
         <div class="table-wrap top-table" id="ts-top"></div>
         <p class="chart-note">줄을 누르면 해당 업체로 조회합니다. 비중 · 누적 비중 = 해당 화물 전체 TEU 중.</p>
       </article>
-      <article class="panel">
+      <article class="panel" id="card-ex">
         <header>
           <h3 id="ex-title">특송 화물</h3>
           <span class="seg small" id="ex-view"></span>
@@ -270,14 +290,14 @@
         <div class="ratios" id="ex-ratio"></div>
         <p class="chart-note" id="ex-note"></p>
       </article>
-      <article class="panel">
-        <header><h3>특송 Consignee 상위 10 <small>B/L Type X · TEU 기준</small></h3></header>
+      <article class="panel" id="card-ex-top">
+        <header><h3>특송 <span data-ax="c">Consignee</span> 상위 10 <small>B/L Type X · TEU 기준</small></h3></header>
         <div class="table-wrap top-table" id="ex-top"></div>
         <p class="chart-note">줄을 누르면 해당 업체로 조회합니다. 비중 · 누적 비중 = 해당 화물 전체 TEU 중.</p>
       </article>
       <article class="panel">
         <header>
-          <h3>청구 항목 구성</h3>
+          <h3>청구 항목 구성 <small id="charge-note"></small></h3>
           <span class="seg small" id="charge-cur"></span>
         </header>
         <div class="chart" id="ch-charge"></div>
@@ -342,6 +362,31 @@
   </div>
 </div>
 
+<!-- 데이터 올리기 (관리자 전용, upload.js) -->
+<div class="modal" id="xu-modal" hidden role="dialog" aria-modal="true" aria-labelledby="xu-title">
+  <div class="modal-card">
+    <header>
+      <h2 id="xu-title">데이터 올리기</h2>
+      <button type="button" class="icon-x" data-close aria-label="닫기">×</button>
+    </header>
+    <div class="modal-body">
+      <div class="hint" id="xu-status"></div>
+      <div class="field">
+        <label class="flabel" for="xu-file">화물시스템 운임 엑셀 (.xlsx) · 수입 또는 수출</label>
+        <input type="file" id="xu-file" accept=".xlsx,.xls">
+      </div>
+      <p class="hint">수입 · 수출은 B/L 번호로 자동 구분합니다(수출 = …W0001). 한 파일에 섞여 있으면 받지 않습니다. 이미 있는 B/L 은 새 값으로 덮어씁니다.<br>
+        수입 = 화물 도구 운임 필터 탭의 [클라우드 동기화]와 같은 저장(운임 필터 · 운임 체크에도 반영). 수출 = 대시보드 전용(운임 필터 · 운임 체크에는 영향 없음).<br>
+        작업자 이름(Insert by · Update by)은 저장하지 않습니다.</p>
+      <div class="notice" id="xu-msg" role="status" hidden></div>
+    </div>
+    <footer>
+      <button type="button" class="btn" data-close>닫기</button>
+      <button type="button" class="btn primary" id="xu-go" disabled>올리기</button>
+    </footer>
+  </div>
+</div>
+
 <div id="report-root" hidden>
   <div class="report-toolbar">
     <span class="title" id="report-title"></span>
@@ -358,5 +403,6 @@
 <script src="api.js"></script>
 <script src="app.js"></script>
 <script src="report.js"></script>
+<script src="upload.js"></script>
 </body>
 </html>

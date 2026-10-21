@@ -5,13 +5,19 @@
 --        여러 번 실행해도 안전합니다. 함수를 고친 뒤에도 전체를 다시 실행하면 됩니다.
 --
 --  구조
---    freight_records (엑셀 업로드 원본, 값이 모두 문자열)
---      └─ 트리거 ─▶ dash_rows (숫자·날짜로 정규화한 대시보드 전용 테이블)
+--    freight_records (수입: 화물 도구의 운임 엑셀 업로드 원본, 값이 모두 문자열)
+--      └─ 트리거 ─▶ dash_rows (숫자·날짜로 정규화한 대시보드 전용 테이블, dir = 'IN')
+--    export_records  (수출: 대시보드의 관리자 업로드 원본, 값이 모두 문자열)
+--      └─ 트리거 ─▶ dash_rows (dir = 'OUT')
 --                      └─ RPC: dash_meta / dash_options / dash_summary / dash_totals / dash_detail
+--    조회 조건 f.dir 가 없으면 수입('IN')만 봅니다. 'OUT' = 수출, 'ALL' = 수출입 전체.
 --    대시보드는 집계 결과만 받아 오므로 데이터가 몇 년 치로 늘어나도 브라우저 부담이 거의 같습니다.
 --
 --  업무 규칙: TEU = 20'×1 + 40'×2 + 45'×2 (B/L Type E 는 0), 금액은 Collect 기준, 업체는 사업자번호(Consignee Code)로 구분.
 --            원화 = THC+DOC+WFG+CCF+TSF+PSC, USD = FRT+BAF+CAF+CRS+LSS+PSS+ESC (ESC 는 달러 항목).
+--  수출 규칙: 20RF · 40RF 를 20' · 40' 에 더함(냉동 = RF 수량 있음), 업체 = Shipper(사업자번호), Forwarder 별도 보관.
+--            금액 = Prepaid TTL(한국 지불) + Collect TTL(중국 지불). 공컨 = B/L Type E 이고 B/L 끝 번호 1000.
+--            수입은 Prepaid 금액을 저장하지 않으므로 중국 지불(수입 PP)은 집계하지 않습니다.
 -- =====================================================================
 
 
@@ -117,6 +123,17 @@ create table if not exists public.dash_rows (
 );
 -- 이전 버전에서 만든 테이블에는 rf 를 덧붙인다 (아래 3)의 '한 번에 채움'이 값을 다시 계산함)
 alter table public.dash_rows add column if not exists rf text;
+-- 수출입 구분과 수출 전용 값 (수입 행은 dir = 'IN')
+alter table public.dash_rows
+  add column if not exists dir     text not null default 'IN',  -- 'IN' 수입 · 'OUT' 수출
+  add column if not exists fwd     text,     -- 수출 Forwarder (실화주, 한글 이름)
+  add column if not exists partner text,     -- 중국 쪽 업체: 수입 = Shipper, 수출 = Consignee
+  add column if not exists rf20    numeric,  -- 수출 20RF (c20 에 포함)
+  add column if not exists rf40    numeric,  -- 수출 40RF (c40 에 포함)
+  add column if not exists cfs     numeric,
+  add column if not exists pp      numeric,  -- Prepaid TTL (수출만. 수입은 저장하지 않아 null)
+  add column if not exists cc      numeric,  -- Collect TTL
+  add column if not exists mt_teu  numeric;  -- 공컨 이송 TEU (수출 공컨 B/L 만, teu 는 0)
 create index if not exists dash_rows_d_idx on public.dash_rows (d);
 create index if not exists dash_rows_ckey_idx on public.dash_rows (ckey);
 create index if not exists dash_rows_notify_idx on public.dash_rows (notify);
@@ -178,6 +195,11 @@ begin
   o.rf         := case when o.bl like '%E12%' then
                     case when o.remark like '%선어%' then 'S' when o.remark like '%활어%' then 'L' else 'R' end
                   end;
+  o.dir        := 'IN';
+  o.partner    := o.shipper;
+  o.cfs        := public.dash_num(r.cfs::text);
+  o.cc         := o.total;
+  o.mt_teu     := 0;
   return o;
 end $$;
 
@@ -186,7 +208,7 @@ create or replace function public.dash_rows_sync() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
   if tg_op = 'TRUNCATE' then
-    delete from public.dash_rows;
+    delete from public.dash_rows where dir = 'IN';
     return null;
   end if;
   if tg_op in ('UPDATE', 'DELETE') then
@@ -209,12 +231,131 @@ create trigger dash_rows_truncate
   after truncate on public.freight_records
   for each statement execute function public.dash_rows_sync();
 
--- 이미 올라가 있는 데이터를 한 번에 채웁니다.
+
+-- ---------------------------------------------------------------------
+-- 3-2) 수출 원본 (대시보드의 "수출 데이터" 업로드, 관리자만 쓰기)
+--      화물 도구(cargo-tool.html)의 운임 필터 · 운임 체크는 freight_records 만 보므로 수출과 섞이지 않습니다.
+--      B/L 번호가 '…1154W0001' 처럼 숫자 + W + 숫자 4자리로 끝나는 수출 B/L 만 저장됩니다(수입 엑셀을 잘못 올리는 것 방지).
+-- ---------------------------------------------------------------------
+create table if not exists public.export_records (
+  bl_no text primary key check (bl_no ~ '[0-9]W[0-9]{4}$'),
+  vsl text, voyage text, io_date text, cargo text, bt text, ts text,
+  shipper_code text, shipper text, a_shipper_code text, actual_shipper text, forwarder text, consignee text,
+  twenty text, forty text, forty_five text, rf20 text, rf40 text,
+  item text, issue_date text, pkg text, weight text, measure text, ft text,
+  frt_p text, frt_c text, baf_p text, baf_c text, caf text, crs_p text, crs_c text, lss_p text, lss_c text, esc text,
+  thc text, doc text, wfg text, cfs text, ccf text, tsf text, psc text,
+  prepaid_ttl text, collect_ttl text, description text, remark text, ccam_check text,
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+
+create or replace function public.dash_transform_export(r public.export_records) returns public.dash_rows
+language plpgsql stable as $$
+declare
+  o public.dash_rows;
+begin
+  o.dir        := 'OUT';
+  o.bl         := public.dash_text(r.bl_no::text);
+  o.vsl        := public.dash_text(r.vsl::text);
+  o.voyage     := public.dash_text(r.voyage::text);
+  o.d          := public.dash_date(r.io_date::text);
+  o.issue_date := public.dash_date(r.issue_date::text);
+  -- 수출 업체 = 한국 쪽 Shipper (사업자번호). Shipper Code 와 A/Shipper Code 는 늘 같음
+  o.c_code     := public.dash_text(r.shipper_code::text);
+  o.c_name     := public.dash_text(r.shipper::text);
+  o.ckey       := coalesce(o.c_code, o.c_name, '');
+  o.shipper    := o.c_name;
+  o.a_shipper  := public.dash_text(r.actual_shipper::text);
+  o.fwd        := public.dash_text(r.forwarder::text);
+  o.notify     := o.fwd;  -- 두 번째 업체 축: 수입 = Notify, 수출 = Forwarder (필터 · 상위 10 · 표가 같은 칸을 씀)
+  o.partner    := public.dash_text(r.consignee::text);
+  o.item       := upper(public.dash_text(r.item::text));
+  o.cargo      := upper(public.dash_text(r.cargo::text));
+  o.bt         := upper(public.dash_text(r.bt::text));
+  o.ts         := public.dash_num(r.ts::text);
+  o.ft         := upper(public.dash_text(r.ft::text));
+  -- 냉동 컨테이너는 20RF · 40RF 열에 따로 있으므로 크기별 수량에 더한다
+  o.rf20       := public.dash_num(r.rf20::text);
+  o.rf40       := public.dash_num(r.rf40::text);
+  o.c20        := public.dash_num(r.twenty::text) + o.rf20;
+  o.c40        := public.dash_num(r.forty::text) + o.rf40;
+  o.c45        := public.dash_num(r.forty_five::text);
+  o.teu        := case when o.bt = 'E' then 0 else o.c20 + 2 * o.c40 + 2 * o.c45 end;
+  o.cntr       := o.c20 + o.c40 + o.c45;
+  -- 공컨 이송: B/L Type E 이고 B/L 끝 번호 1000 (물량 TEU 는 0, 따로 집계)
+  o.mt_teu     := case when o.bt = 'E' and o.bl like '%1000' then o.c20 + 2 * o.c40 + 2 * o.c45 else 0 end;
+  o.rf         := case when o.rf20 + o.rf40 > 0 then 'R' end;
+  o.pkg        := public.dash_num(r.pkg::text);
+  o.weight     := public.dash_num(r.weight::text);
+  o.cbm        := public.dash_num(r.measure::text);
+  o.thc        := public.dash_num(r.thc::text);
+  o.doc        := public.dash_num(r.doc::text);
+  o.wfg        := public.dash_num(r.wfg::text);
+  o.ccf        := public.dash_num(r.ccf::text);
+  o.tsf        := public.dash_num(r.tsf::text);
+  o.psc        := public.dash_num(r.psc::text);
+  o.cfs        := public.dash_num(r.cfs::text);
+  o.esc        := public.dash_num(r.esc::text);
+  o.frt        := public.dash_num(r.frt_p::text) + public.dash_num(r.frt_c::text);
+  o.baf        := public.dash_num(r.baf_p::text) + public.dash_num(r.baf_c::text);
+  o.caf        := public.dash_num(r.caf::text);
+  o.crs        := public.dash_num(r.crs_p::text) + public.dash_num(r.crs_c::text);
+  o.lss        := public.dash_num(r.lss_p::text) + public.dash_num(r.lss_c::text);
+  o.pss        := 0;
+  -- 원화 항목은 모두 Prepaid(한국 지불). Prepaid TTL + Collect TTL = 원화 + USD(P+C) × 환율
+  o.krw        := o.thc + o.doc + o.wfg + o.ccf + o.tsf + o.psc + o.cfs;
+  o.usd        := o.frt + o.baf + o.caf + o.crs + o.lss + o.esc;
+  o.pp         := public.dash_num(r.prepaid_ttl::text);
+  o.cc         := public.dash_num(r.collect_ttl::text);
+  o.total      := o.pp + o.cc;
+  o.remark     := public.dash_text(r.remark::text);
+  o.descr      := public.dash_text(r.description::text);
+  o.ext        := true;
+  o.synced_at  := now();
+  return o;
+end $$;
+
+-- export_records 가 바뀔 때마다 dash_rows 의 수출 행을 맞춰 줍니다 (수입 행은 건드리지 않음).
+create or replace function public.dash_export_sync() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op = 'TRUNCATE' then
+    delete from public.dash_rows where dir = 'OUT';
+    return null;
+  end if;
+  if tg_op in ('UPDATE', 'DELETE') then
+    delete from public.dash_rows where bl = public.dash_text(old.bl_no::text) and dir = 'OUT';
+  end if;
+  if tg_op in ('INSERT', 'UPDATE') and public.dash_text(new.bl_no::text) is not null then
+    delete from public.dash_rows where bl = public.dash_text(new.bl_no::text) and dir = 'OUT';
+    insert into public.dash_rows select * from public.dash_transform_export(new) on conflict (bl) do nothing;
+  end if;
+  return null;
+end $$;
+
+drop trigger if exists dash_export_sync on public.export_records;
+create trigger dash_export_sync
+  after insert or update or delete on public.export_records
+  for each row execute function public.dash_export_sync();
+
+drop trigger if exists dash_export_truncate on public.export_records;
+create trigger dash_export_truncate
+  after truncate on public.export_records
+  for each statement execute function public.dash_export_sync();
+
+-- 이미 올라가 있는 데이터를 한 번에 채웁니다 (수입 → 수출).
 delete from public.dash_rows;
 insert into public.dash_rows
 select t.*
 from public.freight_records f
 cross join lateral public.dash_transform(f) t
+where t.bl is not null
+on conflict (bl) do nothing;
+insert into public.dash_rows
+select t.*
+from public.export_records e
+cross join lateral public.dash_transform_export(e) t
 where t.bl is not null
 on conflict (bl) do nothing;
 
@@ -231,6 +372,13 @@ language sql stable security definer set search_path = public as $$
       )
 $$;
 
+-- 수출 데이터 업로드 권한: 관리자 (화물 도구의 관리자 기준과 같음)
+create or replace function public.dash_is_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce(lower(auth.jwt() ->> 'email') = 'junhong2579@gmail.com', false)
+      or exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin is true)
+$$;
+
 create or replace function public.dash_assert() returns void
 language plpgsql stable as $$
 begin
@@ -245,6 +393,23 @@ grant select on public.dash_rows to authenticated;
 drop policy if exists dash_rows_read on public.dash_rows;
 create policy dash_rows_read on public.dash_rows
   for select to authenticated using ((select public.dash_can_read()));
+
+-- 수출 원본: 승인 사용자는 읽기, 관리자만 올리기 · 고치기 · 지우기
+alter table public.export_records enable row level security;
+revoke all on public.export_records from anon, authenticated;
+grant select, insert, update, delete on public.export_records to authenticated;
+drop policy if exists export_records_read on public.export_records;
+create policy export_records_read on public.export_records
+  for select to authenticated using ((select public.dash_can_read()));
+drop policy if exists export_records_insert on public.export_records;
+create policy export_records_insert on public.export_records
+  for insert to authenticated with check ((select public.dash_is_admin()));
+drop policy if exists export_records_update on public.export_records;
+create policy export_records_update on public.export_records
+  for update to authenticated using ((select public.dash_is_admin())) with check ((select public.dash_is_admin()));
+drop policy if exists export_records_delete on public.export_records;
+create policy export_records_delete on public.export_records
+  for delete to authenticated using ((select public.dash_is_admin()));
 
 
 -- ---------------------------------------------------------------------
@@ -268,11 +433,13 @@ language sql stable set search_path = public as $$
            coalesce(f ->> 'ts', 'all') as ts,
            coalesce(f ->> 'ex', 'all') as ex,
            coalesce(f ->> 'ft', 'all') as ft,
-           coalesce(f ->> 'rf', 'all') as rf
+           coalesce(f ->> 'rf', 'all') as rf,
+           upper(coalesce(nullif(f ->> 'dir', ''), 'IN')) as dir
   )
   select r.*
   from public.dash_rows r, p
-  where (p.dfrom is null or r.d >= p.dfrom)
+  where (p.dir = 'ALL' or r.dir = p.dir)
+    and (p.dfrom is null or r.d >= p.dfrom)
     and (p.dto is null or r.d <= p.dto)
     and case
           when cardinality(p.cs) > 0 and cardinality(p.ns) > 0 then
@@ -297,8 +464,8 @@ $$;
 create or replace function public.dash_qc(r public.dash_rows, k text) returns boolean
 language sql immutable as $$
   select case k
-    when 'issue'  then r.ext and r.issue_date is null
-    when 'place'  then r.ext and r.place is null
+    when 'issue'  then r.ext and r.dir = 'IN' and r.issue_date is null   -- 발행일 · 배정장소는 수입만 (수출 엑셀은 비어 있음)
+    when 'place'  then r.ext and r.dir = 'IN' and r.place is null
     when 'weight' then r.ext and r.weight = 0 and r.cargo is distinct from 'E'
     when 'cntr'   then r.cntr = 0 and r.cargo in ('F', 'L')
     when 'charge' then r.total = 0
@@ -312,13 +479,10 @@ $$;
 -- 6) 대시보드 RPC
 -- ---------------------------------------------------------------------
 
--- 데이터 범위 · 기간 · ITEM/Cargo/B/L Type 목록 (화면을 처음 열 때 1회)
-create or replace function public.dash_meta() returns jsonb
-language plpgsql stable set search_path = public as $$
-declare
-  res jsonb;
-begin
-  perform public.dash_assert();
+-- 데이터 범위 · 기간 · ITEM/Cargo/B/L Type 목록. p_dir = 'IN' 수입 · 'OUT' 수출 · 'ALL' 전체
+create or replace function public.dash_meta_of(p_dir text) returns jsonb
+language sql stable set search_path = public as $$
+  with r as (select * from public.dash_rows where p_dir = 'ALL' or dir = p_dir)
   select jsonb_build_object(
     'rows',     count(*),
     'dateMin',  min(d)::text,
@@ -328,34 +492,60 @@ begin
     'noDate',   count(*) filter (where d is null),
     'syncedAt', to_char(max(synced_at) at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI'),
     'months',   (select coalesce(jsonb_agg(m order by m), '[]'::jsonb)
-                 from (select distinct to_char(d, 'YYYY-MM') as m from public.dash_rows where d is not null) t),
+                 from (select distinct to_char(d, 'YYYY-MM') as m from r where d is not null) t),
     'items',    (select coalesce(jsonb_agg(jsonb_build_array(k, n) order by n desc), '[]'::jsonb)
-                 from (select coalesce(item, '') as k, count(*) as n from public.dash_rows group by 1) t),
+                 from (select coalesce(item, '') as k, count(*) as n from r group by 1) t),
     'cargos',   (select coalesce(jsonb_agg(jsonb_build_array(k, n) order by n desc), '[]'::jsonb)
-                 from (select coalesce(cargo, '') as k, count(*) as n from public.dash_rows group by 1) t),
+                 from (select coalesce(cargo, '') as k, count(*) as n from r group by 1) t),
     'bts',      (select coalesce(jsonb_agg(jsonb_build_array(k, n) order by n desc), '[]'::jsonb)
-                 from (select coalesce(bt, '') as k, count(*) as n from public.dash_rows group by 1) t)
-  ) into res
-  from public.dash_rows;
-  return res;
+                 from (select coalesce(bt, '') as k, count(*) as n from r group by 1) t)
+  )
+  from r
+$$;
+
+-- 화면을 처음 열 때 1회. 맨 위 값은 수입(예전과 같음), byDir 에 수출 · 전체, export = 수출 현황, canUpload = 관리자
+create or replace function public.dash_meta() returns jsonb
+language plpgsql stable set search_path = public as $$
+begin
+  perform public.dash_assert();
+  return public.dash_meta_of('IN') || jsonb_build_object(
+    'byDir', jsonb_build_object('OUT', public.dash_meta_of('OUT'), 'ALL', public.dash_meta_of('ALL')),
+    'export', (select jsonb_build_object(
+                 'rows',     count(*),
+                 'dateMin',  min(d)::text,
+                 'dateMax',  max(d)::text,
+                 'syncedAt', to_char(max(synced_at) at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI'))
+               from public.dash_rows where dir = 'OUT'),
+    'import', (select jsonb_build_object(
+                 'rows',     count(*),
+                 'dateMin',  min(d)::text,
+                 'dateMax',  max(d)::text,
+                 'syncedAt', to_char(max(synced_at) at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI'))
+               from public.dash_rows where dir = 'IN'),
+    'canUpload', public.dash_is_admin());
 end $$;
 
 -- 업체 선택 목록: consignee [키, 사업자번호, 최근 업체명, B/L 수], notify [이름(''=없음), B/L 수]
-create or replace function public.dash_options() returns jsonb
-language plpgsql stable set search_path = public as $$
-declare
-  res jsonb;
-begin
-  perform public.dash_assert();
+--   수출은 consignee = Shipper(사업자번호), notify = Forwarder. 전체는 둘을 합친 목록
+create or replace function public.dash_options_of(p_dir text) returns jsonb
+language sql stable set search_path = public as $$
+  with r as (select * from public.dash_rows where p_dir = 'ALL' or dir = p_dir)
   select jsonb_build_object(
     'consignee', (select coalesce(jsonb_agg(jsonb_build_array(ckey, code, name, n) order by n desc), '[]'::jsonb)
                   from (select ckey, max(c_code) as code,
                                (array_agg(c_name order by d desc nulls last))[1] as name, count(*) as n
-                        from public.dash_rows group by ckey) t),
+                        from r group by ckey) t),
     'notify',    (select coalesce(jsonb_agg(jsonb_build_array(k, n) order by n desc), '[]'::jsonb)
-                  from (select coalesce(notify, '') as k, count(*) as n from public.dash_rows group by 1) t)
-  ) into res;
-  return res;
+                  from (select coalesce(notify, '') as k, count(*) as n from r group by 1) t)
+  )
+$$;
+
+create or replace function public.dash_options() returns jsonb
+language plpgsql stable set search_path = public as $$
+begin
+  perform public.dash_assert();
+  return public.dash_options_of('IN')
+      || jsonb_build_object('byDir', jsonb_build_object('OUT', public.dash_options_of('OUT'), 'ALL', public.dash_options_of('ALL')));
 end $$;
 
 -- 조건에 맞는 B/L 전체 합계 (KPI · 청구 항목 · 비율 · 점검 건수)
@@ -394,6 +584,31 @@ begin
       'charge', count(*) filter (where public.dash_qc(r, 'charge')),
       'notify', count(*) filter (where public.dash_qc(r, 'notify'))
     )
+  ) || jsonb_build_object(  -- 인자 100개 제한이 있어 수출 관련 값은 따로 묶어 합친다
+    -- 수출입 (수입만 볼 때는 in* = 전체, out* = 0)
+    'inBl',    count(*) filter (where dir = 'IN'),
+    'inTeu',   coalesce(sum(teu) filter (where dir = 'IN'), 0),
+    'outTeu',  coalesce(sum(teu) filter (where dir = 'OUT'), 0),
+    'CFS',     coalesce(sum(cfs), 0),
+    -- 한국 금액 = 수입 CC + 수출 PP, 중국 금액 = 수출 CC (수입 PP 는 저장하지 않아 미집계)
+    'krIn',    coalesce(sum(cc) filter (where dir = 'IN'), 0),
+    'krOut',   coalesce(sum(pp) filter (where dir = 'OUT'), 0),
+    'cnOut',   coalesce(sum(cc) filter (where dir = 'OUT'), 0),
+    -- 공컨 이송 (수출 공컨 B/L: B/L Type E · 끝 번호 1000)
+    'mtTeu',   coalesce(sum(mt_teu), 0),
+    'mtBl',    count(*) filter (where mt_teu > 0),
+    'mtCntr',  coalesce(sum(cntr) filter (where mt_teu > 0), 0),
+    'rf20',    coalesce(sum(rf20) filter (where bt is distinct from 'E'), 0),
+    'rf40',    coalesce(sum(rf40) filter (where bt is distinct from 'E'), 0),
+    'e20',     coalesce(sum(c20) filter (where bt = 'E'), 0),
+    'e40',     coalesce(sum(c40) filter (where bt = 'E'), 0),
+    'e45',     coalesce(sum(c45) filter (where bt = 'E'), 0),
+    -- 공컨 이송 컨테이너 종류 · 사이즈별 개수
+    'mt20',    coalesce(sum(c20 - coalesce(rf20, 0)) filter (where mt_teu > 0), 0),
+    'mt40',    coalesce(sum(c40 - coalesce(rf40, 0)) filter (where mt_teu > 0), 0),
+    'mt45',    coalesce(sum(c45) filter (where mt_teu > 0), 0),
+    'mtR20',   coalesce(sum(rf20) filter (where mt_teu > 0), 0),
+    'mtR40',   coalesce(sum(rf40) filter (where mt_teu > 0), 0)
   ) into res
   from public.dash_filter(f) r;
   return res;
@@ -441,7 +656,20 @@ begin
         sum(pkg), sum(weight), sum(cbm), sum(krw), sum(usd), sum(total),
         sum(ts), count(*) filter (where bt = 'X'), count(*) filter (where ft = 'P'), count(notify), count(distinct ckey), min(d)::text,
         coalesce(sum(teu) filter (where tsc), 0), coalesce(sum(teu) filter (where exc), 0),
-        coalesce(sum(teu) filter (where rf = 'R'), 0), coalesce(sum(teu) filter (where rf = 'S'), 0), coalesce(sum(teu) filter (where rf = 'L'), 0)
+        coalesce(sum(teu) filter (where rf = 'R'), 0), coalesce(sum(teu) filter (where rf = 'S'), 0), coalesce(sum(teu) filter (where rf = 'L'), 0),
+        -- 수출입 나눔 (전체 보기의 쌓은 막대) · 한국/중국 금액 · 공컨 이송 TEU
+        count(*) filter (where dir = 'IN'), coalesce(sum(teu) filter (where dir = 'IN'), 0),
+        coalesce(sum(weight) filter (where dir = 'IN'), 0), coalesce(sum(total) filter (where dir = 'IN'), 0),
+        coalesce(sum(cc) filter (where dir = 'IN'), 0), coalesce(sum(pp) filter (where dir = 'OUT'), 0), coalesce(sum(cc) filter (where dir = 'OUT'), 0),
+        coalesce(sum(mt_teu), 0),
+        -- 수출 냉동 컨테이너(20RF · 40RF, c20 · c40 에 포함) · B/L Type E(공컨 · 수화물 · 샤시, TEU 0) 컨테이너 수
+        coalesce(sum(rf20) filter (where bt is distinct from 'E'), 0), coalesce(sum(rf40) filter (where bt is distinct from 'E'), 0),
+        coalesce(sum(c20) filter (where bt = 'E'), 0), coalesce(sum(c40) filter (where bt = 'E'), 0), coalesce(sum(c45) filter (where bt = 'E'), 0),
+        -- 공컨 이송 컨테이너 종류 · 사이즈별 개수 (20' · 40' 는 냉동 제외, 20RF · 40RF 따로)
+        coalesce(sum(c20 - coalesce(rf20, 0)) filter (where mt_teu > 0), 0), coalesce(sum(c40 - coalesce(rf40, 0)) filter (where mt_teu > 0), 0),
+        coalesce(sum(c45) filter (where mt_teu > 0), 0), coalesce(sum(rf20) filter (where mt_teu > 0), 0), coalesce(sum(rf40) filter (where mt_teu > 0), 0),
+        -- 묶음 안의 항차 수 (선복 대비 = TEU ÷ (항차 수 × 304))
+        count(distinct voyage)
       ) as a
     from r
     group by grouping sets ((m), (voyage), (ckey), (notify), (item), (cargo), (place), (rf), (rfc, ckey), (tsc, ckey), (exc, ckey))
@@ -449,7 +677,7 @@ begin
     having (grouping(rfc) = 1 or rfc) and (grouping(tsc) = 1 or tsc) and (grouping(exc) = 1 or exc)
   )
   select jsonb_build_object(
-    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date","tsTeu","exTeu","rTeu","sTeu","lTeu"]'::jsonb,
+    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date","tsTeu","exTeu","rTeu","sTeu","lTeu","inBl","inTeu","inWeight","inTotal","krIn","krOut","cnOut","mtTeu","rf20","rf40","e20","e40","e45","mt20","mt40","mt45","mtR20","mtR40","voyages"]'::jsonb,
     'groups', coalesce((select jsonb_object_agg(dim, rows) from (select dim, jsonb_agg(a) as rows from g group by dim) x), '{}'::jsonb),
     -- Consignee 별 Notify 목록: { 키: [[Notify(''=없음), B/L 수], ...] } (B/L 수 많은 순)
     'notifyOf', coalesce((select jsonb_object_agg(ckey, ns) from (
@@ -488,18 +716,18 @@ begin
     with r as (
       select x.* from public.dash_filter($1) x
       where ($2::text is null or public.dash_qc(x, $2))
-        and ($3::text is null or concat_ws(' ', x.bl, x.voyage, x.c_name, x.c_code, x.notify, x.item, x.descr, x.shipper) ilike $3)
+        and ($3::text is null or concat_ws(' ', x.bl, x.voyage, x.c_name, x.c_code, x.notify, x.item, x.descr, x.shipper, x.partner) ilike $3)
     ), page as (
       select r.*, row_number() over (order by %1$I %2$s nulls last, bl) as rn from r
       order by rn limit $4 offset $5
     )
     select jsonb_build_object(
       'total',  (select count(*) from r),
-      'fields', '["bl","voy","date","consignee","notify","item","cargo","c20","c40","c45","teu","weight","cbm","total","desc","bt","ts","ft","pkg","krw","usd","THC","DOC","WFG","CCF","TSF","PSC","ESC","FRT","BAF","CAF","CRS","LSS","PSS","place","issueDate","remark","shipper","actualShipper"]'::jsonb,
+      'fields', '["bl","voy","date","consignee","notify","item","cargo","c20","c40","c45","teu","weight","cbm","total","desc","bt","ts","ft","pkg","krw","usd","THC","DOC","WFG","CCF","TSF","PSC","ESC","FRT","BAF","CAF","CRS","LSS","PSS","place","issueDate","remark","shipper","actualShipper","io","partner","pp","cc","mtTeu","rf20","rf40","CFS"]'::jsonb,
       'rows', coalesce((select jsonb_agg(jsonb_build_array(
                   bl, voyage, d::text, ckey, coalesce(notify, ''), item, cargo, c20, c40, c45, teu, weight, cbm, total, descr,
                   bt, ts, ft, pkg, krw, usd, thc, doc, wfg, ccf, tsf, psc, esc, frt, baf, caf, crs, lss, pss,
-                  place, issue_date::text, remark, shipper, a_shipper) order by rn)
+                  place, issue_date::text, remark, shipper, a_shipper, dir, partner, pp, cc, mt_teu, rf20, rf40, cfs) order by rn)
                 from page), '[]'::jsonb)
     )
   $sql$, col, dir) into res using f, qc, q, lim, off;
@@ -512,11 +740,13 @@ end $$;
 -- ---------------------------------------------------------------------
 revoke execute on function
   public.dash_meta(), public.dash_options(), public.dash_totals(jsonb), public.dash_summary(jsonb),
-  public.dash_detail(jsonb, jsonb), public.dash_filter(jsonb), public.dash_can_read(), public.dash_assert()
+  public.dash_detail(jsonb, jsonb), public.dash_filter(jsonb), public.dash_can_read(), public.dash_assert(), public.dash_is_admin(),
+  public.dash_meta_of(text), public.dash_options_of(text)
   from public, anon;
 grant execute on function
   public.dash_meta(), public.dash_options(), public.dash_totals(jsonb), public.dash_summary(jsonb),
-  public.dash_detail(jsonb, jsonb), public.dash_filter(jsonb), public.dash_can_read(), public.dash_assert()
+  public.dash_detail(jsonb, jsonb), public.dash_filter(jsonb), public.dash_can_read(), public.dash_assert(), public.dash_is_admin(),
+  public.dash_meta_of(text), public.dash_options_of(text)
   to authenticated;
 
 -- PostgREST 가 새 함수를 바로 인식하도록
