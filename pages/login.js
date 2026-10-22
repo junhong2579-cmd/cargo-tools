@@ -332,17 +332,31 @@ export default function LoginPage() {
         )}
       </div>
 
+      <style jsx global>{`
+        html, body {
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+        }
+      `}</style>
       <style jsx>{`
+        /* 창 크기에 딱 맞게 고정: 스크롤 바가 생기지 않음.
+           창이 카드보다 작을 때만 스크롤되며, 스크롤 바는 숨김 */
         .auth-overlay {
-          min-height: 100vh;
-          width: 100vw;
+          position: fixed;
+          inset: 0;
+          overflow-x: hidden;
+          overflow-y: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
           background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
           display: flex;
-          align-items: center;
-          justify-content: center;
           padding: 20px;
           box-sizing: border-box;
           font-family: 'Pretendard', sans-serif;
+        }
+        .auth-overlay::-webkit-scrollbar {
+          display: none;
         }
         .auth-card {
           background: #ffffff;
@@ -350,6 +364,7 @@ export default function LoginPage() {
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
           width: 100%;
           max-width: 420px;
+          margin: auto;
           padding: 36px 32px;
           box-sizing: border-box;
           animation: fadeIn 0.3s ease-out;

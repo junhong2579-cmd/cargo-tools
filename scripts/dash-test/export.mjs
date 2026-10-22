@@ -55,6 +55,9 @@ function oldShape(v) {
     o.rows = o.rows.map((a) => a.slice(0, OLD_DETAIL_FIELDS));
   }
   if (o.totals) NEW_TOTAL_KEYS.forEach((k) => delete o.totals[k]);
+  // 점검 '컨테이너 수량 0' 은 파트 B/L 을 빼도록 바뀜 (사용자 확정 2026-10-22). 아래 '파트 B/L' 검사에서 따로 확인
+  // 점검 'notify' 는 수출 Forwarder 누락만 세도록 바뀜 (수입 Notify 없음은 정상, 사용자 확정 2026-10-22)
+  if (o.totals?.qc) { delete o.totals.qc.cntr; delete o.totals.qc.notify; }
   return o;
 }
 
@@ -114,6 +117,13 @@ for (const f of STATS) await db.exec(read(f));
 let s = same(base, await snapshot());
 check('새 SQL 적용 후 수입 결과 동일', s.ok, s.diff.join(','));
 check('새 SQL 두 번째 실행도 안전', await db.exec(read('dashboard.sql')).then(() => true, (e) => (console.log(e.message), false)));
+// 파트 B/L: 수입은 끝이 영문 + 컨테이너 0 인 B/L 만 점검에서 빠지고, 나머지 컨테이너 0 은 그대로 잡힘
+const partIn = await one(`select count(*) filter (where cntr = 0 and cargo in ('F', 'L'))::int was,
+  count(*) filter (where public.dash_qc(r, 'cntr'))::int now,
+  count(*) filter (where part)::int part, count(*) filter (where part and (cntr <> 0 or bl !~ '[A-Z]$'))::int bad
+  from dash_rows r where dir = 'IN'`);
+check('점검 Notify: 수입은 세지 않음', (await one(`select count(*) filter (where public.dash_qc(r, 'notify'))::int n from dash_rows r where dir = 'IN'`)).n === 0);
+check('점검 컨테이너 0: 수입 파트 B/L 만 뺌', partIn.bad === 0 && partIn.was - partIn.now <= partIn.part, JSON.stringify(partIn));
 
 // ── 3) 수출 업로드 ──
 const ctx = { window: {}, document: { getElementById: () => null } };
@@ -199,6 +209,9 @@ const mtXl = { mt20: mtSum((r) => n(r.twenty)), mt40: mtSum((r) => n(r.forty)), 
 check('공컨 종류 · 사이즈별 개수 = 엑셀, TEU 합 = 공컨 TEU', ['mt20', 'mt40', 'mt45', 'mtR20', 'mtR40'].every((k) => p2.out[k] === mtXl[k])
   && p2.out.mt20 + p2.out.mtR20 + 2 * (p2.out.mt40 + p2.out.mtR40 + p2.out.mt45) === p2.out.mtTeu, JSON.stringify(mtXl));
 check('수출 점검: 발행일 · 배정장소는 수입만', p2.out.qc.issue === 0 && p2.out.qc.place === 0 && p2.out.qc.notify === xs.filter((r) => !r.forwarder).length);
+const cntr0 = xs.filter((r) => ['F', 'L'].includes(r.cargo.toUpperCase()) && n(r.twenty) + n(r.forty) + n(r.forty_five) + n(r.rf20) + n(r.rf40) === 0);
+check('수출 점검 컨테이너 0: PART 있는 파트 B/L 은 뺌', p2.out.qc.cntr === cntr0.filter((r) => !r.part).length && cntr0.some((r) => r.part),
+  `점검 ${p2.out.qc.cntr}건, 엑셀 컨테이너 0 ${cntr0.length}건 중 파트 ${cntr0.filter((r) => r.part).length}건`);
 
 // ── 4) 화물 도구의 수입 업로드 흉내 (트리거) ──
 const any = await one(`select bl_no from freight_records order by bl_no limit 1`);

@@ -155,6 +155,7 @@
     crs_p: 'CRS($) P', crs_c: 'CRS($) C', lss_p: 'LSS($) P', lss_c: 'LSS($) C', esc: 'ESC',
     thc: 'THC', doc: 'DOC', wfg: 'WFG', cfs: 'CFS', ccf: 'CCF', tsf: 'TSF', psc: 'PSC',
     prepaid_ttl: 'Prepaid TTL', collect_ttl: 'Collect TTL', description: 'DESCRIPTION', remark: 'REMARK', ccam_check: 'CCAM CHECK',
+    part: 'PART', // 파트 B/L 이면 모 B/L 끝 번호 (데이터 점검 '컨테이너 수량 0' 에서 뺌)
   };
   // 없으면 수출 엑셀로 보지 않는 열
   const REQUIRED = ['bl_no', 'io_date', 'shipper_code', 'shipper', 'forwarder', 'twenty', 'forty', 'forty_five', 'rf20', 'rf40', 'prepaid_ttl', 'collect_ttl'];

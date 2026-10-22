@@ -134,6 +134,8 @@ alter table public.dash_rows
   add column if not exists pp      numeric,  -- Prepaid TTL (수출만. 수입은 저장하지 않아 null)
   add column if not exists cc      numeric,  -- Collect TTL
   add column if not exists mt_teu  numeric;  -- 공컨 이송 TEU (수출 공컨 B/L 만, teu 는 0)
+-- 파트 B/L: 모 B/L(메인)에 컨테이너가 있고 파트 B/L 은 컨테이너 수량이 없는 것이 정상 (데이터 점검 '컨테이너 수량 0' 에서 뺌)
+alter table public.dash_rows add column if not exists part boolean;
 create index if not exists dash_rows_d_idx on public.dash_rows (d);
 create index if not exists dash_rows_ckey_idx on public.dash_rows (ckey);
 create index if not exists dash_rows_notify_idx on public.dash_rows (notify);
@@ -200,6 +202,9 @@ begin
   o.cfs        := public.dash_num(r.cfs::text);
   o.cc         := o.total;
   o.mt_teu     := 0;
+  -- 수입 파트 B/L: PART 열을 저장하지 않으므로 B/L 번호로 판단. 끝이 영문(…1072B, PART = 1072A)이고 컨테이너 0
+  -- (모 B/L 도 …1072A 처럼 끝이 영문일 수 있으나 컨테이너가 있음. 2025-10 ~ 2026-09 엑셀의 PART 열과 1,733건 모두 일치)
+  o.part       := o.cntr = 0 and o.bl ~ '[A-Z]$';
   return o;
 end $$;
 
@@ -249,6 +254,7 @@ create table if not exists public.export_records (
   updated_at timestamptz not null default now(),
   updated_by text
 );
+alter table public.export_records add column if not exists part text;  -- PART (파트 B/L 이면 모 B/L 끝 번호)
 
 create or replace function public.dash_transform_export(r public.export_records) returns public.dash_rows
 language plpgsql stable as $$
@@ -313,6 +319,8 @@ begin
   o.descr      := public.dash_text(r.description::text);
   o.ext        := true;
   o.synced_at  := now();
+  -- 수출 파트 B/L: PART 열(모 B/L 끝 번호, 예 …W0312 의 PART = 311)이 있으면. 번호만으로는 알 수 없음
+  o.part       := public.dash_text(r.part::text) is not null;
   return o;
 end $$;
 
@@ -467,9 +475,9 @@ language sql immutable as $$
     when 'issue'  then r.ext and r.dir = 'IN' and r.issue_date is null   -- 발행일 · 배정장소는 수입만 (수출 엑셀은 비어 있음)
     when 'place'  then r.ext and r.dir = 'IN' and r.place is null
     when 'weight' then r.ext and r.weight = 0 and r.cargo is distinct from 'E'
-    when 'cntr'   then r.cntr = 0 and r.cargo in ('F', 'L')
+    when 'cntr'   then r.cntr = 0 and r.cargo in ('F', 'L') and r.part is not true  -- 파트 B/L 은 컨테이너 0 이 정상
     when 'charge' then r.total = 0
-    when 'notify' then r.notify is null
+    when 'notify' then r.dir = 'OUT' and r.notify is null  -- 수출 Forwarder 누락 = 오류 (수입 Notify 없음은 정상이라 세지 않음)
     else false
   end
 $$;

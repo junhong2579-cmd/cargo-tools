@@ -125,7 +125,9 @@ document.addEventListener('dash:ready', () => {
   }
   const n = (l, key, f = fmt.int) => ({ l, r: true, v: (g) => f(g[key]), foot: (t) => f(t[key]) });
   const share = (t, key = 'teu', l = 'TEU 비중') => ({ l, r: true, v: (g) => fmt.pct(g[key], t[key]), foot: () => (t[key] ? '100.0%' : '–') });
-  const volumeCols = (t) => [n('B/L', 'bl'), n('TEU', 'teu'), n('중량(톤)', 'weight', fmt.ton), n('CBM', 'cbm', fmt.one), n('총 청구액(백만원)', 'total', fmt.mil), share(t)];
+  // 실적 표 공통 칸 (중량 · CBM · 총 청구액은 넣지 않음, 사용자 확정). cntr = TEU 앞에 컨테이너 규격별 개수
+  const cntrCols = () => X.cntrCols(X.state.dir).map(([l, f]) => ({ l, r: true, v: (g) => fmt.int(f(g)), foot: (x) => fmt.int(f(x)) }));
+  const volumeCols = (t, cntr = false) => [n('B/L', 'bl'), ...(cntr ? cntrCols() : []), n('TEU', 'teu'), share(t)];
   // B/L 상세 목록의 업체명: 한 줄에 들어가도록 "주식회사 · (주)"를 빼고, 그래도 길면 … 으로 줄인다
   const cut = (name) => `<span class="cut">${esc(X.shortName(name))}</span>`;
   const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
@@ -213,7 +215,7 @@ document.addEventListener('dash:ready', () => {
         ${table([
           trendMode === 'month' ? { l: '월', v: (g) => X.monthLabel(g.key) } : { l: '항차', v: (g) => esc(g.key) },
           ...(trendMode === 'voyage' ? [{ l: '입항일', v: (g) => g.date || '' }] : []),
-          ...X.cntrCols(X.state.dir).map(([l, f]) => ({ l, r: true, v: (g) => fmt.int(f(g)), foot: (x) => fmt.int(f(x)) })),
+          ...cntrCols(),
           ...volumeCols(t),
           { l: `선복 대비 (${X.SHIP_CAP}TEU)`, r: true, v: (g) => X.capPct(g), foot: (x) => X.capPct(x) },
         ], tg, t)}
@@ -224,25 +226,25 @@ document.addEventListener('dash:ready', () => {
         const other = cfg.basis === 'consignee' ? 'notify' : 'consignee';
         const og = X.topCompanies(groups[other], other, 'teu', 15, true);
         html.push(`<section class="rpt-sec">${H(`${other === 'notify' ? X.nAx() : X.cAx()}별 구성`)}
-          ${table([{ l: '업체', v: (g) => esc(g.full) }, ...volumeCols(t)], og)}</section>`);
+          ${table([{ l: '업체', v: (g) => esc(g.full) }, ...volumeCols(t, true)], og)}</section>`);
       } else {
         const tc = X.topCompanies(groups.consignee, 'consignee', 'teu', 15);
         const tn = X.topCompanies(groups.notify, 'notify', 'teu', 10);
         const ca = X.cAx(), na = X.nAx();
         html.push(`<section class="rpt-sec">${H(`${ca} 상위 15 (TEU 기준)`)}
-          ${table([{ l: '순위', r: true, v: (g, i) => i + 1 }, { l: ca, v: (g) => esc(g.full) }, { l: '사업자번호', v: (g) => esc(X.consigneeCode(g.key)) }, ...volumeCols(t)], tc)}
+          ${table([{ l: '순위', r: true, v: (g, i) => i + 1 }, { l: ca, v: (g) => esc(g.full) }, { l: '사업자번호', v: (g) => esc(X.consigneeCode(g.key)) }, ...volumeCols(t, true)], tc)}
           <p class="rpt-note">조회 대상 ${ca} ${fmt.int(t.companies)}곳 중 상위 15곳. 상위 15곳 합계 TEU 비중 ${fmt.pct(tc.reduce((a, g) => a + g.teu, 0), t.teu)}.</p></section>`);
         html.push(`<section class="rpt-sec">${H(`${na} 상위 10 (TEU 기준)`)}
-          ${table([{ l: '순위', r: true, v: (g, i) => i + 1 }, { l: na, v: (g) => esc(g.full) }, ...volumeCols(t)], tn)}
+          ${table([{ l: '순위', r: true, v: (g, i) => i + 1 }, { l: na, v: (g) => esc(g.full) }, ...volumeCols(t, true)], tn)}
           <p class="rpt-note">${na}가 지정되지 않은 B/L ${fmt.int(t.bl - t.withNotify)}건은 제외했습니다.</p></section>`);
       }
 
       // 4. ITEM · 화물 종류
       const ig = [...groups.item].sort((a, b) => b.teu - a.teu || b.bl - a.bl);
-      const cg = [...groups.cargo].sort((a, b) => b.bl - a.bl);
+      const cg = [...groups.cargo].sort((a, b) => b.teu - a.teu || b.bl - a.bl);
       html.push(`<section class="rpt-sec">${H('ITEM · 화물 종류별 실적')}<div class="rpt-two">
-        ${table([{ l: 'ITEM', v: (g) => esc(g.key || '(없음)') }, n('B/L', 'bl'), n('TEU', 'teu'), n('중량(톤)', 'weight', fmt.ton), share(t)], ig, t)}
-        <div>${table([{ l: '화물 종류', v: (g) => `${X.CARGO[g.key] || g.key || '(없음)'} (${esc(g.key)})` }, n('B/L', 'bl'), n('TEU', 'teu'), share(t, 'bl', 'B/L 비중')], cg, t)}
+        ${table([{ l: 'ITEM', v: (g) => esc(g.key || '(없음)') }, n('B/L', 'bl'), n('TEU', 'teu'), share(t)], ig, t)}
+        <div>${table([{ l: '화물 종류', v: (g) => `${X.CARGO[g.key] || g.key || '(없음)'} (${esc(g.key)})` }, n('B/L', 'bl'), n('TEU', 'teu'), share(t)], cg, t)}
         ${chartBlock('rc-cargo')}</div></div></section>`);
 
       // 냉동 (선어 · 활어 포함) · 환적 · 특송: 구성(도넛) → 월(항차)별 TEU · 증감률 · 점유율(막대) → Consignee 상위 10
@@ -317,7 +319,7 @@ document.addEventListener('dash:ready', () => {
         // 공컨 이송: 종류 · 사이즈별로 쌓은 막대(위 = 총 TEU, 점선 = 평균) + 기간 · 컨테이너 종류 · TEU · 증감률 표
         const mtRowsBy = X.mtGroups(trendMode === 'month' ? groups.month : groups.voyage, trendMode);
         if (t.mtTeu > 0) {
-          const types = X.MT_TYPES.filter(([k]) => t[k] > 0);
+          const types = X.MT_TYPES; // 수량이 0 인 종류도 열은 보여 준다
           const mtPrev = trendMode === 'month' ? '전월' : '직전 항차';
           html.push(`<section class="rpt-sec flow">${H(`공컨 이송 (${by})`)}${chartBlock('rc-mt')}
             ${table([
@@ -331,8 +333,8 @@ document.addEventListener('dash:ready', () => {
             TEU = 20' · 20RF ×1 + 40' · 40RF · 45' ×2. 점선 = 기간 평균 TEU.</p></section>`);
         }
         // 공컨 이송 종류 · 사이즈별 구성
-        const mtRows = X.MT_TYPES.filter(([k]) => t[k] > 0).map(([k, name, w]) => ({ name, cnt: t[k], teu: t[k] * w }));
-        if (mtRows.length) {
+        const mtRows = X.MT_TYPES.map(([k, name, w]) => ({ name, cnt: t[k] || 0, teu: (t[k] || 0) * w })); // 0 인 종류도 줄은 보여 준다
+        if (t.mtTeu > 0) {
           const mtSum = { cnt: mtRows.reduce((a, r) => a + r.cnt, 0), teu: t.mtTeu };
           html.push(`<section class="rpt-sec">${H('공컨 이송 · 컨테이너 종류 · 사이즈별 구성')}<div class="rpt-two">
             ${table([{ l: '종류 · 사이즈', v: (r) => r.name }, n('개수', 'cnt'), n('TEU', 'teu'), { l: 'TEU 비율', r: true, v: (r) => fmt.pct(r.teu, mtSum.teu), foot: () => '100.0%' }], mtRows, mtSum)}
@@ -381,8 +383,9 @@ document.addEventListener('dash:ready', () => {
 
     if (t.bl) {
       mountChart('rc-trend', X.chartOptions.trend(trendMode === 'month' ? groups.month : groups.voyage, trendMode, 'teu', { static: true }), trendMode === 'voyage' ? 300 : 230);
-      const cargo = [...groups.cargo].sort((a, b) => b.bl - a.bl).map((g) => ({ name: `${X.CARGO[g.key] || g.key || '(없음)'}`, value: g.bl }));
-      mountChart('rc-cargo', X.chartOptions.donut(cargo, { static: true }), 150);
+      // 화물 종류 도넛 = TEU 구성 (표의 TEU 비중과 같음, TEU 0 인 종류는 뺌)
+      const cargo = [...groups.cargo].sort((a, b) => b.teu - a.teu).filter((g) => g.teu > 0).map((g) => ({ name: `${X.CARGO[g.key] || g.key || '(없음)'}`, value: g.teu }));
+      mountChart('rc-cargo', X.chartOptions.donut(cargo, { static: true, unit: 'TEU' }), 150);
       // 냉동 · 환적 · 특송: 도넛 · 막대 · 상위 10 (해당 B/L 이 없으면 본문에 차트 자리가 없어 그리지 않는다)
       const rfParts = X.reeferSummary(S, 'teu').parts;
       if (IO) mountChart('rc-money', X.chartOptions.money(trendMode === 'month' ? groups.month : groups.voyage, trendMode, { static: true }), 230);

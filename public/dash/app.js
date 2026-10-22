@@ -35,6 +35,8 @@
   };
   // 냉동 카드: dash_summary 의 냉동 · 선어 · 활어 TEU 필드와 색 (금색은 점유율 선이 쓰므로 뺀다)
   const RF_TEU = [['rTeu', '냉동', COLORS.navy700], ['sTeu', '선어', '#5b7fa6'], ['lTeu', '활어', COLORS.navy300]];
+  // 컨테이너 규격별 수량 카드: 규격(cntrCols 이름)별 색
+  const CNTR_COLORS = { "20'": COLORS.navy300, "40'": COLORS.navy700, "45'": COLORS.gold, '20RF': '#5b7fa6', '40RF': '#3d5a50' };
   // 선복량: 이론 313 TEU, 실무 최대 304 TEU → 선복 대비 = TEU ÷ (항차 수 × 304)
   const SHIP_CAP = 304;
   const capPct = (g) => fmt.pct(g.teu || 0, (g.voyages || 0) * SHIP_CAP);
@@ -99,6 +101,8 @@
   const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
   const monthRange = (ym) => { const [y, m] = ym.split('-').map(Number); return { from: iso(new Date(y, m - 1, 1)), to: iso(new Date(y, m, 0)) }; };
   const yearRange = (y) => ({ from: `${y}-01-01`, to: `${y}-12-31` });
+  /** 최근 12개월(이번 달 포함): 2026년 10월에 열면 2025-11-01 ~ 2026-10-31. 대시보드 기본 기간 */
+  const recentRange = () => { const t = new Date(); return { from: iso(new Date(t.getFullYear(), t.getMonth() - 11, 1)), to: iso(new Date(t.getFullYear(), t.getMonth() + 1, 0)) }; };
   const monthLabel = (ym) => { const [y, m] = ym.split('-'); return `${y}년 ${+m}월`; };
   /** 축 눈금: 한 해만 있으면 '4월', 여러 해면 '26.04' */
   const monthTicks = (keys) => {
@@ -142,12 +146,14 @@
 
   // ── 상태 ────────────────────────────────────
   const DEFAULT_STATE = {
-    from: '', to: '', consignee: [], notify: [], companyMode: 'and',
+    ...recentRange(), // 기본 = 최근 12개월 (전체 기간은 과거 데이터까지 받아 느림). 전체 기간은 from · to = ''
+    consignee: [], notify: [], companyMode: 'and',
     items: [], cargo: [], bt: [], ts: 'all', ex: 'all', ft: 'all', rf: 'all',
     groupBy: 'consignee', metric: 'teu', trend: 'month', charge: 'krw', rfView: 'bar', tsView: 'bar', exView: 'bar', tab: 'company',
     view: 'volume', // 보기 전환: volume(물동량) | customers(고객 변화, 실험)
     dir: 'IN',      // 수입 IN · 수출 OUT · 전체 ALL (바꾸면 목록을 다시 받으려고 새로고침)
     mtView: 'bar',  // 공컨 이송 카드: 막대 · 도넛 · 표
+    cntrView: 'bar', // 컨테이너 규격별 수량 카드: 막대 · 도넛 · 표
   };
   const state = loadHash();
   const view = { search: '', page: 1, sort: {}, qc: null };
@@ -316,10 +322,11 @@
     // 기간 프리셋: 연도 + (선택한 연도 또는 최근 연도의) 월
     const pe = $('period-presets');
     syncers.push(() => {
-      const focus = (state.from || state.to || META.dateMax || '').slice(0, 4);
+      const focus = (state.to || state.from || META.dateMax || '').slice(0, 4);
       const months = MONTHS.filter((m) => m.startsWith(focus));
       const btn = ([f, t, l]) => `<button type="button" data-from="${f}" data-to="${t}" aria-pressed="${f === state.from && t === state.to}">${l}</button>`;
-      pe.innerHTML = [['', '', '전체 기간'], ...YEARS.map((y) => [yearRange(y).from, yearRange(y).to, `${y}년`])].map(btn).join('') +
+      const recent = recentRange();
+      pe.innerHTML = [[recent.from, recent.to, '최근 12개월'], ['', '', '전체 기간'], ...YEARS.map((y) => [yearRange(y).from, yearRange(y).to, `${y}년`])].map(btn).join('') +
         (YEARS.length > 1 && months.length ? `<span class="presets-label">${focus}년 월별</span>` : '') +
         months.map((m) => [monthRange(m).from, monthRange(m).to, `${+m.slice(5)}월`]).map(btn).join('');
     });
@@ -365,12 +372,12 @@
     syncers.push(seg($('metric'), Object.entries(METRICS).map(([k, m]) => [k, m.label]), () => state.metric, (v) => { state.metric = v; update(); }));
     syncers.push(seg($('trend-mode'), [['month', '월별'], ['voyage', '항차별']], () => state.trend, (v) => { state.trend = v; update(); }));
     syncers.push(seg($('charge-cur'), [['krw', '원화 (KRW)'], ['usd', '외화 (USD)']], () => state.charge, (v) => { state.charge = v; update(); }));
-    ['rf', 'ts', 'ex', 'mt'].forEach((k) => {
+    ['rf', 'ts', 'ex', 'mt', 'cntr'].forEach((k) => {
       syncers.push(seg($(`${k}-view`), [['bar', '막대'], ['donut', '도넛'], ['table', '표']], () => state[`${k}View`], (v) => { state[`${k}View`] = v; update(); }));
     });
 
     $('btn-reset').addEventListener('click', () => {
-      Object.assign(state, structuredClone(DEFAULT_STATE), { groupBy: state.groupBy, metric: state.metric, trend: state.trend, charge: state.charge, rfView: state.rfView, tsView: state.tsView, exView: state.exView, mtView: state.mtView, tab: state.tab, view: state.view, dir: state.dir });
+      Object.assign(state, structuredClone(DEFAULT_STATE), { groupBy: state.groupBy, metric: state.metric, trend: state.trend, charge: state.charge, rfView: state.rfView, tsView: state.tsView, exView: state.exView, mtView: state.mtView, cntrView: state.cntrView, tab: state.tab, view: state.view, dir: state.dir });
       view.qc = null; view.page = 1; update();
     });
 
@@ -803,21 +810,43 @@
       };
     },
 
-    containers(monthGroups, opts = {}) {
-      const groups = monthGroups.filter((g) => g.key !== NONE).sort(byKey);
-      const s = (name, key, color) => ({ type: 'bar', name, stack: 'c', data: groups.map((g) => (typeof key === 'function' ? key(g) : g[key])), itemStyle: { color }, barMaxWidth: 40 });
-      // 화물이 실린 컨테이너만 (B/L Type E 제외). 수출은 20RF · 40RF 를 따로 쌓는다
-      const colors = { "20'": COLORS.navy300, "40'": COLORS.navy700, "45'": COLORS.gold, '20RF': '#5b7fa6', '40RF': '#3d5a50' };
-      const series = cntrCols(state.dir).map(([l, f]) => s(l, f, colors[l])).filter((x) => !['20RF', '40RF'].includes(x.name) || x.data.some((v) => v));
+    /** 컨테이너 규격별 수량 막대: 월 · 항차별 규격 쌓기, 막대 위 = 그 월(항차) 컨테이너 합계 */
+    containers(groupRows, mode = 'month', opts = {}) {
+      const groups = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
+      if (!groups.length) return emptyChart(opts.empty || '조건에 맞는 컨테이너가 없습니다.');
+      const cols = cntrCols(state.dir).filter(([l, f]) => !['20RF', '40RF'].includes(l) || groups.some((g) => f(g)));
+      const tot = groups.map((g) => cols.reduce((a, [, f]) => a + (f(g) || 0), 0));
+      const labels = mode === 'voyage' ? groups.map((g) => g.key) : monthTicks(groups.map((g) => g.key));
+      const show = Math.max(8, Math.floor((opts.width || 500) / 26));
+      const zoom = !opts.static && groups.length > show;
       return {
         ...baseOption(),
         animation: !opts.static,
-        grid: { left: 8, right: 8, top: 36, bottom: 4, containLabel: true },
-        legend: { top: 4, right: 4, itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 } },
-        tooltip: { ...baseOption().tooltip, trigger: 'axis', axisPointer: { type: 'shadow' } },
-        xAxis: { type: 'category', data: monthTicks(groups.map((g) => g.key)), ...axisCommon },
+        grid: { left: 8, right: 8, top: 40, bottom: zoom ? 34 : 4, containLabel: true },
+        legend: { top: 4, right: 4, itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: cols.map(([l]) => l) },
+        tooltip: {
+          ...baseOption().tooltip, trigger: 'axis', axisPointer: { type: 'shadow' },
+          formatter: (ps) => {
+            const i = ps[0].dataIndex, g = groups[i];
+            return `<b>${mode === 'voyage' ? `${esc(g.key)} · ${g.date || '-'}` : monthLabel(g.key)}</b><br>컨테이너 ${fmt.int(tot[i])}개`
+              + cols.map(([l, f]) => `<br>· ${l} ${fmt.int(f(g))}개 (${fmt.pct(f(g), tot[i])})`).join('');
+          },
+        },
+        ...(zoom ? { dataZoom: [
+          { type: 'inside', startValue: groups.length - show, endValue: groups.length - 1 },
+          { type: 'slider', height: 16, bottom: 6, startValue: groups.length - show, endValue: groups.length - 1, showDetail: false, borderColor: COLORS.line },
+        ] } : {}),
+        xAxis: { type: 'category', data: labels, ...axisCommon, axisLabel: { ...axisCommon.axisLabel, ...(mode === 'voyage' ? { rotate: 90, fontSize: 10 } : {}) } },
         yAxis: { type: 'value', name: '개', ...axisCommon },
-        series,
+        series: [
+          // 화물이 실린 컨테이너만 (B/L Type E 제외). 수출은 20RF · 40RF 를 따로 쌓는다
+          ...cols.map(([l, f], j) => ({ type: 'bar', name: l, stack: 'c', data: groups.map(f), barMaxWidth: 40,
+            itemStyle: { color: CNTR_COLORS[l], borderRadius: j === cols.length - 1 ? [2, 2, 0, 0] : 0 } })),
+          // 막대 위 = 컨테이너 합계 (보이지 않는 점 계열의 레이블)
+          { type: 'scatter', name: '', data: tot, symbolSize: 0, silent: true, tooltip: { show: false }, zlevel: 1,
+            label: { show: true, position: 'top', distance: 4, color: COLORS.ink, fontSize: mode === 'voyage' ? 9 : 11, formatter: (p) => (p.value ? fmt.int(p.value) : '') },
+            labelLayout: { hideOverlap: true } },
+        ],
       };
     },
 
@@ -987,7 +1016,7 @@
     cCargo.off('click');
     cCargo.on('click', (p) => { const code = cargo[p.dataIndex].code; if (!state.cargo.includes(code)) state.cargo.push(code); update(); });
 
-    chart('ch-cntr').setOption(chartOptions.containers(groups.month), true);
+    renderCntrCard(S);
     renderReefer(S);
     renderSubsets(S);
     chart('ch-charge').setOption(chartOptions.charges(t, state.charge), true);
@@ -1046,7 +1075,7 @@
     const wrap = $('mt-table');
     const rows = mtGroups(groupRows, mode);
     if (!rows.some((g) => g.mtTeu > 0)) { wrap.innerHTML = '<p class="empty-state">조건에 맞는 공컨 이송이 없습니다.</p>'; return; }
-    const types = MT_TYPES.filter(([k]) => t[k] > 0);
+    const types = MT_TYPES; // 수량이 0 인 종류도 열은 보여 준다 (차트 · 도넛은 있는 것만)
     const cnt = (g) => types.reduce((a, [k]) => a + (g[k] || 0), 0);
     const prevWord = mode === 'voyage' ? '직전 항차' : '전월';
     wrap.innerHTML = `<table class="data">
@@ -1169,6 +1198,49 @@
     };
   }
 
+  /** 컨테이너 규격별 수량 카드: 막대(월 · 항차별 규격 쌓기 + 합계) · 도넛(규격 구성) · 표 전환. 월별 · 항차별은 물동량 추이 선택을 따름 */
+  function renderCntrCard(S) {
+    const v = state.cntrView, mode = state.trend, by = mode === 'voyage' ? '항차별' : '월별';
+    const rows = mode === 'voyage' ? S.groups.voyage : S.groups.month;
+    const empty = '조건에 맞는 컨테이너가 없습니다.';
+    const cols = cntrCols(state.dir).filter(([l, f]) => !['20RF', '40RF'].includes(l) || f(S.t));
+    $('cntr-title').innerHTML = `컨테이너 규격별 수량 <small>${v === 'donut' ? '규격 구성 · 개' : `${by} · 개`}</small>`;
+    $('cntr-note').textContent = (v === 'donut' ? '조회 기간 전체의 규격 구성입니다.'
+      : `${v === 'bar' ? '막대 위 숫자 = 컨테이너 합계. ' : ''}월별 · 항차별은 물동량 추이 선택을 따릅니다.`)
+      + ' B/L Type E(공컨 · 수화물 등)는 뺐습니다.';
+    $('ch-cntr').hidden = v === 'table';
+    $('cntr-table').hidden = v !== 'table';
+    if (v === 'table') { renderCntrTable(rows, mode, cntrCols(state.dir), empty); return; } // 표는 0 인 규격(20RF 등)도 열을 보여 준다
+    const c = chart('ch-cntr');
+    c.resize();
+    c.setOption(v === 'donut'
+      ? chartOptions.donut(cols.map(([l, f]) => ({ name: l, value: f(S.t) })).filter((e) => e.value > 0),
+        { unit: '개', empty, colors: cols.filter(([, f]) => f(S.t) > 0).map(([l]) => CNTR_COLORS[l]), compact: $('ch-cntr').clientWidth < 480 })
+      : chartOptions.containers(rows, mode, { width: $('ch-cntr').clientWidth, empty }), true);
+  }
+
+  /** 컨테이너 규격별 [표]: 월(항차)별 규격 개수 · 합계 · TEU · 증감률(합계, 직전 월 · 항차 대비), 맨 아래 합계와 규격 비율 */
+  function renderCntrTable(groupRows, mode, cols, empty) {
+    const wrap = $('cntr-table');
+    const rows = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
+    const cnt = (g) => cols.reduce((a, [, f]) => a + (f(g) || 0), 0);
+    if (!rows.some((g) => cnt(g) > 0)) { wrap.innerHTML = `<p class="empty-state">${empty}</p>`; return; }
+    const sum = (f) => rows.reduce((a, g) => a + (f(g) || 0), 0);
+    const all = sum(cnt), prevWord = mode === 'voyage' ? '직전 항차' : '전월';
+    wrap.innerHTML = `<table class="data">
+      <thead><tr><th>${mode === 'voyage' ? '항차' : '월'}</th>${cols.map(([l]) => `<th class="r">${l}</th>`).join('')}
+        <th class="r">합계(개)</th><th class="r">TEU</th><th class="r" title="컨테이너 합계 기준">증감률 <small>(${prevWord} 대비)</small></th></tr></thead>
+      <tbody>${rows.map((g, i) => `<tr><td>${mode === 'voyage' ? esc(g.key) : monthLabel(g.key)}</td>
+        ${cols.map(([, f]) => `<td class="r">${fmt.int(f(g))}</td>`).join('')}<td class="r"><b>${fmt.int(cnt(g))}</b></td>
+        <td class="r">${fmt.int(g.teu)}</td><td class="r">${rate(cnt(g), i ? cnt(rows[i - 1]) : null)}</td></tr>`).join('')}</tbody>
+      <tfoot>
+        <tr><td>합계</td>${cols.map(([, f]) => `<td class="r">${fmt.int(sum(f))}</td>`).join('')}<td class="r">${fmt.int(all)}</td><td class="r">${fmt.int(sum((g) => g.teu))}</td><td class="r"></td></tr>
+        <tr><td>비율</td>${cols.map(([, f]) => `<td class="r">${fmt.pct(sum(f), all)}</td>`).join('')}<td class="r">100.0%</td><td class="r"></td><td class="r"></td></tr>
+      </tfoot>
+    </table>`;
+    wrap.scrollTop = 0;
+  }
+
   function renderReefer(S) {
     const r = reeferSummary(S, 'teu');
     renderShareCard(S, 'rf', r.parts, RF_TEU.map((x) => x[2]));
@@ -1206,9 +1278,10 @@
     { key: 'issue', title: '발행일(Issue Date) 누락', desc: 'B/L 발행일이 비어 있습니다.' },
     { key: 'place', title: '배정 장소 미지정', desc: '배정장소 명이 비어 있습니다.' },
     { key: 'weight', title: '중량 0 (Empty 제외)', desc: 'Empty 화물이 아닌데 중량이 0입니다.' },
-    { key: 'cntr', title: '컨테이너 수량 0 (FCL·LCL)', desc: "FCL/LCL인데 20'·40'·45' 수량이 모두 0입니다." },
+    { key: 'cntr', title: '컨테이너 수량 0 (FCL·LCL)', desc: "FCL/LCL인데 20'·40'·45' 수량이 모두 0입니다. 파트 B/L(모 B/L에 컨테이너가 있음)은 정상이므로 뺐습니다." },
     { key: 'charge', title: '청구액 0', desc: '원화·외화 청구액이 모두 0입니다.' },
-    { key: 'notify', title: 'Notify 미지정 (참고)', desc: 'Notify가 없는 B/L입니다. 오류가 아닐 수 있습니다.' },
+    // 수출만 (수입 Notify 없음은 정상). 수입 보기에서는 숨긴다
+    { key: 'notify', title: 'Forwarder 미지정 (수출)', desc: 'Forwarder가 없는 수출 B/L입니다.', exportOnly: true },
   ];
 
   // 업체별 집계 표는 중량 · CBM · 원화 · 외화 청구를 빼고 본다.
@@ -1368,7 +1441,7 @@
     if (state.tab === 'quality') {
       const t = current.t;
       $('tbl-count').textContent = `조회된 B/L ${fmt.int(t.bl)}건 기준`;
-      wrap.innerHTML = `<div class="qc-list">${QC.map((q) => {
+      wrap.innerHTML = `<div class="qc-list">${QC.filter((q) => !q.exportOnly || state.dir !== 'IN').map((q) => {
         const n = t.qc[q.key];
         return `<div class="qc-item"><div><h4>${q.title}</h4><p>${q.desc}</p></div>
           <span class="q-count ${n ? '' : 'ok'}">${fmt.int(n)}<small> 건</small></span>
@@ -2063,8 +2136,6 @@
     if (state.dir === 'IN') return;
     if (state.view !== 'volume') state.view = 'volume';
     METRICS.total.label = '총 금액';
-    QC.find((q) => q.key === 'notify').title = `${nAx()} 미지정 (참고)`;
-    QC.find((q) => q.key === 'notify').desc = `${nAx()}가 없는 B/L입니다. 오류가 아닐 수 있습니다.`;
     $('hint-company').textContent = `"하나라도"를 고르면 ${cAx()} 또는 ${nAx()} 중 한쪽만 맞아도 조회됩니다.`;
     $('rf-filter-note').textContent = rfNote();
     $('rf-top-note').textContent = `${rfNote()} · TEU 기준`;

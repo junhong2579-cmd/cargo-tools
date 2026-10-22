@@ -50,7 +50,8 @@ alter table if exists public.dash_rows
   drop column if exists cfs,
   drop column if exists pp,
   drop column if exists cc,
-  drop column if exists mt_teu;
+  drop column if exists mt_teu,
+  drop column if exists part;  -- 파트 B/L 표시 (export-v1 뒤에 추가)
 
 commit;
 
