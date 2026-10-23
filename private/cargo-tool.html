@@ -2299,6 +2299,192 @@
       border: 2px solid #2e7d32 !important;
     }
 
+    /* 운임 필터 보기 전환 아이콘 (운임 종류) · 입항 기간 ▾ */
+    .freight-types-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    #freightTypesBtn[aria-pressed="true"] {
+      color: #3949ab;
+      background: #e8eaf6;
+      border-color: #3949ab;
+    }
+
+    .dark-mode #freightTypesBtn[aria-pressed="true"] {
+      color: #81c784;
+      background: #2e3a2f;
+      border-color: #4c574d;
+    }
+
+    .freight-period-btn {
+      margin: 0 0 0 2px;
+      padding: 4px 3px;
+      border: none;
+      border-radius: 4px;
+      background: none;
+      color: #888;
+      box-shadow: none;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .freight-period-btn:hover,
+    .freight-period-btn:active {
+      background: #f0f0f0;
+      color: #3949ab;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .freight-period-btn.on {
+      color: #3949ab;
+    }
+
+    .dark-mode .freight-period-btn {
+      background: none;
+      color: #888;
+    }
+
+    .dark-mode .freight-period-btn:hover {
+      background: #333;
+      color: #fff;
+    }
+
+    .dark-mode .freight-period-btn.on {
+      color: #81c784;
+    }
+
+    /* 운임 종류 요약 (입력창 위 상태 줄 오른쪽) */
+    .freight-mode-info {
+      margin-left: 10px;
+      font-size: 12px;
+      color: #777;
+    }
+
+    .freight-mode-info.warn {
+      color: #c62828;
+    }
+
+    .dark-mode .freight-mode-info {
+      color: #999;
+    }
+
+    /* 같은 운임 열은 [운임 종류] 보기에서만 */
+    #freightTable:not(.fr-types) .fr-type-col {
+      display: none !important;
+    }
+
+    /* 같은 운임 건수: 글자만 (누르면 B/L 목록 펼치기) */
+    .fr-count-btn {
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: none;
+      box-shadow: none;
+      color: inherit;
+      font: inherit;
+      font-weight: 400;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .fr-count-btn:hover,
+    .fr-count-btn:active {
+      background: none;
+      border: none;
+      box-shadow: none;
+      transform: none;
+      text-decoration: underline;
+    }
+
+    .dark-mode .fr-count-btn,
+    .dark-mode .fr-count-btn:hover {
+      background: none;
+      color: inherit;
+      border: none;
+    }
+
+    /* 줄을 펼친 B/L 목록 (가로로 스크롤해도 화면 왼쪽에 보이도록 안쪽 상자를 고정) */
+    #freightTable tr.fr-detail > td {
+      padding: 0 !important;
+      background: #f7fbfc !important;
+    }
+
+    .dark-mode #freightTable tr.fr-detail > td {
+      background: #1b2527 !important;
+    }
+
+    .fr-detail-box {
+      position: sticky;
+      left: 0;
+      padding: 10px 14px 14px;
+      box-sizing: border-box;
+      white-space: normal;
+      max-height: 420px;
+      overflow: auto;
+    }
+
+    .fr-detail-box td.fr-desc {
+      max-width: 420px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fr-detail-box .fr-detail-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .fr-detail-box table {
+      border-collapse: collapse;
+      font-size: 12px;
+      background: #fff;
+    }
+
+    .dark-mode .fr-detail-box table {
+      background: #222;
+    }
+
+    .fr-detail-box th,
+    .fr-detail-box td {
+      border: 1px solid #dde3e6 !important;
+      padding: 5px 10px !important;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .fr-detail-box th {
+      background: #eef3f5;
+    }
+
+    /* 바깥 표의 왼쪽 두 열 고정(.sticky-cols-2)이 안쪽 표에 걸리지 않게 (머리글의 위쪽 고정은 유지) */
+    .fr-detail-box td {
+      position: static !important;
+    }
+
+    .fr-detail-box th,
+    .fr-detail-box td {
+      left: auto !important;
+      box-shadow: none !important;
+    }
+
+    .dark-mode .fr-detail-box th,
+    .dark-mode .fr-detail-box td {
+      border-color: #3a3a3a !important;
+    }
+
+    .dark-mode .fr-detail-box th {
+      background: #2b2b2b;
+    }
+
+    .fr-detail-box td.r {
+      text-align: right;
+    }
+
     .dark-mode #freightTable th.highlight-col {
       background-color: #2e3b32 !important;
     }
@@ -4817,6 +5003,7 @@
         <!-- 항상 입력창 바로 위에 단독행으로 표시되는 상태 영역 -->
         <div style="margin: 4px 0 10px 2px; min-height: 18px;">
           <span id="freightFileStatusIndicator" class="file-status-text"></span>
+          <span id="freightModeInfo" class="freight-mode-info"></span>
         </div>
         <div class="search-input-wrapper"
           style="margin-bottom: 15px; width: 100%; display: flex; gap: 10px; align-items: flex-start;">
@@ -4868,6 +5055,32 @@
                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
               </svg>
             </button>
+            <!-- 보기 전환: 누르면 운임 종류(같은 운임은 최근 1건, supabase/freight_filter_types.sql), 다시 누르면 전체 기록.
+                 ▾ = 운임 종류 보기의 입항 기간 선택 (운임 종류 보기에서만 보임) -->
+            <div class="freight-types-wrap">
+              <button type="button" id="freightTypesBtn" class="icon-btn" aria-pressed="false"
+                title="운임 종류로 보기: 같은 운임은 가장 최근 1건만 (다시 누르면 전체 기록)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                  <polyline points="2 17 12 22 22 17"></polyline>
+                  <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+              </button>
+              <button type="button" id="freightPeriodBtn" class="freight-period-btn" title="입항 기간 선택" aria-haspopup="true" hidden>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div id="freightPeriodPanel" class="filter-panel" style="right: 0; min-width: 170px;">
+                <span style="font-weight: bold; font-size: 13px;">입항 기간</span>
+                <label class="filter-label"><input type="radio" name="freightPeriod" value="" checked> 전체 기간</label>
+                <label class="filter-label"><input type="radio" name="freightPeriod" value="6m"> 최근 6개월</label>
+                <label class="filter-label"><input type="radio" name="freightPeriod" value="1y"> 최근 1년</label>
+                <label class="filter-label"><input type="radio" name="freightPeriod" value="base"> <span id="freightPeriodBaseLabel">2026-04-01 이후</span></label>
+              </div>
+            </div>
           </div>
         </div>
         <div id="freightTableScroll">
@@ -4877,6 +5090,7 @@
               <tr>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">I/O Date</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/L NO</th>
+                <th class="fr-type-col" style="border: 1px solid #ddd; padding: 10px; text-align: left;">같은 운임</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Cargo</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">B/T</th>
                 <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">Consignee Code</th>
@@ -9690,6 +9904,7 @@
   const freightColumns = [
     { name: "I/O Date", key: "ioDate", type: "date" },
     { name: "B/L NO", key: "blNo", type: "bl" },
+    { name: "같은 운임", key: "sameCount", type: "number" }, // [운임 종류] 보기에서만 보임
     { name: "Cargo", key: "cargo", type: "string" },
     { name: "B/T", key: "bt", type: "string" },
     { name: "Consignee Code", key: "consigneeCode", type: "string" },
@@ -10369,6 +10584,32 @@
 
     tr.appendChild(createTd(item.ioDate));
     tr.appendChild(createTd(item.blNo));
+
+    // [운임 종류] 보기 전용 열: 같은 운임 건수(누르면 B/L 목록 펼치기), 마우스를 올리면 처음 ~ 최근 입항일
+    const countTd = createTd('');
+    countTd.classList.add('fr-type-col');
+    countTd.style.textAlign = 'center';
+    if (item.sameCount) {
+      countTd.title = item.typePeriod ? `입항 ${item.typePeriod}` : '';
+      if (item.sameCount > 1) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'fr-count-btn';
+        btn.setAttribute('aria-expanded', 'false');
+        btn.title = `같은 운임의 B/L 목록 보기${item.typePeriod ? ` (입항 ${item.typePeriod})` : ''}`;
+        btn.textContent = `${Number(item.sameCount).toLocaleString('ko-KR')}건 ▾`;
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          toggleFreightTypeDetail(tr, item, btn);
+        });
+        countTd.textContent = '';
+        countTd.appendChild(btn);
+      } else {
+        countTd.textContent = '1건';
+      }
+    }
+    tr.appendChild(countTd);
+
     tr.appendChild(createTd(item.cargo));
     tr.appendChild(createTd(item.bt));
     tr.appendChild(createTd(item.consigneeCode));
@@ -10487,6 +10728,200 @@
     };
   }
 
+  // ============================================
+  //  운임 필터 보기 전환: 전체 기록 / 운임 종류
+  //  운임 종류 = 같은 운임(아래 freightTypeKey 26칸)은 가장 최근 1건만 + 같은 운임 건수 · 입항 기간.
+  //  서버 함수 freight_filter_types · freight_filter_type_bls (supabase/freight_filter_types.sql) 가 합치며,
+  //  없거나 오류면 최근 500건을 받아 화면에서 합칩니다(groupFreightTypes).
+  // ============================================
+  let freightViewMode = 'all';     // 'all' | 'types'
+  let freightSearchSeq = 0;        // 검색 순번 (늦게 온 이전 결과 무시)
+  let freightTypesContext = null;  // 서버에서 합친 경우의 검색 조건 { col, q, from } (B/L 목록 펼치기용)
+  const freightModeInfo = document.getElementById('freightModeInfo');
+  const freightTypesBtn = document.getElementById('freightTypesBtn');
+  const freightPeriodBtn = document.getElementById('freightPeriodBtn');
+  const freightPeriodPanel = document.getElementById('freightPeriodPanel');
+
+  function setFreightModeInfo(text, warn = false) {
+    freightModeInfo.textContent = text;
+    freightModeInfo.classList.toggle('warn', !!warn);
+  }
+
+  const freightIsoDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const freightBaselineIso = () => `${FC_BASELINE_FROM.year}-${String(FC_BASELINE_FROM.month).padStart(2, '0')}-${String(FC_BASELINE_FROM.day).padStart(2, '0')}`;
+
+  // 기간 선택 → 이 날짜 이후 입항만 ('YYYY-MM-DD', 전체 기간이면 '')
+  function freightPeriodFrom() {
+    const checked = freightPeriodPanel.querySelector('input[name="freightPeriod"]:checked');
+    const v = checked ? checked.value : '';
+    const t = new Date();
+    if (v === '6m') return freightIsoDate(new Date(t.getFullYear(), t.getMonth() - 6, t.getDate()));
+    if (v === '1y') return freightIsoDate(new Date(t.getFullYear() - 1, t.getMonth(), t.getDate()));
+    if (v === 'base') return freightBaselineIso();
+    return '';
+  }
+
+  function freightPeriodLabel() {
+    const from = freightPeriodFrom();
+    return from ? `${from} 이후 입항` : '전체 기간';
+  }
+
+  function freightOnOrAfter(ioDate, from) {
+    if (!from) return true;
+    const t = parseFreightIoDate(ioDate);
+    const [y, m, d] = from.split('-').map(Number);
+    return t > 0 && t >= new Date(y, m - 1, d).getTime();
+  }
+
+  // 같은 운임인지 가리는 기준 (서버 freight_type_key 와 같아야 함, scripts/dash-test/freight_types.mjs 로 확인)
+  //   글자: 겹친 공백 · 앞뒤 공백 · 대소문자 무시 / 숫자: '0' · '0.00' · '' 은 모두 0
+  function freightTypeKey(item) {
+    const T = v => String(v ?? '').replace(/[ \t\n\r\f\v]+/g, ' ').replace(/^ +| +$/g, '').toUpperCase();
+    const N = v => {
+      const s = String(v ?? '').replace(/^ +| +$/g, '').replace(/,/g, '').replace(/ /g, '');
+      return /^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?$/.test(s) ? String(Number(s)) : '0';
+    };
+    return [
+      T(item.cargo), T(item.bt), T(item.consigneeCode), T(item.consignee), T(item.notify),
+      T(item.actualShipper), T(item.aShipperCode), T(item.item), T(item.remark),
+      N(item.twenty), N(item.forty), N(item.fortyFive), N(item.ts),
+      N(item.crsC), N(item.lssC), N(item.pssC), N(item.frtC), N(item.esc), N(item.caf), N(item.bafC),
+      N(item.thc), N(item.ccf), N(item.doc), N(item.wfg), N(item.tsf), N(item.psc)
+    ].join('\u001f');
+  }
+
+  function withFreightTypeInfo(item, count, first, last) {
+    const typePeriod = first && last ? (first === last ? first : `${first} ~ ${last}`) : (first || last || '');
+    return { ...item, sameCount: Number(count) || 1, typeFirst: first || '', typeLast: last || '', typePeriod };
+  }
+
+  const isFreightTypeList = list => list.length > 0 && list[0].sameCount != null;
+
+  // [운임 종류] 기본 순서: 같은 운임 건수가 많은 순 → 같으면 최근 입항 순 (서버 freight_filter_types 와 같음)
+  const compareFreightTypes = (a, b) => (b.sameCount - a.sameCount) || compareFreightLatest(a, b, true);
+
+  // 화면에서 합치기 (서버 함수가 없을 때 · 엑셀을 막 올렸을 때). 대표 = 가장 최근 입항
+  function groupFreightTypes(list) {
+    const groups = new Map();
+    [...list].sort((a, b) => compareFreightLatest(a, b, true)).forEach(item => {
+      const k = freightTypeKey(item);
+      const t = parseFreightIoDate(item.ioDate);
+      const g = groups.get(k);
+      if (!g) groups.set(k, { rep: item, members: [item], first: t, last: t });
+      else {
+        g.members.push(item);
+        if (t && (!g.first || t < g.first)) g.first = t;
+        if (t > g.last) g.last = t;
+      }
+    });
+    const iso = t => (t ? freightIsoDate(new Date(t)) : '');
+    return [...groups.values()].map(g => ({
+      ...withFreightTypeInfo(g.rep, g.members.length, iso(g.first), iso(g.last)),
+      _members: g.members
+    })).sort(compareFreightTypes);
+  }
+
+  // 같은 운임 건수를 누르면 바로 아래에 B/L 목록을 펼침 (서버에서 합친 경우 그때만 서버에 물어봄)
+  async function toggleFreightTypeDetail(tr, item, btn) {
+    const next = tr.nextElementSibling;
+    const label = `${Number(item.sameCount).toLocaleString('ko-KR')}건`;
+    if (next && next.classList.contains('fr-detail')) {
+      next.remove();
+      btn.setAttribute('aria-expanded', 'false');
+      btn.textContent = `${label} ▾`;
+      return;
+    }
+    btn.setAttribute('aria-expanded', 'true');
+    btn.textContent = `${label} ▴`;
+    const detailTr = document.createElement('tr');
+    detailTr.className = 'fr-detail';
+    const td = document.createElement('td');
+    td.colSpan = tr.children.length;
+    const box = document.createElement('div');
+    box.className = 'fr-detail-box';
+    const scroll = document.getElementById('freightTableScroll');
+    box.style.width = `${Math.max((scroll ? scroll.clientWidth : 800) - 4, 320)}px`;
+    const title = document.createElement('div');
+    title.className = 'fr-detail-title';
+    title.textContent = `같은 운임 B/L ${Number(item.sameCount).toLocaleString('ko-KR')}건 불러오는 중...`;
+    box.appendChild(title);
+    td.appendChild(box);
+    detailTr.appendChild(td);
+    tr.after(detailTr);
+
+    let rows;
+    if (item._members) {
+      rows = item._members.map(m => ({ io_date: m.ioDate, bl_no: m.blNo, voyage: m.voyage, description: m.description, collect_ttl: m.collectTtl }));
+    } else if (freightTypesContext && supabaseClient) {
+      const res = await supabaseClient.rpc('freight_filter_type_bls', { p: { ...freightTypesContext, bl: item.blNo } });
+      if (res.error || !res.data) {
+        title.textContent = `❌ B/L 목록을 불러오지 못했습니다: ${res.error ? res.error.message : '응답 없음'}`;
+        return;
+      }
+      rows = res.data.rows || [];
+    } else {
+      title.textContent = '❌ B/L 목록을 불러올 수 없습니다. 다시 검색해 주세요.';
+      return;
+    }
+    if (!detailTr.isConnected) return; // 기다리는 동안 닫았거나 다시 검색함
+
+    title.textContent = `같은 운임 B/L ${rows.length.toLocaleString('ko-KR')}건 (최근 입항 순)`
+      + (rows.length < item.sameCount ? ` · 최근 ${rows.length.toLocaleString('ko-KR')}건까지 표시` : '');
+    const cols = [
+      ['I/O Date', 'io_date'], ['B/L NO', 'bl_no'], ['VOYAGE', 'voyage'], ['DESCRIPTION', 'description'],
+      ['PKG', 'pkg', true], ['Weight', 'weight', true], ['Collect TTL', 'collect_ttl', true]
+    ];
+    const table = document.createElement('table');
+    const head = table.createTHead().insertRow();
+    cols.forEach(([label]) => {
+      const th = document.createElement('th');
+      th.textContent = label;
+      head.appendChild(th);
+    });
+    const body = table.createTBody();
+    rows.forEach(r => {
+      const row = body.insertRow();
+      cols.forEach(([, key, num]) => {
+        const cell = row.insertCell();
+        const v = String(r[key] ?? '').trim();
+        const n = parseFloat(v.replace(/,/g, ''));
+        cell.textContent = num && v !== '' && !isNaN(n) ? n.toLocaleString('ko-KR') : (v || '-');
+        if (num) cell.className = 'r';
+        if (key === 'description') { cell.className = 'fr-desc'; cell.title = v; } // 긴 품명은 줄이고 마우스를 올리면 전체
+      });
+    });
+    box.appendChild(table);
+  }
+
+  // 보기 전환 아이콘 (누를 때마다 전체 기록 ↔ 운임 종류) · 입항 기간 ▾ (운임 종류 보기에서만)
+  freightTypesBtn.addEventListener('click', () => {
+    freightViewMode = freightViewMode === 'types' ? 'all' : 'types';
+    const on = freightViewMode === 'types';
+    freightTypesBtn.setAttribute('aria-pressed', String(on));
+    freightTypesBtn.title = on ? '전체 기록으로 보기 (지금: 운임 종류, 같은 운임은 가장 최근 1건)' : '운임 종류로 보기: 같은 운임은 가장 최근 1건만 (다시 누르면 전체 기록)';
+    freightTable.classList.toggle('fr-types', on);
+    freightPeriodBtn.hidden = !on;
+    freightPeriodPanel.classList.remove('active');
+    setFreightModeInfo('');
+    performFreightSearch();
+  });
+  freightPeriodBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('freightPeriodBaseLabel').textContent = `${freightBaselineIso()} 이후`;
+    freightPeriodPanel.classList.toggle('active');
+  });
+  freightPeriodPanel.addEventListener('change', () => {
+    freightPeriodBtn.classList.toggle('on', freightPeriodFrom() !== ''); // 전체 기간이 아니면 ▾ 색 표시
+    freightPeriodBtn.title = `입항 기간 선택 (지금: ${freightPeriodLabel()})`;
+    freightPeriodPanel.classList.remove('active');
+    if (freightViewMode === 'types') performFreightSearch();
+  });
+  document.addEventListener('click', e => {
+    if (freightPeriodPanel.classList.contains('active') && !freightPeriodPanel.contains(e.target) && !freightPeriodBtn.contains(e.target)) {
+      freightPeriodPanel.classList.remove('active');
+    }
+  });
+
   let freightSearchDebounceTimer = null;
 
   function performFreightSearch() {
@@ -10494,6 +10929,8 @@
     const input = freightSearchInput.value.trim();
 
     if (input === "") {
+      freightSearchSeq++; // 진행 중인 검색 결과가 나중에 와도 표시하지 않음
+      setFreightModeInfo('');
       applyFreightFiltersAndSort();
       return;
     }
@@ -10510,10 +10947,39 @@
 
     // 1. Supabase 정규 DB 연결 시: 인덱스 기반 실시간 서버 쿼리
     if (supabaseClient) {
+      const seq = ++freightSearchSeq; // 늦게 도착한 이전 검색 결과는 버림
       freightTableBody.innerHTML = "";
       freightTable.style.display = "none";
       freightEmptyMessage.style.display = "block";
       freightEmptyMessage.textContent = `⏳ Supabase 클라우드 DB에서 실시간 검색 중...`;
+      setFreightModeInfo('');
+
+      // [운임 종류] 보기: 서버가 같은 운임을 묶어 가장 최근 1건 + 건수 · 입항 기간만 보냄
+      if (freightViewMode === 'types') {
+        const from = freightPeriodFrom();
+        const types = await supabaseClient.rpc('freight_filter_types', { p: { col: dbCol, q: input, from } });
+        if (seq !== freightSearchSeq) return;
+        if (!types.error && types.data) {
+          const res = types.data;
+          const mappedList = (res.rows || []).map(r => withFreightTypeInfo(mapFreightDbToClient(r), r.same_count, r.first_date, r.last_date));
+          mappedList.sort(compareFreightTypes);
+          freightDataList = mappedList;
+          freightTypesContext = { col: dbCol, q: input, from };
+          const limited = res.types > mappedList.length ? ` · 최근 ${mappedList.length.toLocaleString('ko-KR')}종류까지 표시` : '';
+          setFreightModeInfo(mappedList.length
+            ? `운임 종류 ${Number(res.types).toLocaleString('ko-KR')}개 · B/L ${Number(res.total).toLocaleString('ko-KR')}건 · ${freightPeriodLabel()}${limited}`
+            : '');
+          if (mappedList.length) displayFreightDataList(mappedList, input);
+          else {
+            freightTable.style.display = "none";
+            freightEmptyMessage.style.display = "block";
+            freightEmptyMessage.textContent = `❌ "${input}" 에 대한 검색 결과가 없습니다. (클라우드 DB 기준 · ${freightPeriodLabel()})`;
+          }
+          return;
+        }
+        // 서버 함수가 아직 없거나 오류: 최근 500건을 받아 화면에서 합침
+        console.warn('[Supabase] freight_filter_types 사용 불가 → 최근 500건 안에서 합칩니다. supabase/freight_filter_types.sql 을 실행하세요.', types.error);
+      }
 
       try {
         const { data, error } = await supabaseClient
@@ -10522,11 +10988,25 @@
           .ilike(dbCol, `%${input}%`)
           .order('bl_no', { ascending: false })
           .limit(500);
+        if (seq !== freightSearchSeq) return;
 
         if (!error && data && data.length > 0) {
-          const mappedList = data.map(mapFreightDbToClient);
+          let mappedList = data.map(mapFreightDbToClient);
           // ⭐ [정렬 기준] 1순위: I/O Date 최신순 -> 2순위: B/L 항차 높은 순 -> 3순위: B/L 뒷자리 높은 순
           mappedList.sort((a, b) => compareFreightLatest(a, b, true));
+          if (freightViewMode === 'types') {
+            const from = freightPeriodFrom();
+            mappedList = groupFreightTypes(mappedList.filter(item => freightOnOrAfter(item.ioDate, from)));
+            freightTypesContext = null; // B/L 목록은 서버 대신 받은 기록에서 보여 줌
+            const scope = data.length >= 500 ? `최근 ${data.length.toLocaleString('ko-KR')}건 안에서만` : `B/L ${data.length.toLocaleString('ko-KR')}건을 화면에서`;
+            setFreightModeInfo(`⚠️ 서버 함수가 없어 ${scope} 합침 · 운임 종류 ${mappedList.length.toLocaleString('ko-KR')}개 · ${freightPeriodLabel()} (supabase/freight_filter_types.sql 실행 필요)`, true);
+            if (!mappedList.length) {
+              freightTable.style.display = "none";
+              freightEmptyMessage.style.display = "block";
+              freightEmptyMessage.textContent = `❌ "${input}" 에 대한 검색 결과가 없습니다. (${freightPeriodLabel()})`;
+              return;
+            }
+          }
           freightDataList = mappedList; // 컬럼별 드롭다운 필터 및 헤더 클릭 정렬과 연동
           displayFreightDataList(mappedList, input);
           return;
@@ -10644,6 +11124,14 @@
       });
     }
 
+    // [운임 종류] 보기인데 화면에 있는 기록이 B/L 하나하나(엑셀을 막 올렸거나 서버 연결 없음)면 여기서 합침
+    if (freightViewMode === 'types' && !isFreightTypeList(filtered)) {
+      const from = freightPeriodFrom();
+      filtered = groupFreightTypes(filtered.filter(item => freightOnOrAfter(item.ioDate, from)));
+      freightTypesContext = null;
+    }
+    if (isFreightTypeList(filtered)) filtered.sort(compareFreightTypes); // 머리글을 눌러 정렬하면 아래 3단계가 우선
+
     // 2단계: 각 컬럼별 드롭다운 체크박스 필터링 적용 (연쇄 AND 조건)
     for (const colKey in freightActiveFilters) {
       const allowedVals = freightActiveFilters[colKey];
@@ -10712,8 +11200,8 @@
   });
 
   freightLoadMoreBtn.addEventListener("click", function () {
-    // 200건씩 분할 렌더링하여 브라우저 멈춤 방지
-    const currentlyDisplayedCount = freightTableBody.children.length;
+    // 200건씩 분할 렌더링하여 브라우저 멈춤 방지 (펼친 B/L 목록 줄은 세지 않음)
+    const currentlyDisplayedCount = freightDataRows().length;
     const nextChunk = currentFilteredFreightData.slice(currentlyDisplayedCount, currentlyDisplayedCount + 200);
     const frag = document.createDocumentFragment();
 
@@ -10722,7 +11210,7 @@
     });
     freightTableBody.appendChild(frag);
 
-    const newCount = freightTableBody.children.length;
+    const newCount = freightDataRows().length;
     if (newCount >= currentFilteredFreightData.length) {
       freightLoadMoreContainer.style.display = "none";
     } else {
@@ -10734,8 +11222,13 @@
   let currentSelectedRowIndex = -1;
   let currentSelectedColIndex = -1;
 
+  // 표의 데이터 줄 (펼친 B/L 목록 줄 .fr-detail 과 그 안의 작은 표는 뺌)
+  function freightDataRows() {
+    return Array.from(freightTableBody.children).filter(tr => !tr.classList.contains('fr-detail'));
+  }
+
   function highlightCell(rowIndex, colIndex) {
-    const allRows = freightTableBody.querySelectorAll("tr");
+    const allRows = freightDataRows();
     if (rowIndex < 0 || rowIndex >= allRows.length) return;
     const row = allRows[rowIndex];
     if (colIndex < 0 || colIndex >= row.children.length) return;
@@ -10775,13 +11268,14 @@
 
   // 마우스 클릭 시 셀 선택
   freightTableBody.addEventListener("click", function (e) {
+    if (e.target.closest('tr.fr-detail')) return; // 펼친 B/L 목록 안은 셀 선택 안 함
     if (e.target.tagName === "TD") {
       const cell = e.target;
       const row = cell.parentElement;
 
       if (!row || !row.children) return;
 
-      const rowIndex = Array.from(row.parentElement.children).indexOf(row);
+      const rowIndex = freightDataRows().indexOf(row);
       const colIndex = Array.from(row.children).indexOf(cell);
 
       // 이미 선택된 셀을 다시 클릭하면 선택 해제
@@ -10825,7 +11319,7 @@
       // 페이지 기본 스크롤 동작 방지 (위/아래 등)
       e.preventDefault();
 
-      const allRows = freightTableBody.querySelectorAll("tr");
+      const allRows = freightDataRows();
       // 범위 초과 방지
       if (newRowIdx >= 0 && newRowIdx < allRows.length) {
         const row = allRows[newRowIdx];
@@ -10856,7 +11350,7 @@
   const freightColCheckboxesContainer = document.getElementById("freightColCheckboxes");
 
   const freightCols = [
-    "I/O Date", "B/L NO", "Cargo", "B/T", "Consignee Code", "Consignee", "Notify",
+    "I/O Date", "B/L NO", "같은 운임", "Cargo", "B/T", "Consignee Code", "Consignee", "Notify",
     "Actual Shipper", "A/Shipper Code", "SHIPPER", "20'", "40'", "45'", "T/S", "ITEM", "DESCRIPTION", "REMARK",
     "CRS", "LSS", "PSS", "FRT", "ESC", "CAF", "BAF", "THC", "CCF", "DOC", "WFG", "TSF", "PSC",
     "EBS", "CFS", "Collect TTL"
@@ -10921,7 +11415,8 @@
         }
       });
       if (unchecked.length > 0) {
-        const selectors = unchecked.map(idx => `#freightTable th:nth-child(${idx}), #freightTable td:nth-child(${idx})`).join(', ');
+        // 펼친 B/L 목록 줄(.fr-detail)은 칸 하나라서 열 숨기기에서 뺍니다
+        const selectors = unchecked.map(idx => `#freightTable th:nth-child(${idx}), #freightTable tr:not(.fr-detail) > td:nth-child(${idx})`).join(', ');
         cssRules = `${selectors} { display: none !important; }\n`;
       }
       freightColStyle.textContent = cssRules;
@@ -11968,11 +12463,15 @@
     "1361", "1362", "1363", "1364", "1365", "1366", "1367", "1368", "1369"]; // B/L 번호 뒤 4자리
   const FC_NO_COST_CONSIGNEES = ["주식회사에이씨티앤코아물류", "주식회사 제이더블유티앤엘(JWTNL corp.)", "주식회사 에이씨지에이 (ACGA)"];
   const FC_NO_COST_CONSIGNEE_NOTIFY = [{ consignee: "에이치피프린팅코리아 유한책임회사", notify: "판월드로지스틱(주)" }];
+  // B/L 끝 4자리 + Consignee 가 함께 맞을 때만 (끝 번호만으로는 다른 업체 B/L 과 겹침). 이름은 띄어쓰기를 무시하고 포함 여부로 봄
+  const FC_NO_COST_SUFFIX_CONSIGNEE = [{ suffix: "1710", consignee: "우정사업본부" }]; // 2026-10-24 추가
 
   function fcIsNoCostBl(blNo, consignee, notify) {
     const blSuffix4 = blNo.length >= 4 ? blNo.slice(-4) : '';
     if (FC_NO_COST_BL_SUFFIXES.includes(blSuffix4)) return true;
     if (FC_NO_COST_CONSIGNEES.includes(consignee)) return true;
+    const consigneeNoSpace = String(consignee || '').replace(/\s+/g, '');
+    if (FC_NO_COST_SUFFIX_CONSIGNEE.some(p => p.suffix === blSuffix4 && consigneeNoSpace.includes(p.consignee.replace(/\s+/g, '')))) return true;
     return FC_NO_COST_CONSIGNEE_NOTIFY.some(p => p.consignee === consignee && p.notify === notify);
   }
 

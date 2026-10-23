@@ -37,8 +37,32 @@ await db.exec(`grant select, insert, update on public.freight_records to authent
   create policy t_admin_rw on public.freight_records for all to authenticated
     using (coalesce(lower(auth.jwt() ->> 'email') = 'junhong2579@gmail.com', false)) with check (coalesce(lower(auth.jwt() ->> 'email') = 'junhong2579@gmail.com', false));`);
 
+// 운임 필터 [운임 종류] 함수 (supabase/freight_filter_types.sql). 대시보드 변환 함수(dash_date 등)가 있는 DB 에서만
+try { await db.exec(fs.readFileSync(path.join(TOOL, 'supabase/freight_filter_types.sql'), 'utf8')); } catch (e) { console.warn('freight_filter_types.sql 적용 안 됨:', e.message); }
+
+// 화물 도구 운임 필터 [전체 기록] 흉내: GET /rest/v1/freight_records?select=*&<칸>=ilike.<패턴>&order=bl_no.desc&limit=500
+async function selectFreight(params) {
+  const where = [], args = [];
+  for (const [k, v] of params) {
+    if (['select', 'order', 'limit', 'offset'].includes(k) || !/^[a-z_]+$/.test(k)) continue;
+    const m = /^ilike\.(.*)$/s.exec(v);
+    if (!m) continue;
+    args.push(m[1].replace(/\*/g, '%'));
+    where.push(`${k}::text ilike $${args.length}`);
+  }
+  const ord = /^([a-z_]+)\.(asc|desc)$/.exec(params.get('order') || '');
+  const lim = Math.min(Number(params.get('limit')) || 1000, 1000);
+  return db.transaction(async (tx) => {
+    await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(CLAIMS)]);
+    await tx.exec('set local role authenticated');
+    const r = await tx.query(`select * from public.freight_records ${where.length ? 'where ' + where.join(' and ') : ''}
+      ${ord ? `order by ${ord[1]} ${ord[2]}` : ''} limit ${lim}`, args);
+    return r.rows;
+  });
+}
+
 async function rpc(fn, args) {
-  if (!/^dash_[a-z]+$/.test(fn)) { const e = new Error('Could not find the function'); e.code = 'PGRST202'; e.status = 404; throw e; }
+  if (!/^(dash_[a-z]+|freight_filter_[a-z_]+)$/.test(fn)) { const e = new Error('Could not find the function'); e.code = 'PGRST202'; e.status = 404; throw e; }
   return db.transaction(async (tx) => {
     await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(CLAIMS)]);
     await tx.exec('set local role authenticated');
@@ -68,6 +92,9 @@ http.createServer(async (req, res) => {
       } catch (e) {
         return send(e.status || (e.code === '42501' ? 403 : 400), { message: e.message, code: e.code });
       }
+    }
+    if (req.method === 'GET' && url.pathname === '/rest/v1/freight_records') {
+      try { return send(200, await selectFreight(url.searchParams)); } catch (e) { return send(400, { message: e.message, code: e.code }); }
     }
     if (req.method === 'POST' && url.pathname.startsWith('/rest/v1/') && !url.pathname.startsWith('/rest/v1/rpc/')) {
       let body = ''; for await (const c of req) body += c;
