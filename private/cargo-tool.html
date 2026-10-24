@@ -5525,6 +5525,22 @@
           max-height: none;
         }
 
+        /* 계산 결과 [복사]: 아이콘 + 글자. 누를 수 있는 크기는 예전 버튼과 같게 (75 × 34px) */
+        .discharge-copy-result-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          min-width: 75px;
+          height: 34px;
+          padding: 6px 12px;
+          box-sizing: border-box;
+        }
+
+        .discharge-copy-result-btn.done {
+          color: #10b981;
+        }
+
         /* 적부도 페이지 제목 옆 복사 아이콘 (작게) · 복사 완료 표시 */
         .discharge-copy-btn {
           padding: 4px;
@@ -5580,7 +5596,7 @@
 
           <div style="display: flex; align-items: center; gap: 10px; margin-top: 25px; margin-bottom: 10px;">
             <h3 style="margin: 0;">계산 결과</h3>
-            <button id="copyDischargeResultBtn" style="padding: 6px 12px;">📋 복사</button>
+            <button type="button" id="copyDischargeResultBtn" class="discharge-copy-result-btn" title="계산 결과 복사"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span>복사</span></button>
           </div>
           <div class="discharge-table-container">
             <table id="dischargeResultTable">
@@ -11911,8 +11927,12 @@
         : dataRows.join("\n") + "\n\n" + footer;
       navigator.clipboard.writeText(copyText).then(() => {
         const btn = document.getElementById('copyDischargeResultBtn');
-        btn.textContent = "✅ 복사됨";
-        setTimeout(() => { btn.textContent = "📋 복사"; }, 1400);
+        btn.innerHTML = `${dischargeIconSvg('done', 16)}<span>복사</span>`; // 버튼 크기가 바뀌지 않게 글자는 그대로, 아이콘만 ✓
+        btn.classList.add('done');
+        setTimeout(() => {
+          btn.innerHTML = `${dischargeIconSvg('copy', 16)}<span>복사</span>`;
+          btn.classList.remove('done');
+        }, 1400);
       });
     } else {
       alert("복사할 결과가 없습니다.");
