@@ -5364,6 +5364,40 @@
           font-weight: 600;
         }
 
+        /* 숫자 4자리 이상 부분 조회: 맞은 숫자 강조 · 번호 아래 작은 안내 (끝자리/포함 · 여러 건) */
+        .discharge-hit {
+          color: #3949ab;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+
+        .dark-mode .discharge-hit {
+          color: #9fa8da;
+        }
+
+        .discharge-match-note {
+          display: block;
+          margin-top: 2px;
+          font-size: 12px;
+          font-weight: 400;
+          color: #64748b;
+        }
+
+        .discharge-match-note.multi {
+          color: #d97706;
+          font-weight: 600;
+        }
+
+        .discharge-status-muted {
+          color: #64748b;
+          font-weight: 600;
+        }
+
+        .dark-mode .discharge-match-note,
+        .dark-mode .discharge-status-muted {
+          color: #aaa;
+        }
+
         .discharge-badge {
           display: inline-block;
           padding: 0.25rem 0.75rem;
@@ -5480,8 +5514,36 @@
           /* 레이아웃 유지 위해 크기 조절 비활성화 */
         }
 
+        /* 크게 보기: 1920 × 1080 화면에서 좌우를 꽉 채우는 너비(화면 1920 − 양옆 여백 60 = 1860px)까지.
+           더 큰 화면(4K 등)에서도 이 너비에서 멈춤. 그림 높이 제한(800px)도 풀어 아래가 잘리지 않게 */
         .card.discharge-wide {
-          max-width: 1200px !important;
+          max-width: 1860px !important;
+          box-sizing: border-box;
+        }
+
+        .card.discharge-wide .discharge-canvas-wrapper {
+          max-height: none;
+        }
+
+        /* 적부도 페이지 제목 옆 복사 아이콘 (작게) · 복사 완료 표시 */
+        .discharge-copy-btn {
+          padding: 4px;
+        }
+
+        .discharge-copy-btn.done {
+          color: #10b981;
+        }
+
+        #toggleDischargeWideBtn[aria-pressed="true"] {
+          color: #3949ab;
+          background: #e8eaf6;
+          border-color: #3949ab;
+        }
+
+        .dark-mode #toggleDischargeWideBtn[aria-pressed="true"] {
+          color: #81c784;
+          background: #2e3a2f;
+          border-color: #4c574d;
         }
 
         .discharge-upper-content {
@@ -5508,7 +5570,7 @@
           <div class="form-group">
             <div style="font-weight: bold; margin-bottom: 8px; margin-top:10px;">조회할 컨테이너 번호</div>
             <textarea id="dischargeContainerList"
-              placeholder="ABCD1234567&#10;EFGH8901234&#10;(줄바꿈으로 구분하여 여러 개 입력 가능)"></textarea>
+              placeholder="ABCD1234567&#10;8550&#10;(줄바꿈으로 구분하여 여러 개 입력 가능, 숫자 4자리 이상만 넣으면 그 숫자가 들어간 컨테이너를 모두 찾음)"></textarea>
           </div>
 
           <div id="dischargeLoading"
@@ -5544,7 +5606,7 @@
           <div
             style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
             <h3 style="margin: 0;">🗺️ 적부도 위치 시각화</h3>
-            <button id="toggleDischargeWideBtn" style="padding: 6px 12px; font-size: 13px;">🔍 크게 보기</button>
+            <button type="button" id="toggleDischargeWideBtn" class="icon-btn" title="크게 보기" aria-label="크게 보기" aria-pressed="false"></button>
           </div>
           <div id="dischargeVisualPagesList"></div>
         </div>
@@ -11801,13 +11863,32 @@
   const toggleDischargeWideBtn = document.getElementById('toggleDischargeWideBtn');
   const dischargeCard = document.getElementById('dischargeCard');
 
+  // 적부도 위치 시각화의 아이콘 버튼 (크게 보기 ⤢ / 기본 크기 ⤡ · 페이지 복사 / 복사 완료 ✓)
+  const DISCHARGE_ICON = {
+    expand: '<polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>',
+    shrink: '<polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line>',
+    copy: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>',
+    done: '<polyline points="20 6 9 17 4 12"></polyline>'
+  };
+  const dischargeIconSvg = (name, size = 18) =>
+    `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DISCHARGE_ICON[name]}</svg>`;
+
+  function setDischargeWideIcon(isWide) {
+    const label = isWide ? '기본 크기' : '크게 보기';
+    toggleDischargeWideBtn.innerHTML = dischargeIconSvg(isWide ? 'shrink' : 'expand');
+    toggleDischargeWideBtn.title = label;
+    toggleDischargeWideBtn.setAttribute('aria-label', label);
+    toggleDischargeWideBtn.setAttribute('aria-pressed', String(isWide));
+  }
+  setDischargeWideIcon(false);
+
   toggleDischargeWideBtn.addEventListener('click', function () {
     const isWide = dischargeCard.classList.toggle('discharge-wide');
-    if (isWide) {
-      toggleDischargeWideBtn.textContent = '🔍 기본 크기';
-    } else {
-      toggleDischargeWideBtn.textContent = '🔍 크게 보기';
-    }
+    setDischargeWideIcon(isWide);
+    // 카드 너비가 바뀌는 효과(0.3초)가 끝난 뒤, 바뀐 너비에 맞춰 적부도를 다시 그림 (선명하게)
+    setTimeout(() => {
+      if (dischargeWantedEntries.length) dischargeRequestDraw(dischargeWantedEntries);
+    }, 350);
   });
 
   document.getElementById('copyDischargeResultBtn').addEventListener('click', function () {
@@ -11815,8 +11896,9 @@
     let dataRows = [];
     rows.forEach(row => {
       const tds = row.querySelectorAll('td');
+      if (row.dataset.skipCopy) return; // 중복 조회 · 4자리 미만 안내 줄
       if (tds.length >= 2 && !tds[0].classList.contains('discharge-empty-state')) {
-        const containerNo = tds[0].innerText.trim();
+        const containerNo = row.dataset.cntr || tds[0].innerText.trim();
         const timeStr = tds[1].innerText.trim();
         dataRows.push(`${containerNo} - ${timeStr}`);
       }
@@ -11837,15 +11919,33 @@
     }
   });
 
+  // 숫자만 4자리 이상이면 부분 조회 (유선 문의의 끝 4 · 5자리). 영문이 섞이면 지금처럼 전체 번호 일치.
+  const DISCHARGE_PARTIAL_MIN = 4;
+  const dischargeEsc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // 입력 한 줄 → 찾은 컨테이너 번호 목록 (부분 조회: 끝자리 일치 먼저 → 가운데 포함, 각각 번호 순)
+  function dischargeFindContainers(input) {
+    if (!/^\d+$/.test(input)) return { mode: 'exact', keys: dischargeCachedContainerMap[input] ? [input] : [] };
+    if (input.length < DISCHARGE_PARTIAL_MIN) return { mode: 'short', keys: [] };
+    const all = Object.keys(dischargeCachedContainerMap);
+    const ends = all.filter(k => k.endsWith(input)).sort();
+    const contains = all.filter(k => !k.endsWith(input) && k.includes(input)).sort();
+    return { mode: 'partial', keys: [...ends, ...contains], endCount: ends.length };
+  }
+
+  // 번호 안에서 입력한 숫자 부분을 강조 (끝자리 일치면 끝을, 아니면 처음 나온 곳을)
+  function dischargeHighlight(key, input) {
+    const at = key.endsWith(input) ? key.length - input.length : key.indexOf(input);
+    return `${dischargeEsc(key.slice(0, at))}<span class="discharge-hit">${dischargeEsc(input)}</span>${dischargeEsc(key.slice(at + input.length))}`;
+  }
+
   function dischargeRenderTable() {
     const etaVal = dischargeEtaTimeInput.value;
     const containerRawList = dischargeContainerListInput.value;
 
     if (!dischargeCachedContainerMap || !containerRawList.trim()) {
       dischargeResultBody.innerHTML = `<tr><td colspan="3" class="discharge-empty-state">PDF 파일 업로드 및 조회할 컨테이너 번호를 입력하시면 결과가 자동으로 표시됩니다.</td></tr>`;
-      if (dischargeVisualizerContainer) {
-        dischargeVisualizerContainer.style.display = 'none';
-      }
+      dischargeRequestDraw([]);
       return;
     }
 
@@ -11855,11 +11955,41 @@
       .filter(s => s.length > 0);
 
     let outputHtml = '';
+    const shown = new Set();      // 이미 위에서 보여 준 컨테이너 (다시 걸리면 "중복 조회")
+    const foundEntries = [];      // 선박 그림에 표시할 컨테이너 (중복 없이)
+    // data-cntr = [복사] 버튼이 쓰는 번호, data-skip-copy = 복사하지 않는 줄
+    const plainRow = (label, timeHtml, locHtml, extra = '') =>
+      `<tr${extra}><td>${label}</td><td class="discharge-status-unknown">${timeHtml}</td><td>${locHtml}</td></tr>`;
 
-    for (const containerNo of inputContainers) {
-      const locInfo = dischargeCachedContainerMap[containerNo];
+    for (const input of inputContainers) {
+      const found = dischargeFindContainers(input);
 
-      if (locInfo) {
+      if (found.mode === 'short') {
+        outputHtml += plainRow(`<strong>${dischargeEsc(input)}</strong>`, '-',
+          `<span class="discharge-status-muted">숫자는 ${DISCHARGE_PARTIAL_MIN}자리 이상 입력해 주세요</span>`, ' data-skip-copy="1"');
+        continue;
+      }
+      if (found.keys.length === 0) {
+        outputHtml += plainRow(`<strong>${dischargeEsc(input)}</strong>`, '-', `<span class="discharge-status-unknown">확인 불가</span>`,
+          ` data-cntr="${dischargeEsc(input)}"`);
+        continue;
+      }
+
+      found.keys.forEach((containerNo, i) => {
+        const isPartial = found.mode === 'partial';
+        const numberHtml = isPartial ? dischargeHighlight(containerNo, input) : dischargeEsc(containerNo);
+        const note = isPartial
+          ? `<span class="discharge-match-note${found.keys.length > 1 ? ' multi' : ''}">${dischargeEsc(input)} ${i < found.endCount ? '끝자리 일치' : '포함'}${found.keys.length > 1 ? ` · ${found.keys.length}건 중 ${i + 1}` : ''}</span>`
+          : '';
+
+        if (shown.has(containerNo)) {
+          outputHtml += plainRow(`<strong>${numberHtml}</strong>${note}`, '-', `<span class="discharge-status-muted">중복 조회</span>`, ' data-skip-copy="1"');
+          return;
+        }
+        shown.add(containerNo);
+
+        const locInfo = dischargeCachedContainerMap[containerNo];
+        foundEntries.push({ num: containerNo, info: locInfo });
         const offsetObj = getDischargeOffset(locInfo.deck, locInfo.xList, locInfo.yVal);
         const xDisplay = locInfo.xList.length > 0 ? locInfo.xList.join(', ') : '?';
         const yDisplay = locInfo.yVal;
@@ -11873,38 +12003,44 @@
         const locationDisplay = `${cleanDeck} | X:${xDisplay}, Y:${yDisplay}`;
 
         outputHtml += `
-                  <tr>
-                      <td><strong>${containerNo}</strong></td>
+                  <tr data-cntr="${containerNo}">
+                      <td><strong>${numberHtml}</strong>${note}</td>
                       <td class="${offsetObj ? 'discharge-status-found' : 'discharge-status-unknown'}">${printTime}</td>
                       <td><span class="${dischargeGetDeckBadgeClass(locInfo.deck)}">${locationDisplay}</span></td>
                   </tr>
               `;
-      } else {
-        outputHtml += `
-                  <tr>
-                      <td><strong>${containerNo}</strong></td>
-                      <td class="discharge-status-unknown">-</td>
-                      <td><span class="discharge-status-unknown">확인 불가</span></td>
-                  </tr>
-              `;
-      }
+      });
     }
 
     dischargeResultBody.innerHTML = outputHtml;
-
-    const foundEntries = inputContainers
-      .map(num => ({ num, info: dischargeCachedContainerMap[num] }))
-      .filter(e => e.info);
-
-    if (foundEntries.length > 0) {
-      dischargeDrawAllContainers(foundEntries);
-    } else {
-      dischargeVisualizerContainer.style.display = 'none';
-    }
+    dischargeRequestDraw(foundEntries);
   }
 
-  async function dischargeDrawAllContainers(foundEntries) {
-    if (dischargeIsDrawing) return;
+  // 선박 그림은 입력이 잠깐 멈췄을 때 그리고(타자 칠 때마다 그리지 않음), 그리는 중에 입력이 바뀌면
+  // 끝난 뒤 마지막 입력 기준으로 한 번 더 그립니다. (그림이 표와 어긋나지 않게)
+  let dischargeDrawTimer = null;
+  let dischargeWantedEntries = [];
+  let dischargeWantedSeq = 0;
+
+  function dischargeRequestDraw(entries) {
+    dischargeWantedEntries = entries;
+    dischargeWantedSeq++;
+    clearTimeout(dischargeDrawTimer);
+    if (entries.length === 0) {
+      if (!dischargeIsDrawing) dischargeVisualizerContainer.style.display = 'none';
+      return;
+    }
+    dischargeDrawTimer = setTimeout(() => dischargeDrawAllContainers(), 250);
+  }
+
+  async function dischargeDrawAllContainers() {
+    if (dischargeIsDrawing) return; // 그리는 중이면 끝난 뒤(finally) 다시 확인
+    const foundEntries = dischargeWantedEntries;
+    const drawSeq = dischargeWantedSeq;
+    if (foundEntries.length === 0) {
+      dischargeVisualizerContainer.style.display = 'none';
+      return;
+    }
     dischargeIsDrawing = true;
 
     dischargeVisualizerContainer.style.display = 'block';
@@ -11947,12 +12083,11 @@
         const canvas = document.createElement('canvas');
 
         const copyBtn = document.createElement('button');
-        copyBtn.innerText = '복사';
-        copyBtn.style.padding = '4px 8px';
-        copyBtn.style.fontSize = '12px';
-        copyBtn.style.fontWeight = 'bold';
-        copyBtn.style.cursor = 'pointer';
-        copyBtn.style.marginRight = '0px';
+        copyBtn.type = 'button';
+        copyBtn.className = 'icon-btn discharge-copy-btn';
+        copyBtn.title = '이 페이지 그림 복사';
+        copyBtn.setAttribute('aria-label', '이 페이지 그림 복사');
+        copyBtn.innerHTML = dischargeIconSvg('copy', 16);
         copyBtn.addEventListener('click', function () {
           canvas.toBlob(function (blob) {
             if (!blob) {
@@ -11961,8 +12096,14 @@
             }
             const item = new ClipboardItem({ "image/png": blob });
             navigator.clipboard.write([item]).then(function () {
-              copyBtn.textContent = '복사 완료';
-              setTimeout(() => { copyBtn.textContent = '복사'; }, 1500);
+              copyBtn.innerHTML = dischargeIconSvg('done', 16);
+              copyBtn.title = '복사 완료';
+              copyBtn.classList.add('done');
+              setTimeout(() => {
+                copyBtn.innerHTML = dischargeIconSvg('copy', 16);
+                copyBtn.title = '이 페이지 그림 복사';
+                copyBtn.classList.remove('done');
+              }, 1500);
             }).catch(err => {
               console.error("클립보드 복사 실패:", err);
               alert("이미지 복사에 실패했습니다. 브라우저 보안 정책상 복사 기능이 제한될 수 있습니다.");
@@ -11979,7 +12120,11 @@
         groupDiv.appendChild(wrapper);
         dischargeVisualPagesList.appendChild(groupDiv);
 
-        const viewport = page.getViewport({ scale: 1.5 });
+        // 보이는 너비(크게 보기면 최대 1860px) × 화면 배율에 맞춰 그려 늘려도 흐리지 않게. 최소 1.5배, 가로 최대 2560px (메모리)
+        const baseWidth = page.getViewport({ scale: 1 }).width;
+        const shownPx = (wrapper.clientWidth || 600) * (window.devicePixelRatio || 1);
+        const scale = Math.max(1.5, Math.min(shownPx / baseWidth, 2560 / baseWidth));
+        const viewport = page.getViewport({ scale });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
 
@@ -11987,8 +12132,9 @@
         const renderContext = { canvasContext: ctx, viewport: viewport };
         await page.render(renderContext).promise;
 
+        const k = scale / 1.5; // 아래 상자 크기 · 위치는 1.5배 기준 값
         ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * k;
         ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
 
         for (const entry of entriesInPage) {
@@ -11996,9 +12142,9 @@
           const [vx, vy] = viewport.convertToViewportPoint(info.coord.x, info.coord.y);
 
           ctx.beginPath();
-          const w = 80;
-          const h = 57;
-          ctx.rect(vx - 22, vy - 32, w, h);
+          const w = 80 * k;
+          const h = 57 * k;
+          ctx.rect(vx - 22 * k, vy - 32 * k, w, h);
           ctx.stroke();
           ctx.fill();
         }
@@ -12007,6 +12153,7 @@
       console.error("좌표 시각화 오류:", err);
     } finally {
       dischargeIsDrawing = false;
+      if (drawSeq !== dischargeWantedSeq) dischargeDrawAllContainers(); // 그리는 동안 입력이 바뀜
     }
   }
 </script>

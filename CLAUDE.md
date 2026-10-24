@@ -69,6 +69,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - 같은 운임 기준은 서버 `freight_type_key` 와 화면 `freightTypeKey`(서버 함수가 없을 때 최근 500건을 화면에서 합침) 두 곳에 있으며 **같아야** 함. 바꾸면 `node scripts/dash-test/freight_types.mjs` 로 확인(모든 B/L 기준 일치 · 검색 결과 = 모두 받아 합친 결과).
   - 화면(사용자 확정: 줄을 늘리지 않는 미니멀 디자인): 전환은 입력창 오른쪽 아이콘(`#freightTypesBtn`, 항목 표시 · 초기화 아이콘 다음), 기간(전체 · 6개월 · 1년 · `FC_BASELINE_FROM` 이후)은 그 옆 작은 ▾(`#freightPeriodBtn` → `#freightPeriodPanel`, 운임 종류 보기에서만 보임), 요약은 입력창 위 상태 줄의 `#freightModeInfo`. 전체 기록에는 안내 문구를 띄우지 않음.
   - 열 "같은 운임"은 B/L NO 뒤 3번째 열이며 운임 종류 보기에서만 보임(`#freightTable.fr-types`). 색 · 박스 없이 글자만 `28건 ▾`(누르면 `freight_filter_type_bls` 로 B/L 목록 펼치기 `tr.fr-detail`, `▴`), 처음 ~ 최근 입항일은 마우스를 올리면 보임(별도 열 없음). 열을 더할 때는 thead · `freightColumns` · `freightCols` · `renderFreightRow` 네 곳을 같은 순서로 고침.
+- **양하 시간 계산기 컨테이너 조회** (2026-10-24 사용자 확정): 영문이 섞이면 전체 번호 일치, **숫자만 4자리 이상**이면 부분 조회(`dischargeFindContainers`) — 끝자리 일치 먼저 → 가운데 포함, 여러 건이면 "N건 중 i" 표시(사용자가 번호를 더 물어 다시 조회). 3자리 이하는 "4자리 이상 입력" 안내. 이미 위 줄에서 나온 컨테이너는 "중복 조회"(복사 · 그림에서 뺌). 선박 그림은 입력이 멈춘 뒤 그리고 그리는 중 바뀌면 다시 그림(`dischargeRequestDraw`). 실제 PDF(XYA1087E, 155개) 기준 끝 4자리 중복 2쌍, 끝 5자리 중복 없음.
 - **대시보드 CSV · 보고서 B/L 상세 목록**은 `DETAIL_MAX`(1,000건, `app.js`)까지만 받습니다(1,000건 ≈ 0.4MB). 운임 필터 검색은 500건 제한을 유지합니다(사용자 결정).
 - **[시험] 고객 변화 · Shipper 연결 탭**: `supabase/stats_customers.sql` · `stats_shippers.sql`(새 함수만), 되돌리기 `stats_rollback.sql`. 코드에는 `[실험]` 표시. 기존 `dashboard.sql` 함수는 바꾸지 않습니다.
 - **되돌리기**
