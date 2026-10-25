@@ -377,11 +377,12 @@
     <div class="modal-body">
       <div class="hint" id="xu-status"></div>
       <div class="field">
-        <label class="flabel" for="xu-file">화물시스템 운임 엑셀 (.xlsx) · 수입 또는 수출</label>
+        <label class="flabel" for="xu-file">화물시스템 운임 엑셀 (.xlsx) · 수입 또는 수출, 또는 ACT 자가 장치장 목록</label>
         <input type="file" id="xu-file" accept=".xlsx,.xls">
       </div>
       <p class="hint">수입 · 수출은 B/L 번호로 자동 구분합니다(수출 = …W0001). 한 파일에 섞여 있으면 받지 않습니다. 이미 있는 B/L 은 새 값으로 덮어씁니다.<br>
         수입 = 화물 도구 운임 필터 탭의 [클라우드 동기화]와 같은 저장(운임 필터 · 운임 체크에도 반영). 수출 = 대시보드 전용(운임 필터 · 운임 체크에는 영향 없음).<br>
+        ACT 자가 장치장 목록 = 첫 열에 B/L 번호가 있는 취합 엑셀(B/L NO 머리글 없음). 올릴 때마다 목록 전체가 이 파일로 바뀝니다(특송 도착지 구분에만 사용).<br>
         작업자 이름(Insert by · Update by)은 저장하지 않습니다.</p>
       <div class="notice" id="xu-msg" role="status" hidden></div>
     </div>

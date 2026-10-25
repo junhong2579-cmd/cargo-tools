@@ -4,6 +4,8 @@
             scripts/dash-test/export.mjs 가 두 변환 결과가 같은지 확인한다)
    - 수출: export_records (supabase/dashboard.sql 3-2). 화물 도구의 운임 필터 · 운임 체크는 이 표를 보지 않는다.
    - 파일 종류는 B/L 번호로 자동 판별: 모두 …W0001 형식이면 수출, W 형식이 하나도 없으면 수입, 섞이면 거부.
+   - ACT 자가 장치장 목록: 'B/L NO' 머리글이 없고 수입 B/L 번호(…E1531)가 든 열이 있는 엑셀 (예: 하선리정리스트 취합).
+     올릴 때마다 목록 전체를 바꾼다(dash_ex_act_replace). 특송 도착지를 ACT자가로 나누는 데만 쓴다.
    엑셀 읽기(SheetJS, vendor/xlsx.full.min.js)는 창을 열 때만 불러온다. */
 (() => {
   'use strict';
@@ -230,7 +232,28 @@
     return w === bls.length ? 'OUT' : w === 0 ? 'IN' : 'MIXED';
   }
 
-  window.DashUpload = { parseExportSheet, parseImportRows, toFreightItems, toFreightRecords, detectKind, COLS };
+  // ── ACT 자가 장치장 목록 ─────────────────────────
+  const IMPORT_BL = /^[A-Z0-9]{6,}E[0-9]{4}[A-Z]?$/; // 수입 …1054E1531 (파트 B/L …1506A)
+  /**
+   * 'B/L NO' 머리글이 없는 시트에서 수입 B/L 번호가 가장 많은 열을 읽는다 → { bls, skipped, dup } | null(B/L 열 없음).
+   * skipped = 그 열에서 B/L 번호가 아닌 칸(머리글 제외), dup = 같은 B/L 이 두 번 이상
+   */
+  function parseActList(aoa) {
+    const width = Math.max(0, ...aoa.map((r) => r.length));
+    let col = -1, best = 0;
+    for (let c = 0; c < width; c++) {
+      const n = aoa.filter((r) => IMPORT_BL.test(String(r[c] ?? '').trim().toUpperCase())).length;
+      if (n > best) { best = n; col = c; }
+    }
+    if (col < 0) return null;
+    const cells = aoa.map((r) => String(r[col] ?? '').trim().toUpperCase()).filter(Boolean);
+    const first = cells.findIndex((v) => IMPORT_BL.test(v)); // 그 앞은 머리글
+    const ok = cells.slice(first).filter((v) => IMPORT_BL.test(v));
+    const bls = [...new Set(ok)];
+    return { bls, skipped: cells.length - first - ok.length, dup: ok.length - bls.length };
+  }
+
+  window.DashUpload = { parseExportSheet, parseImportRows, toFreightItems, toFreightRecords, detectKind, parseActList, COLS };
 
   // ── 화면 (대시보드에서만) ─────────────────────
   if (!document.getElementById('xu-modal')) return;
@@ -257,9 +280,14 @@
     if (!ex || !ex.rows) return `<li><b>${name}</b> 아직 없음</li>`;
     return `<li><b>${name}</b> B/L ${X.fmt.int(ex.rows)}건 · 입항일 ${ex.dateMin || '-'} ~ ${ex.dateMax || '-'} · 최근 반영 ${ex.syncedAt || '-'}</li>`;
   }
-  function renderStatus() {
-    $('xu-status').innerHTML = `<ul class="xu-status">${statusLine('수입', status?.import)}${statusLine('수출', status?.export)}</ul>`;
+  function actLine(a) {
+    if (!a || !a.rows) return '<li><b>ACT 자가 장치장 목록</b> 아직 없음</li>';
+    return `<li><b>ACT 자가 장치장 목록</b> B/L ${X.fmt.int(a.rows)}건 · 최근 반영 ${a.updatedAt || '-'}</li>`;
   }
+  function renderStatus() {
+    $('xu-status').innerHTML = `<ul class="xu-status">${statusLine('수입', status?.import)}${statusLine('수출', status?.export)}${actLine(status?.exAct)}</ul>`;
+  }
+  const statusOf = (m) => ({ import: m.import, export: m.export, exAct: m.exAct });
 
   function setMsg(html, kind = '') {
     const el = $('xu-msg');
@@ -280,7 +308,7 @@
     renderStatus();
     $('xu-modal').hidden = false;
     loadXlsx().catch((e) => setMsg(X.esc(e.message), 'error'));
-    window.DashApi.meta().then((m) => { status = { import: m.import, export: m.export }; renderStatus(); }).catch(() => {});
+    window.DashApi.meta().then((m) => { status = statusOf(m); renderStatus(); }).catch(() => {});
   }
   const close = () => { if (!busy) $('xu-modal').hidden = true; };
 
@@ -296,7 +324,10 @@
       const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
       const who = await window.DashApi.email().catch(() => '');
       const kind = detectKind(aoa);
-      if (!kind) { setMsg('B/L NO 열 또는 B/L 번호를 찾지 못했습니다. 화물시스템에서 내려받은 운임 엑셀인지 확인해 주세요.', 'error'); return; }
+      // 'B/L NO' 머리글이 없으면 ACT 자가 장치장 목록인지 본다
+      const act = kind ? null : parseActList(aoa);
+      if (act && act.bls.length) { showActList(act, file.name); return; }
+      if (!kind) { setMsg('B/L NO 열 또는 B/L 번호를 찾지 못했습니다. 화물시스템에서 내려받은 운임 엑셀이나 ACT 자가 장치장 목록인지 확인해 주세요.', 'error'); return; }
       if (kind === 'MIXED') { setMsg('수입 B/L 과 수출 B/L(…W0001)이 한 파일에 섞여 있습니다. 수입과 수출은 따로 올려 주세요.', 'error'); return; }
       // 수입은 화물 도구와 똑같이 읽는다 (첫 행 = 머리글)
       const res = kind === 'OUT'
@@ -318,8 +349,49 @@
     }
   }
 
+  function showActList(act, fileName) {
+    parsed = { kind: 'ACT', bls: act.bls, file: fileName };
+    const before = status?.exAct?.rows || 0;
+    setMsg(`<b>ACT 자가 장치장 목록</b> · ${X.esc(fileName)}<br>B/L ${X.fmt.int(act.bls.length)}건`
+      + (act.dup ? ` · 같은 B/L ${X.fmt.int(act.dup)}행 합침` : '')
+      + (act.skipped ? ` · B/L 번호가 아닌 칸 ${X.fmt.int(act.skipped)}개 뺌` : '')
+      + `<br><b>지금 목록 ${X.fmt.int(before)}건 → 이 파일의 ${X.fmt.int(act.bls.length)}건으로 통째로 바뀝니다.</b> 파일에 없는 B/L 은 평택 특송으로 돌아갑니다.`
+      + '<br>운임 데이터는 바뀌지 않고, 대시보드 특송 카드의 도착지(ACT자가)만 바뀝니다. [올리기]를 누르세요.');
+    $('xu-go').disabled = false;
+  }
+
+  async function uploadAct() {
+    const { bls } = parsed;
+    const before = status?.exAct?.rows || 0;
+    if (before && bls.length < before
+      && !window.confirm(`ACT 자가 장치장 목록이 ${before.toLocaleString()}건 → ${bls.length.toLocaleString()}건으로 줄어듭니다.\n빠지는 B/L 은 평택 특송으로 돌아갑니다. 계속할까요?`)) return;
+    busy = true;
+    $('xu-go').disabled = true;
+    $('xu-file').disabled = true;
+    try {
+      setMsg('ACT 자가 장치장 목록을 바꾸는 중…');
+      const r = await window.DashApi.replaceActList(bls);
+      status = statusOf(await window.DashApi.meta());
+      renderStatus();
+      setMsg(`<b>ACT 자가 장치장 목록을 ${X.fmt.int(r.before)}건 → ${X.fmt.int(r.rows)}건으로 바꿨습니다.</b>`
+        + `<br>특송 B/L 과 연결 ${X.fmt.int(r.matched)}건`
+        + (r.missing ? ` · 아직 운임 데이터에 없는 B/L ${X.fmt.int(r.missing)}건 (운임 데이터를 올리면 자동으로 연결)` : '')
+        + (r.notEx ? ` · 특송(B/L Type X)이 아닌 B/L ${X.fmt.int(r.notEx)}건 (도착지 구분에 쓰지 않음)` : '')
+        + '<br>대시보드 화면에 반영하려면 창을 닫은 뒤 새로고침하세요.');
+      parsed = null;
+      X.toast('ACT 자가 장치장 목록을 반영했습니다.');
+    } catch (e) {
+      setMsg(`목록을 바꾸지 못했습니다(이전 목록 그대로): ${X.esc(e.message)}`, 'error');
+      $('xu-go').disabled = false;
+    } finally {
+      busy = false;
+      $('xu-file').disabled = false;
+    }
+  }
+
   async function upload() {
     if (!parsed || busy) return;
+    if (parsed.kind === 'ACT') return uploadAct();
     busy = true;
     $('xu-go').disabled = true;
     $('xu-file').disabled = true;
@@ -333,8 +405,7 @@
         await KIND[kind].upload(rows.slice(i, i + CHUNK));
         done = Math.min(rows.length, i + CHUNK);
       }
-      const meta = await window.DashApi.meta();
-      status = { import: meta.import, export: meta.export };
+      status = statusOf(await window.DashApi.meta());
       renderStatus();
       const added = Math.max(0, (status[key]?.rows || 0) - before);
       setMsg(`<b>${KIND[kind].name} ${X.fmt.int(rows.length)}건을 반영했습니다.</b> (새 B/L ${X.fmt.int(added)}건 · 기존 B/L 갱신 ${X.fmt.int(rows.length - added)}건)<br>대시보드 화면에 반영하려면 창을 닫은 뒤 새로고침하세요.`);
@@ -351,7 +422,7 @@
   document.addEventListener('dash:ready', () => {
     X = window.Dash;
     if (!X.META.canUpload) return; // 관리자만 (Supabase 정책도 같은 기준으로 막음)
-    status = { import: X.META.import, export: X.META.export };
+    status = statusOf(X.META);
     $('btn-export-upload').hidden = false;
     $('btn-export-upload').addEventListener('click', open);
     $('xu-file').addEventListener('change', (e) => onFile(e.target.files[0]));

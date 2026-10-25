@@ -62,7 +62,7 @@ async function selectFreight(params) {
 }
 
 async function rpc(fn, args) {
-  if (!/^(dash_[a-z]+|freight_filter_[a-z_]+)$/.test(fn)) { const e = new Error('Could not find the function'); e.code = 'PGRST202'; e.status = 404; throw e; }
+  if (!/^(dash_[a-z_]+|freight_filter_[a-z_]+)$/.test(fn)) { const e = new Error('Could not find the function'); e.code = 'PGRST202'; e.status = 404; throw e; }
   return db.transaction(async (tx) => {
     await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(CLAIMS)]);
     await tx.exec('set local role authenticated');

@@ -35,6 +35,10 @@
   };
   // 냉동 카드: dash_summary 의 냉동 · 선어 · 활어 TEU 필드와 색 (금색은 점유율 선이 쓰므로 뺀다)
   const RF_TEU = [['rTeu', '냉동', COLORS.navy700], ['sTeu', '선어', '#5b7fa6'], ['lTeu', '활어', COLORS.navy300]];
+  // 특송 카드: 도착지별 TEU 필드와 색 (REMARK 인천 · 부산 → ACT 자가 장치장 목록 → 나머지 평택, SQL dash_ex_dest)
+  const EX_TEU = [['exP', '평택', COLORS.navy700], ['exA', 'ACT자가', '#5b7fa6'], ['exB', '부산', '#3d5a50'], ['exI', '인천', COLORS.navy300]];
+  /** 냉동 · 특송 카드에서 나눠 쌓는 구성 [필드, 이름, 색]. 환적은 null, 특송도 예전 SQL(도착지 필드 없음)이면 null */
+  const subsetParts = (k, sample) => (k === 'rf' ? RF_TEU : k === 'ex' && sample && sample.exP !== undefined ? EX_TEU : null);
   // 컨테이너 규격별 수량 카드: 규격(cntrCols 이름)별 색
   const CNTR_COLORS = { "20'": COLORS.navy300, "40'": COLORS.navy700, "45'": COLORS.gold, '20RF': '#5b7fa6', '40RF': '#3d5a50' };
   // 선복량: 이론 313 TEU, 실무 최대 304 TEU → 선복 대비 = TEU ÷ (항차 수 × 304)
@@ -673,13 +677,14 @@
       };
     },
 
-    /** 냉동 · 환적 · 특송: 막대 = 해당 TEU(냉동은 냉동 · 선어 · 활어 누적), 막대 위 = 합계 TEU,
+    /** 냉동 · 환적 · 특송: 막대 = 해당 TEU(냉동은 냉동 · 선어 · 활어, 특송은 도착지 4곳 누적), 막대 위 = 합계 TEU,
      *  금색 선(보조축) = 그 월 · 항차 전체 TEU 중 점유율(%, 소수 첫째 자리) */
     shareTrend(groupRows, mode, kind, opts = {}) {
       const d = kind === 'rf' ? { name: '냉동', blKey: null } : SUBSETS[kind];
       const groups = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
-      const stacks = kind === 'rf'
-        ? RF_TEU.map(([key, name, color]) => ({ name, color, vals: groups.map((g) => Number(g[key]) || 0) }))
+      const parts = subsetParts(kind, groups[0]);
+      const stacks = parts
+        ? parts.map(([key, name, color]) => ({ name, color, vals: groups.map((g) => Number(g[key]) || 0) }))
         : [{ name: `${d.name} TEU`, color: COLORS.navy700, vals: groups.map((g) => Number(g[d.teuKey]) || 0) }];
       const vals = groups.map((g, i) => stacks.reduce((a, st) => a + st.vals[i], 0));
       if (!vals.some((v) => v > 0)) return emptyChart(opts.empty || `조건에 맞는 ${d.name} B/L 이 없습니다.`);
@@ -1112,8 +1117,9 @@
   }
   const reeferTop = (S, n = 10) => subsetTop(S, 'reeferConsignee', n);
 
-  /** 냉동 · 환적 · 특송 카드 위쪽: 막대(월 · 항차별 TEU + 점유율) · 도넛(구성) · 표 전환, 그 아래 전체 대비 비중 */
-  function renderShareCard(S, k, donutEntries, colors) {
+  /** 냉동 · 환적 · 특송 카드 위쪽: 막대(월 · 항차별 TEU + 점유율) · 도넛(구성) · 표 전환, 그 아래 전체 대비 비중.
+   *  a = 해당 화물 TEU 합계 */
+  function renderShareCard(S, k, donutEntries, colors, a) {
     const isRf = k === 'rf';
     const d = isRf ? null : SUBSETS[k];
     const name = isRf ? '냉동' : d.name;
@@ -1124,20 +1130,23 @@
     const empty = `조건에 맞는 ${name} B/L 이 없습니다.`;
     const rows = mode === 'voyage' ? S.groups.voyage : S.groups.month;
     $(`${k}-title`).innerHTML = `${name} 화물 <small>${sub} · ${v === 'donut' ? 'TEU 구성' : `${by} TEU · 점유율`}</small>`;
-    $(`${k}-note`).textContent = v === 'donut'
+    $(`${k}-note`).textContent = (v === 'donut'
       ? '조회 기간 전체의 TEU 구성입니다.'
-      : `${v === 'bar' ? `막대 위 숫자 = ${name} TEU 합계, ` : ''}점유율 = 그 월(항차) 전체 TEU 중 ${name} TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.`;
+      : `${v === 'bar' ? `막대 위 숫자 = ${name} TEU 합계, ` : ''}점유율 = 그 월(항차) 전체 TEU 중 ${name} TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.`)
+      + (subsetParts(k, S.t) === EX_TEU ? ' 도착지: REMARK 에 인천 · 부산이 있으면 그곳, ACT 자가 장치장 목록(데이터 올리기)에 있으면 ACT자가, 나머지 평택.' : '');
     $(id).hidden = v === 'table';
     $(`${k}-table`).hidden = v !== 'table';
     if (v === 'table') renderShareTable(rows, mode, k, empty);
     else {
       const c = chart(id);
       c.resize();
+      // 색은 항목에 붙인 뒤 0 인 항목을 뺀다 (빼고 나서 색 목록과 순서가 어긋나지 않게)
+      const entries = donutEntries.map((p, i) => ({ ...p, itemStyle: { color: colors[i] } })).filter((p) => p.value > 0);
       c.setOption(v === 'donut'
-        ? chartOptions.donut(donutEntries.filter((p) => p.value > 0), { unit: 'TEU', empty, colors, compact: $(id).clientWidth < 480 })
+        ? chartOptions.donut(entries, { unit: 'TEU', empty, colors, compact: $(id).clientWidth < 480 })
         : chartOptions.shareTrend(rows, mode, k, { width: $(id).clientWidth, empty }), true);
     }
-    const total = S.t.teu, a = isRf ? donutEntries.reduce((x, p) => x + p.value, 0) : donutEntries[0].value, rest = total - a;
+    const total = S.t.teu, rest = total - a;
     $(`${k}-ratio`).innerHTML = `
       <div class="ratio">
         <div class="r-head"><span>전체 대비 ${name} 비중 (TEU)</span><span>${name} ${fmt.int(a)}TEU · ${fmt.pct(a, total)} · 그 외 ${fmt.pct(rest, total)}</span></div>
@@ -1145,13 +1154,14 @@
       </div>`;
   }
 
-  /** 냉동 · 환적 · 특송 [표]: 월(항차)별 해당 TEU(냉동은 냉동 · 선어 · 활어) · 전체 TEU · 증감률(해당 TEU, 직전 월 · 항차 대비) · 점유율, 맨 아래 합계 */
+  /** 냉동 · 환적 · 특송 [표]: 월(항차)별 해당 TEU(냉동은 냉동 · 선어 · 활어, 특송은 도착지 4곳 + 합계) · 전체 TEU · 증감률(해당 TEU, 직전 월 · 항차 대비) · 점유율, 맨 아래 합계 */
   function renderShareTable(groupRows, mode, k, empty) {
     const isRf = k === 'rf', d = SUBSETS[k];
     const rows = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
-    const cols = isRf
-      ? [...RF_TEU.map(([key, label]) => ({ label, get: (g) => Number(g[key]) || 0 })),
-        { label: '냉동 합계', bold: true, get: (g) => RF_TEU.reduce((a, [key]) => a + (Number(g[key]) || 0), 0) }]
+    const parts = subsetParts(k, rows[0]);
+    const cols = parts
+      ? [...parts.map(([key, label]) => ({ label, get: (g) => Number(g[key]) || 0 })),
+        { label: `${isRf ? '냉동' : d.name} 합계`, bold: true, get: (g) => parts.reduce((a, [key]) => a + (Number(g[key]) || 0), 0) }]
       : [{ label: `${d.name} B/L`, get: (g) => Number(g[d.blKey]) || 0 }, { label: `${d.name} TEU`, bold: true, get: (g) => Number(g[d.teuKey]) || 0 }];
     const val = cols[cols.length - 1].get; // 증감률 · 점유율 기준 = 해당 TEU 합계
     const name = isRf ? '냉동' : d.name, prevWord = mode === 'voyage' ? '직전 항차' : '전월';
@@ -1243,16 +1253,25 @@
 
   function renderReefer(S) {
     const r = reeferSummary(S, 'teu');
-    renderShareCard(S, 'rf', r.parts, RF_TEU.map((x) => x[2]));
+    renderShareCard(S, 'rf', r.parts, RF_TEU.map((x) => x[2]), r.reefer);
     renderTopTable('rf', reeferTop(S), r.reefer, '조건에 맞는 냉동 B/L 이 없습니다.');
   }
 
-  /** 환적 · 특송 카드: 막대 · 도넛(환적 · 비환적 등) · 표 전환, Consignee 상위 10 표 */
+  /** 도넛 구성: 특송 = 도착지 4곳(평택 · ACT자가 · 부산 · 인천), 환적(과 예전 SQL 의 특송) = 해당 · 비해당 → { entries, colors } */
+  function subsetDonut(S, k) {
+    const d = SUBSETS[k], a = Number(S.t[d.teuKey]) || 0, parts = subsetParts(k, S.t);
+    return parts
+      ? { entries: parts.map(([key, name]) => ({ name, value: Number(S.t[key]) || 0 })), colors: parts.map((p) => p[2]) }
+      : { entries: [{ name: d.name, value: a }, { name: `비${d.name}`, value: Math.max(S.t.teu - a, 0) }], colors: [COLORS.navy700, COLORS.navy300] };
+  }
+
+  /** 환적 · 특송 카드: 막대 · 도넛(환적 · 비환적, 특송 도착지) · 표 전환, Consignee 상위 10 표 */
   function renderSubsets(S) {
     Object.entries(SUBSETS).forEach(([k, d]) => {
       if (k === 'ex' && state.dir === 'OUT') return; // 수출에는 특송(B/L Type X)이 없음 (카드 숨김)
       const a = Number(S.t[d.teuKey]) || 0;
-      renderShareCard(S, k, [{ name: d.name, value: a }, { name: `비${d.name}`, value: Math.max(S.t.teu - a, 0) }], [COLORS.navy700, COLORS.navy300]);
+      const { entries, colors } = subsetDonut(S, k);
+      renderShareCard(S, k, entries, colors, a);
       renderTopTable(k, subsetTop(S, d.dim), a, `조건에 맞는 ${d.name} B/L 이 없습니다.`);
     });
   }
@@ -2098,7 +2117,7 @@
 
     window.Dash = {
       META, MONTHS, YEARS, CARGO, DETAIL_MAX, RF, KRW_CHARGES, USD_CHARGES, NONE, METRICS, COLORS, QC,
-      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, subsetTop, SUBSETS, RF_TEU, rate, shortName, chartOptions,
+      state, fmt, esc, fetchSummary, fetchTotals, fetchDetail, topCompanies, reeferSummary, reeferTop, subsetTop, SUBSETS, RF_TEU, EX_TEU, subsetParts, subsetDonut, rate, shortName, chartOptions,
       consigneeName, consigneeCode, notifyName, companyName, placeName, vesselLabel, DIRS, cAx, nAx, rfNote, dry, cntrCols, trendNote, MT_TYPES, mtGroups, SHIP_CAP, capPct,
       companyList: (basis) => (basis === 'notify'
         ? NOTIFIES.filter(([k]) => k !== NONE).map(([k, n]) => ({ key: k, n, name: k, code: '' }))

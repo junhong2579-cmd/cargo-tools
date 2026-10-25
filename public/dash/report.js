@@ -259,18 +259,26 @@ document.addEventListener('dash:ready', () => {
           remark: { IN: 'B/L 번호에 E12 가 있으면 냉동, 그중 REMARK 에 선어 · 활어가 있으면 선어 · 활어로 나눴습니다.',
             OUT: '수출은 20RF · 40RF 수량이 있는 B/L 을 냉동으로 봅니다.',
             ALL: '수입은 B/L 번호 E12(REMARK 선어 · 활어 구분), 수출은 20RF · 40RF 수량이 있는 B/L 을 냉동으로 봅니다.' }[X.state.dir] },
-        ...Object.entries(X.SUBSETS).filter(([k]) => !(k === 'ex' && X.state.dir === 'OUT')).map(([k, d]) => ({
-          k, name: d.name, note: d.note, bl: Number(t[d.blKey]) || 0, teu: Number(t[d.teuKey]) || 0, top: X.subsetTop(S, d.dim), dim: d.dim,
-          parts: [{ name: d.name, bl: Number(t[d.blKey]) || 0, teu: Number(t[d.teuKey]) || 0 }, { name: `비${d.name}`, bl: t.bl - (Number(t[d.blKey]) || 0), teu: t.teu - (Number(t[d.teuKey]) || 0) }],
-          cols: [{ l: `${d.name} B/L`, get: (g) => Number(g[d.blKey]) || 0 }, { l: `${d.name} TEU`, get: (g) => Number(g[d.teuKey]) || 0 }],
-          remark: '' })),
+        ...Object.entries(X.SUBSETS).filter(([k]) => !(k === 'ex' && X.state.dir === 'OUT')).map(([k, d]) => {
+          const ps = X.subsetParts(k, t); // 특송 = 도착지 4곳 (예전 SQL 이면 null → 특송 · 비특송)
+          return {
+            k, name: d.name, note: d.note, bl: Number(t[d.blKey]) || 0, teu: Number(t[d.teuKey]) || 0, top: X.subsetTop(S, d.dim), dim: d.dim,
+            parts: ps
+              ? ps.map(([key, name]) => ({ name, bl: Number(t[`${key}Bl`]) || 0, teu: Number(t[key]) || 0 }))
+              : [{ name: d.name, bl: Number(t[d.blKey]) || 0, teu: Number(t[d.teuKey]) || 0 }, { name: `비${d.name}`, bl: t.bl - (Number(t[d.blKey]) || 0), teu: t.teu - (Number(t[d.teuKey]) || 0) }],
+            cols: ps
+              ? [...ps.map(([key, l]) => ({ l, get: (g) => Number(g[key]) || 0 })), { l: `${d.name} 합계`, get: (g) => ps.reduce((a, [key]) => a + (Number(g[key]) || 0), 0) }]
+              : [{ l: `${d.name} B/L`, get: (g) => Number(g[d.blKey]) || 0 }, { l: `${d.name} TEU`, get: (g) => Number(g[d.teuKey]) || 0 }],
+            remark: ps ? '도착지: REMARK 에 인천 · 부산이 있으면 그곳, ACT 자가 장치장 목록에 있으면 ACT자가, 나머지는 평택으로 나눴습니다.' : '',
+          };
+        }),
       ];
       KINDS.forEach((c) => {
         if (!c.bl) {
           html.push(`<section class="rpt-sec">${H(`${c.name} 화물 (${c.note})`)}<p class="rpt-note">선택한 조건에 해당하는 ${c.name} B/L 이 없습니다.</p></section>`);
           return;
         }
-        // 구성: 냉동은 냉동 · 선어 · 활어 안의 비중, 환적 · 특송은 전체 중 환적 · 비환적 비중
+        // 구성: 냉동은 냉동 · 선어 · 활어, 특송은 도착지 4곳 안의 비중, 환적은 전체 중 환적 · 비환적 비중
         const pSum = { bl: c.parts.reduce((a, p) => a + p.bl, 0), teu: c.parts.reduce((a, p) => a + p.teu, 0) };
         html.push(`<section class="rpt-sec">${H(`${c.name} 화물 (${c.note}) · 구성`)}<div class="rpt-two">
           <div>${table([{ l: '구분', v: (g) => g.name }, n('B/L', 'bl'), share(pSum, 'bl', 'B/L 비중'), n('TEU', 'teu'), share(pSum, 'teu', 'TEU 비중')], c.parts, pSum)}
@@ -395,9 +403,11 @@ document.addEventListener('dash:ready', () => {
         mountChart('rc-mt-donut', X.chartOptions.donut(mt.map(([k, name, w]) => ({ name, value: t[k] * w })), { static: true, unit: 'TEU', colors: mt.map((x) => x[3]) }), 170);
       }
       [['rf', rfParts, X.RF_TEU.map((x) => x[2])],
-        ...Object.entries(X.SUBSETS).filter(([k]) => !(k === 'ex' && X.state.dir === 'OUT')).map(([k, d]) => [k, [{ name: d.name, value: Number(t[d.teuKey]) || 0 }, { name: `비${d.name}`, value: t.teu - (Number(t[d.teuKey]) || 0) }], [X.COLORS.navy700, X.COLORS.navy300]]),
+        ...Object.keys(X.SUBSETS).filter((k) => !(k === 'ex' && X.state.dir === 'OUT')).map((k) => { const dn = X.subsetDonut(S, k); return [k, dn.entries, dn.colors]; }),
       ].forEach(([k, parts, colors]) => {
-        mountChart(`rc-${k}-donut`, X.chartOptions.donut(parts.filter((p) => p.value > 0), { static: true, unit: 'TEU', colors }), 170);
+        // 색은 항목에 붙인 뒤 0 인 항목을 뺀다 (색 순서가 어긋나지 않게)
+        const entries = parts.map((p, i) => ({ ...p, itemStyle: { color: colors[i] } })).filter((p) => p.value > 0);
+        mountChart(`rc-${k}-donut`, X.chartOptions.donut(entries, { static: true, unit: 'TEU', colors }), 170);
         mountChart(`rc-${k}`, X.chartOptions.shareTrend(trendMode === 'month' ? groups.month : groups.voyage, trendMode, k, { static: true }), 230);
         mountChart(`rc-${k}-top`, X.chartOptions.rankBar(k === 'rf' ? X.reeferTop(S) : X.subsetTop(S, X.SUBSETS[k].dim), 'teu', { static: true, labelWidth: 180 }), 260);
       });

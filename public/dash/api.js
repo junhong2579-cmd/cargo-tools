@@ -99,6 +99,7 @@
     shippers: (f, opt) => rpc('dash_shippers', { f, opt }),   // [실험] supabase/stats_shippers.sql
     uploadExport: (rows) => upsert('export_records', rows),  // 수출 원본 (관리자 전용)
     uploadImport: (rows) => upsert('freight_records', rows), // 수입 원본 = 화물 도구 [클라우드 동기화]와 같은 표
+    replaceActList: (bls) => rpc('dash_ex_act_replace', { bls }), // ACT 자가 장치장 목록 통째로 바꾸기 (관리자 전용)
     email: () => getAuth().then((a) => a.email || ''),
   };
 })();

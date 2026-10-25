@@ -30,6 +30,15 @@ begin
   end if;
 end $$;
 drop function if exists public.dash_export_sync(), public.dash_is_admin(), public.dash_meta_of(text), public.dash_options_of(text);
+-- 특송 도착지 (ACT 자가 장치장 목록 ex_act_bl 의 데이터는 남김. 지우려면 맨 아래 주석 참고)
+drop function if exists public.dash_ex_act_replace(jsonb), public.dash_ex_dest(text, text, text);
+do $$
+begin
+  if to_regclass('public.ex_act_bl') is not null then
+    drop policy if exists ex_act_bl_read on public.ex_act_bl;
+    revoke all on public.ex_act_bl from anon, authenticated;
+  end if;
+end $$;
 
 -- 지우는 순서: 권한 정책 → 함수 → 테이블 (서로 의존하므로 이 순서를 지켜야 합니다)
 drop policy if exists dash_rows_read on public.dash_rows;
@@ -64,6 +73,7 @@ drop table if exists public.dash_rows;
 --   drop column if exists place;
 
 -- (선택) 수출 원본까지 지우려면: drop table if exists public.export_records;
+-- (선택) ACT 자가 장치장 목록까지 지우려면: drop table if exists public.ex_act_bl;
 
 commit;
 

@@ -136,9 +136,30 @@ alter table public.dash_rows
   add column if not exists mt_teu  numeric;  -- 공컨 이송 TEU (수출 공컨 B/L 만, teu 는 0)
 -- 파트 B/L: 모 B/L(메인)에 컨테이너가 있고 파트 B/L 은 컨테이너 수량이 없는 것이 정상 (데이터 점검 '컨테이너 수량 0' 에서 뺌)
 alter table public.dash_rows add column if not exists part boolean;
+-- 특송 도착지 (B/L Type X 만, 아니면 null): P=평택 · A=ACT 자가 장치장 · B=부산 · I=인천 (dash_ex_dest 참고)
+alter table public.dash_rows add column if not exists exd text;
 create index if not exists dash_rows_d_idx on public.dash_rows (d);
 create index if not exists dash_rows_ckey_idx on public.dash_rows (ckey);
 create index if not exists dash_rows_notify_idx on public.dash_rows (notify);
+
+-- ACT 자가 장치장으로 가는 특송 B/L 목록 (대시보드 [데이터 올리기]의 ACT 자가 장치장 목록, 관리자만).
+-- 올릴 때마다 목록 전체를 바꿉니다(dash_ex_act_replace). 배정장소는 나중에 바뀔 수 있어 쓰지 않습니다.
+create table if not exists public.ex_act_bl (
+  bl_no      text primary key,
+  updated_at timestamptz not null default now()
+);
+
+-- 특송 도착지: REMARK 에 '인천' → 인천(I), '부산' → 부산(B), ACT 목록에 있으면 ACT 자가(A), 나머지 평택(P).
+-- REMARK 가 ACT 목록보다 우선 (2026-10-25 사용자 확정). 목록을 올리지 않은 달의 ACT 화물은 평택으로 잡힘.
+create or replace function public.dash_ex_dest(p_bt text, p_remark text, p_bl text) returns text
+language sql stable set search_path = public as $$
+  select case when p_bt = 'X' then
+    case when p_remark like '%인천%' then 'I'
+         when p_remark like '%부산%' then 'B'
+         when exists (select 1 from public.ex_act_bl a where a.bl_no = p_bl) then 'A'
+         else 'P' end
+  end
+$$;
 
 create or replace function public.dash_transform(r public.freight_records) returns public.dash_rows
 language plpgsql stable as $$
@@ -205,6 +226,7 @@ begin
   -- 수입 파트 B/L: PART 열을 저장하지 않으므로 B/L 번호로 판단. 끝이 영문(…1072B, PART = 1072A)이고 컨테이너 0
   -- (모 B/L 도 …1072A 처럼 끝이 영문일 수 있으나 컨테이너가 있음. 2025-10 ~ 2026-09 엑셀의 PART 열과 1,733건 모두 일치)
   o.part       := o.cntr = 0 and o.bl ~ '[A-Z]$';
+  o.exd        := public.dash_ex_dest(o.bt, o.remark, o.bl);
   return o;
 end $$;
 
@@ -419,6 +441,51 @@ drop policy if exists export_records_delete on public.export_records;
 create policy export_records_delete on public.export_records
   for delete to authenticated using ((select public.dash_is_admin()));
 
+-- ACT 자가 장치장 목록: 승인 사용자는 읽기(dash_meta 현황), 바꾸기는 관리자만 아래 함수로
+alter table public.ex_act_bl enable row level security;
+revoke all on public.ex_act_bl from anon, authenticated;
+grant select on public.ex_act_bl to authenticated;
+drop policy if exists ex_act_bl_read on public.ex_act_bl;
+create policy ex_act_bl_read on public.ex_act_bl
+  for select to authenticated using ((select public.dash_can_read()));
+
+-- ACT 자가 장치장 목록 통째로 바꾸기 (관리자만). bls = ["JDSNGP1054E1531", ...]
+-- 목록을 바꾼 뒤 수입 특송 행의 도착지(exd)를 다시 계산하고 { before, rows, matched, notEx, missing } 를 돌려줍니다.
+create or replace function public.dash_ex_act_replace(bls jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  n_before int;
+  res jsonb;
+begin
+  if not public.dash_is_admin() then
+    raise exception 'ACT 자가 장치장 목록은 관리자만 올릴 수 있습니다.' using errcode = '42501';
+  end if;
+  if jsonb_typeof(bls) is distinct from 'array' then
+    raise exception 'B/L 목록 형식이 아닙니다.';
+  end if;
+  select count(*) into n_before from public.ex_act_bl;
+  create temp table ex_act_new on commit drop as
+    select distinct upper(btrim(v)) as bl_no
+    from jsonb_array_elements_text(bls) v
+    where btrim(v) <> '';
+  if not exists (select 1 from ex_act_new) then
+    raise exception '올릴 B/L 이 없습니다.';
+  end if;
+  delete from public.ex_act_bl;
+  insert into public.ex_act_bl (bl_no) select bl_no from ex_act_new;
+  update public.dash_rows set exd = public.dash_ex_dest(bt, remark, bl)
+  where dir = 'IN' and bt = 'X';
+  select jsonb_build_object(
+    'before',  n_before,
+    'rows',    (select count(*) from ex_act_new),
+    'matched', (select count(*) from public.dash_rows r join ex_act_new a on a.bl_no = r.bl where r.dir = 'IN' and r.bt = 'X'),
+    'notEx',   (select count(*) from public.dash_rows r join ex_act_new a on a.bl_no = r.bl where r.dir <> 'IN' or r.bt is distinct from 'X'),
+    'missing', (select count(*) from ex_act_new a where not exists (select 1 from public.dash_rows r where r.bl = a.bl_no))
+  ) into res;
+  drop table ex_act_new;
+  return res;
+end $$;
+
 
 -- ---------------------------------------------------------------------
 -- 5) 조회 조건 · 점검 항목
@@ -530,7 +597,12 @@ begin
                  'dateMax',  max(d)::text,
                  'syncedAt', to_char(max(synced_at) at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI'))
                from public.dash_rows where dir = 'IN'),
-    'canUpload', public.dash_is_admin());
+    'canUpload', public.dash_is_admin(),
+    -- ACT 자가 장치장 목록 현황 (데이터 올리기 창)
+    'exAct', (select jsonb_build_object(
+                'rows',      count(*),
+                'updatedAt', to_char(max(updated_at) at time zone 'Asia/Seoul', 'YYYY-MM-DD HH24:MI'))
+              from public.ex_act_bl));
 end $$;
 
 -- 업체 선택 목록: consignee [키, 사업자번호, 최근 업체명, B/L 수], notify [이름(''=없음), B/L 수]
@@ -616,7 +688,14 @@ begin
     'mt40',    coalesce(sum(c40 - coalesce(rf40, 0)) filter (where mt_teu > 0), 0),
     'mt45',    coalesce(sum(c45) filter (where mt_teu > 0), 0),
     'mtR20',   coalesce(sum(rf20) filter (where mt_teu > 0), 0),
-    'mtR40',   coalesce(sum(rf40) filter (where mt_teu > 0), 0)
+    'mtR40',   coalesce(sum(rf40) filter (where mt_teu > 0), 0),
+    -- 특송 도착지별 TEU (평택 · ACT 자가 · 부산 · 인천)
+    'exP',     coalesce(sum(teu) filter (where exd = 'P'), 0),
+    'exA',     coalesce(sum(teu) filter (where exd = 'A'), 0),
+    'exB',     coalesce(sum(teu) filter (where exd = 'B'), 0),
+    'exI',     coalesce(sum(teu) filter (where exd = 'I'), 0),
+    'exPBl',   count(*) filter (where exd = 'P'), 'exABl', count(*) filter (where exd = 'A'),
+    'exBBl',   count(*) filter (where exd = 'B'), 'exIBl', count(*) filter (where exd = 'I')
   ) into res
   from public.dash_filter(f) r;
   return res;
@@ -677,7 +756,10 @@ begin
         coalesce(sum(c20 - coalesce(rf20, 0)) filter (where mt_teu > 0), 0), coalesce(sum(c40 - coalesce(rf40, 0)) filter (where mt_teu > 0), 0),
         coalesce(sum(c45) filter (where mt_teu > 0), 0), coalesce(sum(rf20) filter (where mt_teu > 0), 0), coalesce(sum(rf40) filter (where mt_teu > 0), 0),
         -- 묶음 안의 항차 수 (선복 대비 = TEU ÷ (항차 수 × 304))
-        count(distinct voyage)
+        count(distinct voyage),
+        -- 특송 도착지별 TEU (평택 · ACT 자가 · 부산 · 인천)
+        coalesce(sum(teu) filter (where exd = 'P'), 0), coalesce(sum(teu) filter (where exd = 'A'), 0),
+        coalesce(sum(teu) filter (where exd = 'B'), 0), coalesce(sum(teu) filter (where exd = 'I'), 0)
       ) as a
     from r
     group by grouping sets ((m), (voyage), (ckey), (notify), (item), (cargo), (place), (rf), (rfc, ckey), (tsc, ckey), (exc, ckey))
@@ -685,7 +767,7 @@ begin
     having (grouping(rfc) = 1 or rfc) and (grouping(tsc) = 1 or tsc) and (grouping(exc) = 1 or exc)
   )
   select jsonb_build_object(
-    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date","tsTeu","exTeu","rTeu","sTeu","lTeu","inBl","inTeu","inWeight","inTotal","krIn","krOut","cnOut","mtTeu","rf20","rf40","e20","e40","e45","mt20","mt40","mt45","mtR20","mtR40","voyages"]'::jsonb,
+    'fields', '["key","bl","c20","c40","c45","teu","cntr","pkg","weight","cbm","krw","usd","total","ts","ex","prepaid","withNotify","companies","date","tsTeu","exTeu","rTeu","sTeu","lTeu","inBl","inTeu","inWeight","inTotal","krIn","krOut","cnOut","mtTeu","rf20","rf40","e20","e40","e45","mt20","mt40","mt45","mtR20","mtR40","voyages","exP","exA","exB","exI"]'::jsonb,
     'groups', coalesce((select jsonb_object_agg(dim, rows) from (select dim, jsonb_agg(a) as rows from g group by dim) x), '{}'::jsonb),
     -- Consignee 별 Notify 목록: { 키: [[Notify(''=없음), B/L 수], ...] } (B/L 수 많은 순)
     'notifyOf', coalesce((select jsonb_object_agg(ckey, ns) from (
@@ -749,13 +831,15 @@ end $$;
 revoke execute on function
   public.dash_meta(), public.dash_options(), public.dash_totals(jsonb), public.dash_summary(jsonb),
   public.dash_detail(jsonb, jsonb), public.dash_filter(jsonb), public.dash_can_read(), public.dash_assert(), public.dash_is_admin(),
-  public.dash_meta_of(text), public.dash_options_of(text)
+  public.dash_meta_of(text), public.dash_options_of(text), public.dash_ex_act_replace(jsonb)
   from public, anon;
 grant execute on function
   public.dash_meta(), public.dash_options(), public.dash_totals(jsonb), public.dash_summary(jsonb),
   public.dash_detail(jsonb, jsonb), public.dash_filter(jsonb), public.dash_can_read(), public.dash_assert(), public.dash_is_admin(),
-  public.dash_meta_of(text), public.dash_options_of(text)
+  public.dash_meta_of(text), public.dash_options_of(text), public.dash_ex_act_replace(jsonb)
   to authenticated;
+-- 특송 도착지 계산은 트리거 · 목록 바꾸기 안에서만 씀
+revoke execute on function public.dash_ex_dest(text, text, text) from public, anon, authenticated;
 
 -- PostgREST 가 새 함수를 바로 인식하도록
 notify pgrst, 'reload schema';

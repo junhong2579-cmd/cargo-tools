@@ -44,7 +44,8 @@ const call = (tx, sql, ...args) => tx.query(sql, args.map((a) => JSON.stringify(
 
 // 수출 작업으로 결과 끝에 덧붙인 칸 · 키를 빼서 before-export 와 같은 모양으로 (기존 칸의 값은 그대로 비교)
 const OLD_SUMMARY_FIELDS = 24, OLD_DETAIL_FIELDS = 39;
-const NEW_TOTAL_KEYS = ['inBl', 'inTeu', 'outTeu', 'CFS', 'krIn', 'krOut', 'cnOut', 'mtTeu', 'mtBl', 'mtCntr', 'rf20', 'rf40', 'e20', 'e40', 'e45', 'mt20', 'mt40', 'mt45', 'mtR20', 'mtR40'];
+const NEW_TOTAL_KEYS = ['inBl', 'inTeu', 'outTeu', 'CFS', 'krIn', 'krOut', 'cnOut', 'mtTeu', 'mtBl', 'mtCntr', 'rf20', 'rf40', 'e20', 'e40', 'e45', 'mt20', 'mt40', 'mt45', 'mtR20', 'mtR40',
+  'exP', 'exA', 'exB', 'exI', 'exPBl', 'exABl', 'exBBl', 'exIBl']; // 특송 도착지 (export-v1 뒤에 추가)
 function oldShape(v) {
   const o = structuredClone(v);
   if (o.groups) { // dash_summary
@@ -66,7 +67,7 @@ async function snapshot() {
   return as(APPROVED, async (tx) => {
     const out = {};
     const meta = await call(tx, 'select public.dash_meta() v');
-    delete meta.syncedAt; delete meta.export; delete meta.import; delete meta.canUpload; delete meta.byDir; // 새로 생긴 키 · 재적용 시각은 비교 제외
+    delete meta.syncedAt; delete meta.export; delete meta.import; delete meta.canUpload; delete meta.byDir; delete meta.exAct; // 새로 생긴 키 · 재적용 시각은 비교 제외
     out.meta = meta;
     out.options = await call(tx, 'select public.dash_options() v');
     delete out.options.byDir;

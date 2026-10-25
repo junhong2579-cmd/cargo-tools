@@ -24,7 +24,7 @@ const { toFreightItems, toFreightRecords } = ctx.window.DashUpload;
 const args = process.argv.slice(2);
 const roots = args.length ? args : [path.join(TOOL, '평택데이터'), path.join(TOOL, '평택데이터', '2025')];
 const files = roots.flatMap((p) => (fs.statSync(p).isDirectory()
-  ? fs.readdirSync(p).filter((f) => f.endsWith('.xlsx') && !f.includes('수출') && !f.startsWith('ITEM_')).map((f) => path.join(p, f))
+  ? fs.readdirSync(p).filter((f) => f.endsWith('.xlsx') && !f.includes('수출') && !f.startsWith('ITEM_') && !f.includes('ACT')).map((f) => path.join(p, f))
   : [p]));
 let recs = [];
 for (const f of files) {
