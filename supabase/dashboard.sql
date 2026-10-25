@@ -471,7 +471,8 @@ begin
   if not exists (select 1 from ex_act_new) then
     raise exception '올릴 B/L 이 없습니다.';
   end if;
-  delete from public.ex_act_bl;
+  -- Supabase(PostgREST)는 WHERE 없는 DELETE 를 막으므로(pg_safeupdate) 조건을 붙여 전체를 지운다
+  delete from public.ex_act_bl where bl_no is not null;
   insert into public.ex_act_bl (bl_no) select bl_no from ex_act_new;
   update public.dash_rows set exd = public.dash_ex_dest(bt, remark, bl)
   where dir = 'IN' and bt = 'X';
