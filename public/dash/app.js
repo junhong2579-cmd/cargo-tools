@@ -678,7 +678,7 @@
     },
 
     /** 냉동 · 환적 · 특송: 막대 = 해당 TEU(냉동은 냉동 · 선어 · 활어, 특송은 도착지 4곳 누적), 막대 위 = 합계 TEU,
-     *  금색 선(보조축) = 그 월 · 항차 전체 TEU 중 점유율(%, 소수 첫째 자리) */
+     *  금색 선(보조축) = 그 월 · 항차 전체 TEU 중 점유율(%, 소수 첫째 자리), 점선 = 조회 기간 평균 TEU */
     shareTrend(groupRows, mode, kind, opts = {}) {
       const d = kind === 'rf' ? { name: '냉동', blKey: null } : SUBSETS[kind];
       const groups = groupRows.filter((g) => g.key !== NONE).sort(mode === 'voyage' ? byDate : byKey);
@@ -693,11 +693,13 @@
       const show = Math.max(8, Math.floor((opts.width || 500) / 22)); // 항차가 많으면 최근 것부터 보여 주고 스크롤
       const zoom = !opts.static && groups.length > show;
       const lineName = '점유율 (%)';
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const avgName = `기간 평균 ${fmt.one(avg)} TEU`;
       return {
         ...baseOption(),
         animation: !opts.static,
         grid: { left: 8, right: 8, top: 40, bottom: zoom ? 34 : 4, containLabel: true },
-        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: [...stacks.map((st) => st.name), lineName] },
+        legend: { top: 4, left: 'center', itemWidth: 12, itemHeight: 8, textStyle: { color: COLORS.muted, fontSize: 11 }, data: [...stacks.map((st) => st.name), lineName, avgName] },
         tooltip: {
           ...baseOption().tooltip, trigger: 'axis', axisPointer: { type: 'shadow' },
           formatter: (ps) => {
@@ -705,7 +707,7 @@
             const head = mode === 'voyage' ? `${esc(g.key)} · ${g.date || '-'}` : monthLabel(g.key);
             const parts = stacks.length > 1 ? stacks.map((st) => `<br>· ${st.name} ${fmt.int(st.vals[i])} TEU`).join('') : '';
             return `<b>${head}</b><br>${d.name} ${fmt.int(vals[i])} TEU${d.blKey ? ` (B/L ${fmt.int(g[d.blKey])}건)` : ''}${parts}<br>전체 ${fmt.int(g.teu)} TEU` +
-              `<br><span style="color:${COLORS.gold}">점유율 ${shares[i] == null ? '–' : nf1.format(shares[i]) + '%'}</span>`;
+              `<br><span style="color:${COLORS.gold}">점유율 ${shares[i] == null ? '–' : nf1.format(shares[i]) + '%'}</span><br>${avgName}`;
           },
         },
         ...(zoom ? { dataZoom: [
@@ -721,6 +723,7 @@
           ...stacks.map((st, j) => ({ type: 'bar', name: st.name, stack: 'v', data: st.vals, barMaxWidth: 34,
             itemStyle: { color: st.color, borderRadius: j === stacks.length - 1 ? [2, 2, 0, 0] : 0 } })),
           { type: 'line', name: lineName, yAxisIndex: 1, data: shares, symbol: 'circle', symbolSize: 6, lineStyle: { color: COLORS.gold, width: 2 }, itemStyle: { color: COLORS.gold }, z: 3 },
+          { type: 'line', name: avgName, data: vals.map(() => +avg.toFixed(1)), symbol: 'none', lineStyle: { color: COLORS.navy300, width: 1.5, type: 'dashed' }, itemStyle: { color: COLORS.navy300 }, z: 2 },
           // 막대 위 합계 TEU: 선에 가리지 않도록 보이지 않는 점 계열에 흰 바탕 레이블로 맨 위에 그린다
           {
             type: 'scatter', name: '', data: vals, symbolSize: 0, silent: true, tooltip: { show: false }, zlevel: 1,
@@ -1132,7 +1135,7 @@
     $(`${k}-title`).innerHTML = `${name} 화물 <small>${sub} · ${v === 'donut' ? 'TEU 구성' : `${by} TEU · 점유율`}</small>`;
     $(`${k}-note`).textContent = (v === 'donut'
       ? '조회 기간 전체의 TEU 구성입니다.'
-      : `${v === 'bar' ? `막대 위 숫자 = ${name} TEU 합계, ` : ''}점유율 = 그 월(항차) 전체 TEU 중 ${name} TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.`)
+      : `${v === 'bar' ? `막대 위 숫자 = ${name} TEU 합계, 점선 = 조회 기간 ${mode === 'voyage' ? '항차' : '월'} 평균, ` : ''}점유율 = 그 월(항차) 전체 TEU 중 ${name} TEU. 월별 · 항차별은 물동량 추이 선택을 따릅니다.`)
       + (subsetParts(k, S.t) === EX_TEU ? ' 도착지: REMARK 에 인천 · 부산이 있으면 그곳, ACT 자가 장치장 목록(데이터 올리기)에 있으면 ACT자가, 나머지 평택.' : '');
     $(id).hidden = v === 'table';
     $(`${k}-table`).hidden = v !== 'table';
