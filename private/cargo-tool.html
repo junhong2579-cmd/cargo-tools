@@ -8051,6 +8051,18 @@
     let cocCount = 0, socCount = 0, unknownCount = 0;
     const cocTypes = {}, socTypes = {}, unknownTypes = {};
 
+    // 중복 체크 (조회 결과에서 중복 컨테이너는 보라색으로 표시)
+    const counts = lines.reduce((acc, num) => {
+      acc[num] = (acc[num] || 0) + 1;
+      return acc;
+    }, {});
+    const DUP_STYLE = "color: #8e24aa; font-weight: bold;";
+    const RED_STYLE = "color: #e53935; font-weight: bold;";
+    const resultLine = (input, text, style) => {
+      if (counts[input] > 1) return `<span style="${DUP_STYLE}">(중복) ${text}</span><br>`;
+      return style ? `<span style="${style}">${text}</span><br>` : `${text}<br>`;
+    };
+
     lines.forEach(input => {
       const match = containerList.find(item => item.number === input);
       const socMatch = socList.find(item => item.number === input);
@@ -8090,7 +8102,7 @@
         }
         const detailStr = details.length > 0 ? ` - ${details.join(' / ')}` : "";
 
-        resultsHtml += `${match.number}${typeStr}${detailStr}<br>`;
+        resultsHtml += resultLine(input, `${match.number}${typeStr}${detailStr}`, "");
         cocCount++;
         const type = match.type || "정보 없음";
         cocTypes[type] = (cocTypes[type] || 0) + 1;
@@ -8112,7 +8124,7 @@
         }
         const detailStr = details.length > 0 ? ` - ${details.join(' / ')}` : "";
 
-        resultsHtml += `<span style="color: #e53935; font-weight: bold;">${input}${typeStr}${detailStr}</span><br>`;
+        resultsHtml += resultLine(input, `${input}${typeStr}${detailStr}`, RED_STYLE);
         socCount++;
         const type = socMatch.soctype || "정보 없음";
         socTypes[type] = (socTypes[type] || 0) + 1;
@@ -8130,7 +8142,7 @@
         }
         const detailStr = details.length > 0 ? ` - ${details.join(' / ')}` : "";
 
-        resultsHtml += `<span style="color: #e53935; font-weight: bold;">${input}${typeStr}${detailStr}</span><br>`;
+        resultsHtml += resultLine(input, `${input}${typeStr}${detailStr}`, RED_STYLE);
         unknownCount++;
         const type = nonsoclistMatch.nonsoclisttype || "정보 없음";
         unknownTypes[type] = (unknownTypes[type] || 0) + 1;
@@ -8147,7 +8159,7 @@
         const detailStr = details.length > 0 ? ` - ${details.join(' / ')}` : "";
         const notFoundType = showType ? " (목록에 없음)" : "";
 
-        resultsHtml += `<span style="color: #e53935; font-weight: bold;">${input}${notFoundType}${detailStr}</span><br>`;
+        resultsHtml += resultLine(input, `${input}${notFoundType}${detailStr}`, RED_STYLE);
         unknownCount++;
         const type = "정보 없음";
         unknownTypes[type] = (unknownTypes[type] || 0) + 1;
@@ -8173,17 +8185,12 @@
     resultsHtml += `<span style="color: #1e88e5; font-weight: bold;">SOC: ${formatBreakdown(socTypes)}</span><br>`;
     resultsHtml += `<span style="color: #1e88e5; font-weight: bold;">목록에 없음: ${formatBreakdown(unknownTypes)}</span><br>`;
 
-    // 중복 체크
-    const counts = lines.reduce((acc, num) => {
-      acc[num] = (acc[num] || 0) + 1;
-      return acc;
-    }, {});
     const duplicates = Object.entries(counts).filter(([_, count]) => count > 1);
 
     if (duplicates.length > 0) {
-      resultsHtml += `<br><span style="color: #e53935; font-weight: bold;">※ 중복된 컨테이너 번호가 있습니다.</span><br>`;
+      resultsHtml += `<br><span style="${DUP_STYLE}">※ 중복된 컨테이너 총 ${duplicates.length}대가 있습니다.</span><br>`;
       duplicates.forEach(([num, count]) => {
-        resultsHtml += `<span style="color: #e53935; font-weight: bold;">${num} * ${count}</span><br>`;
+        resultsHtml += `<span style="${DUP_STYLE}">${num} * ${count}</span><br>`;
       });
     }
 
@@ -8207,7 +8214,7 @@
     (v, b, t, mrn) => `[산동원양] 선적 취소 안내 /// AN[JDSNGP${v}E${b}] 송부의 건`,
     (v, b, t, mrn) => `현지 문제로 인해 선적이 취소되었습니다. 위에 첨부드린 AN은 메일 발송을 위해 전달된 것으로 무시 부탁드립니다.`,
     (v, b, t, mrn) => `[산동원양] JDSNGP${v}E${b} SURRENDER 통지의 건`,
-    (v, b, t, mrn) => `[산동원양] 글로비스 하우스 신고 건 JDSNGP${v}E${b} AN 전달의 건`,
+    (v, b, t, mrn) => `[산동원양] ${v}E 글로비스 하우스 신고건 AN 전달의 건`,
   ];
   const extendedTemplates = [
     (v, b, t, mrn) => `[산동원양] ${v}E 사마스전자 AN 송부의 건`,
