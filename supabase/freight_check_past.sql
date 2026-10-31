@@ -9,7 +9,7 @@
 --
 --   p_consignees : 화주명 목록 (화면에서 앞뒤 공백 제거). 띄어쓰기만 다른 이름도 찾습니다(예전 함수와 같음)
 --   p_from       : 기준일 (cargo-tool.html 의 FC_BASELINE_FROM)
---   p_breaks     : 요율 구간 경계일 (cargo-tool.html 의 FREIGHT_RATE_CHANGES 날짜 + FREIGHT_THC45_DISCOUNT_END)
+--   p_breaks     : 요율 구간 경계일 (cargo-tool.html 의 FREIGHT_RATE_CHANGES 날짜 + FREIGHT_THC45_DISCOUNT_END + FRT_CHANGES 날짜)
 --   반환 { rows: [기준일 이후(또는 입항일을 읽을 수 없는) 기록, 같은 운임은 가장 최근 한 건],
 --          oldOnly: [기준일 이전 기록만 있는 화주], oldCount: 제외한 기준일 이전 건수, total: 합치기 전 건수 }
 --   입항일 해석은 대시보드와 같은 dash_date (supabase/dashboard.sql) 를 씁니다.

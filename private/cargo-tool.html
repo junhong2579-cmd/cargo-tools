@@ -7026,6 +7026,43 @@
     return new Date(y, m - 1, d).getTime();
   })();
 
+  // ============================================
+  //  💲 FRT 변경 이력 — 운임 체크 과거 비교 보정에만 씁니다
+  //  FRT 는 화주마다 금액이 달라 요율표로 계산하지 않고 같은 화주의 과거 건과 비교합니다.
+  //  과거 건 입항일 < from ≤ 이번 건 입항일이면 과거 FRT 에 (컨테이너 수 × 금액)을 더한 금액과 같아야 일치입니다.
+  //  여러 번 바뀌었으면 모두 더합니다. 운임이 바뀌면 맨 아래에 한 줄을 추가합니다.
+  //  add: 화주 그룹별 컨테이너당 USD [20', 40', 45'] (수입 냉동도 20' · 40' 칸이라 같은 금액). 없는 그룹은 default.
+  //  FRT Collect 가 있는 과거 건만 보정합니다 (Prepaid 는 엑셀에 FRT 금액이 없음).
+  // ============================================
+  const FRT_CHANGES = [
+    { from: "2026-11-01", note: "수입 FRT 인상 (3대 화주 제외)", add: { default: [100, 200, 200], samsung: [0, 0, 0], glovis: [0, 0, 0], lg: [0, 0, 0] } }
+  ];
+  FRT_CHANGES.forEach(change => {
+    const [y, m, d] = change.from.split("-").map(Number);
+    change.fromTs = new Date(y, m - 1, d).getTime();
+  });
+
+  // 3대 화주 (FRT_CHANGES 의 그룹). Consignee 는 사업자번호, Notify 는 엑셀에 사업자번호가 없어 이름으로 판단합니다.
+  // 삼성은 아래 Consignee + Notify 조합과 똑같을 때만 (Notify 없음 '' 도 하나의 조합). 새 조합은 확인 후 추가합니다.
+  const FRT_SHIPPER_GROUPS = {
+    glovis: { name: "현대글로비스", notifies: ["현대글로비스 주식회사"] },
+    lg: { name: "LG", consigneeCodes: ["105-81-89901"] },            // (주)지피엘
+    samsung: {
+      name: "삼성",
+      pairs: [
+        ["163-88-03252", "한솔로지스틱스 주식회사"],               // 허드슨첨단소재코리아 유한책임회사
+        ["110-81-30983", ""],                                      // (주)맥스피드
+        ["118-88-00463", "판월드로지스틱(주)"],                     // 에이치피프린팅코리아 유한책임회사
+        ["124-81-31282", "주식회사 로지피아"],                       // 삼성에스디아이(주)
+        ["124-81-00998", "삼성전자로지텍㈜"],                        // 삼성전자(주)
+        ["124-81-00998", "은산해운항공(주)"],                        // 삼성전자(주)
+        ["109-85-25815", ""],                                      // (주)에이씨이익스프레스 서울지점
+        ["142-81-45237", "(주)에이씨이익스프레스 서울지점"],          // 삼성디스플레이(주)
+        ["117-81-15697", ""]                                       // 주식회사 해우지엘에스
+      ]
+    }
+  };
+
   // 기간별 요율 (기본 요율에 변경 기록을 차례로 덮어씀)
   const FREIGHT_RATE_PERIODS = (function () {
     const periods = [{ fromTs: 0, from: "", rates: FREIGHT_RATE_BASE }];
@@ -12661,6 +12698,30 @@
     return (q20 * rateArr[0]) + (q40 * rateArr[1]) + (q45 * rateArr[2]);
   }
 
+  // FRT 화주 그룹: 'samsung' · 'glovis' · 'lg' · 'default'.
+  // samsungOtherNotify = 삼성 Consignee 사업자번호이지만 목록에 없는 Notify 조합 (불일치 안내용)
+  function fcFrtShipperGroup(consigneeCode, notify) {
+    const code = String(consigneeCode || '').replace(/[^0-9]/g, '');
+    const name = s => String(s || '').replace(/㈜/g, '(주)').replace(/\s+/g, '');
+    const n = name(notify);
+    const g = FRT_SHIPPER_GROUPS;
+    if (g.glovis.notifies.some(v => name(v) === n)) return { group: 'glovis' };
+    if (g.lg.consigneeCodes.some(c => c.replace(/[^0-9]/g, '') === code)) return { group: 'lg' };
+    const samsungCode = g.samsung.pairs.filter(([c]) => c.replace(/[^0-9]/g, '') === code);
+    if (samsungCode.some(([, v]) => name(v) === n)) return { group: 'samsung' };
+    return { group: 'default', samsungOtherNotify: samsungCode.length > 0 };
+  }
+
+  // 과거 건 입항일 → 이번 건 입항일 사이의 FRT 변경 합계 (USD). 날짜를 모르면 과거는 가장 오래된 건, 이번은 최신 건으로 봅니다.
+  function fcFrtIncrease(pastTs, curTs, group, qtys) {
+    return FRT_CHANGES.reduce((sum, change) => {
+      const after = !curTs || curTs >= change.fromTs;
+      const before = !(pastTs > 0) || pastTs < change.fromTs;
+      if (!after || !before) return sum;
+      return sum + fcQtyTimesRate(qtys[0], qtys[1], qtys[2], change.add[group] || change.add.default);
+    }, 0);
+  }
+
   let g_fcInternalErrors = [];     // 자체 기준 오류 결과
   let g_fcDiscrepancies = [];      // 과거 데이터 불일치 결과
   let g_fcExtractTsList = [];      // TS 건 목록 (뒤4자리)
@@ -13064,11 +13125,11 @@
     }
 
     const pad = n => String(n).padStart(2, '0');
-    // 같은 운임은 서버에서 한 건만 보냄. 요율이 바뀐 날(요율 변경일 · 45' 할인 종료일)을 경계로 나눠 합쳐야 입항일 요율 보정 결과가 같음
+    // 같은 운임은 서버에서 한 건만 보냄. 요율이 바뀐 날(요율 변경일 · 45' 할인 종료일 · FRT 변경일)을 경계로 나눠 합쳐야 입항일 요율 보정 결과가 같음
     const since = await supabaseClient.rpc('get_past_freight_since', {
       p_consignees: consignees,
       p_from: `${FC_BASELINE_FROM.year}-${pad(FC_BASELINE_FROM.month)}-${pad(FC_BASELINE_FROM.day)}`,
-      p_breaks: [...FREIGHT_RATE_CHANGES.map(c => c.from), FREIGHT_THC45_DISCOUNT_END]
+      p_breaks: [...FREIGHT_RATE_CHANGES.map(c => c.from), FREIGHT_THC45_DISCOUNT_END, ...FRT_CHANGES.map(c => c.from)]
     });
     if (!since.error && since.data && Array.isArray(since.data.rows)) {
       return {
@@ -13554,6 +13615,9 @@
       // 무비용 비엘 판별
       const isNoCostBl = fcIsNoCostBl(blNo, consignee, notify);
 
+      // FRT 변경 보정용 화주 그룹 (3대 화주 · 일반)
+      const frtShipper = fcFrtShipperGroup(row['Consignee Code'] || row['CONSIGNEE CODE'] || row['ConsigneeCode'], notify);
+
       // 과거 데이터에서 Consignee 일치 행 필터링
       const pastRows = pastDf.filter(pRow => fcNormalizeVal(pRow['Consignee']) === consignee);
 
@@ -13649,8 +13713,19 @@
         const cEscVal = fcNormalizeVal(row['ESC'], true);
         const pEscVal = fcNormalizeVal(pRow['ESC'], true);
 
+        // FRT 변경 보정 (FRT_CHANGES): 과거 FRT Collect 가 있고 컨테이너 수량이 같을 때만
+        //  frtIncrease = 이 화주 그룹이 더해야 할 금액, frtDefaultIncrease = 일반 화주 금액 (3대 화주가 실수로 인상했는지 안내용)
+        const pFrtQtys = containerCols.map(c => fcNormalizeVal(pRow[c], true));
+        const frtSameQty = pFrtQtys.every((q, i) => q === fcNormalizeVal(row[containerCols[i]], true));
+        const pFrtTs = parseFreightIoDate(pRow['I/O Date']);
+        const frtCorrectable = pFrtVal > 0 && frtSameQty && !isNoCostBl;
+        const frtIncrease = frtCorrectable ? fcFrtIncrease(pFrtTs, rowIoTs, frtShipper.group, pFrtQtys) : 0;
+        const frtDefaultIncrease = frtCorrectable ? fcFrtIncrease(pFrtTs, rowIoTs, 'default', pFrtQtys) : 0;
+
+        // ESC 가 FRT 에 합쳐진 경우 (6/13 입항분부터): 이번 FRT = 과거 FRT + 과거 ESC (+ FRT 인상분)
+        // 인상분을 빠뜨린 금액이어도 합쳐진 것으로 보고, 틀린 것은 FRT 한 칸에만 표시합니다.
         let isFrtEscIntegrated = false;
-        if (pEscVal > 0 && Math.abs(cFrtVal - (pFrtVal + pEscVal)) <= 0.01) {
+        if (pEscVal > 0 && [frtIncrease, 0].some(inc => Math.abs(cFrtVal - (pFrtVal + pEscVal + inc)) <= 0.01)) {
           isFrtEscIntegrated = true;
         }
 
@@ -13752,6 +13827,23 @@
             }
 
             currentOrderedData[displayKey] = cVal;
+
+            // FRT 변경 보정: 보정한 금액만 일치 (과거 금액 그대로는 인상을 빠뜨린 것이므로 불일치)
+            if (info.name === 'FRT' && (frtIncrease || frtDefaultIncrease)) {
+              const expected = pVal + frtIncrease;
+              if (Math.abs(cVal - expected) > 0.01) {
+                diffCount++;
+                const groupName = (FRT_SHIPPER_GROUPS[frtShipper.group] || {}).name;
+                let msg = `FRT 인상 미반영${frtShipper.samsungOtherNotify ? ' · 삼성 목록에 없는 Notify 조합' : ''}`;
+                if (!frtIncrease) {
+                  msg = Math.abs(cVal - (pVal + frtDefaultIncrease)) <= 0.01 ? `FRT 인상 제외 화주(${groupName})인데 인상됨` : `FRT 인상 제외 화주(${groupName})`;
+                }
+                const pastStr = fcFormatNum(pValOriginal) + (isFrtEscIntegrated ? ` + ESC ${fcFormatNum(pEscVal)}` : '');
+                currentDiffDetails[displayKey] = `${msg} (과거 ${pastStr}, 예상: ${fcFormatNum(expected)})`;
+              }
+              return;
+            }
+
             if (Math.abs(cVal - pVal) > 0.01) {
               diffCount++;
               currentDiffDetails[displayKey] = `과거: ${fcFormatNum(pValOriginal)}`;
@@ -14094,6 +14186,7 @@
     let prev = String(detail || '');
     const expected = prev.match(/예상:\s*([^)]+)\)/);
     if (prev.startsWith('과거:')) prev = '과거 ' + prev.slice(3).trim();
+    else if (expected && prev.startsWith('FRT ')) prev = `예상 ${expected[1].trim()} (${prev.slice(4, prev.indexOf(' ('))})`; // FRT 변경 보정 안내
     else if (expected) prev = `예상 ${expected[1].trim()}${prev.includes('무비용') ? ' (무비용)' : ''}`;
 
     return `<span class="fc-diff-chip" title="${fcEscapeHtml(colKey + ': ' + (detail || ''))}">`
