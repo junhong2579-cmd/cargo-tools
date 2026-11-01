@@ -5714,6 +5714,7 @@
               <div class="edi-filter-tabs">
                 <button type="button" class="edi-filter-btn active" onclick="filterValidationTable('diff', this)">불일치/오류 (<span id="filterCountDiff">0</span>)</button>
                 <button type="button" class="edi-filter-btn" onclick="filterValidationTable('internal', this)">내부오류만 (<span id="filterCountInternal">0</span>)</button>
+                <button type="button" class="edi-filter-btn" onclick="filterValidationTable('extra', this)">추가검증만 (<span id="filterCountExtra">0</span>)</button>
                 <button type="button" class="edi-filter-btn" onclick="filterValidationTable('match', this)">정상일치 (<span id="filterCountMatch">0</span>)</button>
                 <button type="button" class="edi-filter-btn" onclick="filterValidationTable('all', this)">전체 (<span id="filterCountAll">0</span>)</button>
               </div>
@@ -6046,6 +6047,7 @@
   let g_ediData = null;           // 파싱된 EDI 데이터
   let g_excelData = null;         // 파싱된 엑셀 데이터
   let g_excelInternalErrors = []; // 엑셀 내부 오류 목록
+  let g_ediExcelExtra = null;     // [추가검증] 엑셀의 운항 시트 · B/L별 컨테이너(규격) · 찾은 열 · 내부오류 안내
   let g_validationResults = [];   // 전체 대조 결과 목록
   let g_discrepancies = [];       // 불일치/오류 목록
   let g_currentFilter = 'diff';   // 'diff', 'internal', 'match', 'all'
@@ -6201,6 +6203,7 @@
         g_excelData = parsed.excelSub;
         const internalCheck = checkExcelInternalErrors(workbook, parsed);
         g_excelInternalErrors = internalCheck.errors;
+        g_ediExcelExtra = { voyage: parsed.voyageInfo, cntrMap: parsed.blCntrListMap, cols: parsed.extraCols, notices: internalCheck.notices };
         renderEdiInternalCheckNotice(internalCheck.notices);
 
         const dropZone = document.getElementById('excelFileDropZone');
@@ -6226,6 +6229,7 @@
   function clearCargoExcelFile() {
     g_excelData = null;
     g_excelInternalErrors = [];
+    g_ediExcelExtra = null;
     renderEdiInternalCheckNotice(null);
     const input = document.getElementById('cargoExcelInput');
     if (input) input.value = '';
@@ -6248,12 +6252,16 @@
     const ediData = [];
     let currentBl = null;
     let blRecord = {};
+    let header = null;
 
     for (let line of lines) {
       line = line.trim();
       if (!line) continue;
       const parts = line.split(':');
       if (!parts || parts.length === 0) continue;
+
+      // [추가검증] 기존 비교 항목과 별개로 읽는 값 (항차 머리 줄 · 업체명 · 품명 · 컨테이너 규격)
+      ediCollectExtra(line, currentBl ? blRecord : null, h => { header = h; });
 
       if (line.startsWith('12:')) {
         if (currentBl) {
@@ -6299,7 +6307,194 @@
       delete rec.Container_List;
     });
 
+    ediData.header = header;
     return ediData;
+  }
+
+  // ============================================
+  //  [추가검증] 화물 검증(EDI) 추가 항목 — 기존 비교(PKG · 중량 · 용적 · 컨테이너 · 씰 · 엑셀 내부오류)는 그대로 두고 덧붙입니다.
+  //  ① 파일 짝(항차 · 선박 · 호출부호 · 입항일) ② 컨테이너 규격 ③ 송하인 · 수하인 · 통지처 · 품명
+  //  ④ 컨테이너 번호 검증 숫자(ISO 6346) ⑤ 수하인 사업자번호 검증 숫자 ⑥ 같은 컨테이너의 씰 · 규격(여러 B/L)
+  //  결과 문구는 '[추가검증]' 으로 시작하고, 기존 문구 뒤에 붙습니다.
+  // ============================================
+  const EDI_EXTRA_TAG = '[추가검증]';
+
+  // EDI 한 줄을 칸으로 나눔. '?' 는 다음 글자(: ' ?)를 글자 그대로 쓰라는 표시입니다 (예: "TEL?:" · "SHIPPER?'S").
+  function ediSplitEscaped(line) {
+    const out = [];
+    let cur = '';
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '?' && i + 1 < line.length) { cur += line[++i]; continue; }
+      if (ch === ':') { out.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    out.push(cur.replace(/'$/, ''));
+    return out;
+  }
+
+  function ediCollectExtra(line, rec, setHeader) {
+    const code = line.slice(0, 3);
+    if (code === '10:') {
+      const p = ediSplitEscaped(line);
+      setHeader({ callSign: (p[1] || '').trim(), vessel: (p[2] || '').trim(), voyage: (p[4] || '').trim(), arrival: (p[7] || '').trim(), departure: (p[8] || '').trim() });
+      return;
+    }
+    if (!rec) return;
+    if (code === '16:' || code === '17:' || code === '18:') {
+      const key = { '16:': 'EXTRA_Shipper', '17:': 'EXTRA_Consignee', '18:': 'EXTRA_Notify' }[code];
+      rec[key] = (ediSplitEscaped(line)[2] || '').trim();
+    } else if (code === '47:') {
+      rec['EXTRA_DescLines'] = ediSplitEscaped(line).slice(1); // 품명 여러 줄
+    } else if (code === '51:') {
+      const p = ediSplitEscaped(line);
+      const cntr = (p[2] || '').trim();
+      if (cntr) (rec['EXTRA_Cntrs'] = rec['EXTRA_Cntrs'] || []).push({ cntr, seal: (p[3] || '').trim(), size: (p[4] || '').trim() });
+    }
+  }
+
+  // 업체명 · 품명 비교용: 영문 대문자 · 숫자 · 한글만 남김 (엑셀은 35자 · 50자 단위로 잘리고 '/' 가 빈칸으로 바뀌어 있음)
+  const ediNormText = s => String(s || '').toUpperCase().replace(/㈜/g, '(주)').replace(/[^A-Z0-9가-힣]/g, '');
+  // 엑셀 값이 EDI 값의 앞부분이면(또는 그 반대) 같은 것으로 봅니다
+  const ediSamePrefix = (a, b) => { const x = ediNormText(a), y = ediNormText(b); return x.startsWith(y) || y.startsWith(x); };
+  // 화물시스템이 EDI 품명을 가져오는 방식: 앞의 정해진 문구(SHIPPER'S LOAD, COUNT & WEIGHT / SAID TO CONTAIN)는 빼고,
+  // 줄마다 70자까지만 가져와 이어 붙인 뒤 50자씩 품명1~4 에 나눠 넣습니다 (그래서 70자가 넘는 줄은 끝 낱말이 빠짐).
+  const EDI_DESC_LINE_MAX = 70;
+  function ediDescLines(lines) {
+    const list = (lines || []).slice();
+    while (list.length && (/^\s*$/.test(list[0]) || /^SHIPPER'?S LOAD/i.test(list[0]) || /^SAID TO CONTAIN/i.test(list[0]))) list.shift();
+    return list.map(l => l.slice(0, EDI_DESC_LINE_MAX));
+  }
+
+  // 컨테이너 번호 검증 숫자 (ISO 6346): 영문 4 + 숫자 7 의 마지막 숫자가 앞 10자리로 계산한 값과 같아야 함
+  function ediContainerCheckDigitOk(no) {
+    const c = String(no || '').toUpperCase();
+    if (!EDI_CONTAINER_NO_RE.test(c)) return null; // 형식이 다르면 판단하지 않음
+    let v = 10;
+    const letter = {};
+    for (const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+      if (v % 11 === 0) v++;
+      letter[ch] = v++;
+    }
+    let sum = 0;
+    for (let i = 0; i < 10; i++) sum += (i < 4 ? letter[c[i]] : Number(c[i])) * Math.pow(2, i);
+    return (sum % 11) % 10 === Number(c[10]);
+  }
+
+  // 사업자등록번호 검증 숫자 (10자리)
+  function ediBizNoOk(no) {
+    const d = String(no || '').replace(/\D/g, '');
+    if (d.length !== 10) return false;
+    const w = [1, 3, 7, 1, 3, 7, 1, 3, 5];
+    let sum = w.reduce((a, x, i) => a + x * Number(d[i]), 0);
+    sum += Math.floor((Number(d[8]) * 5) / 10);
+    return (10 - (sum % 10)) % 10 === Number(d[9]);
+  }
+
+  // ① 파일 짝: EDI 머리 줄 ↔ 엑셀 '운항' 시트. 안내 상자에 한 줄로 표시합니다.
+  function ediVoyagePairNotice(ediHeader, xlVoyage) {
+    if (!ediHeader || !xlVoyage) {
+      const missing = !ediHeader ? 'EDI 항차 머리 줄(10:)' : "엑셀 '운항' 시트";
+      return { level: 'warn', text: `${EDI_EXTRA_TAG} 파일 짝(항차 · 선박) 확인을 하지 못했습니다: ${missing}이 없습니다.` };
+    }
+    const fmtDate = s => /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (s || '없음');
+    const items = [
+      ['항차', ediHeader.voyage, xlVoyage.voyage],
+      ['선박', ediHeader.vessel, xlVoyage.vessel],
+      ['호출부호', ediHeader.callSign, xlVoyage.callSign]
+    ];
+    const wrong = items.filter(([, e, x]) => ediNormText(e) !== ediNormText(x));
+    const sameDate = String(ediHeader.arrival) === String(xlVoyage.arrival);
+    const label = `${xlVoyage.voyage} · ${xlVoyage.vessel} · ${xlVoyage.callSign}`;
+    if (wrong.length > 0) {
+      return { level: 'warn', text: `${EDI_EXTRA_TAG} 다른 항차 파일일 수 있습니다: ${wrong.map(([n, e, x]) => `${n} EDI ${e || '없음'} / 엑셀 ${x || '없음'}`).join(', ')}` };
+    }
+    if (!sameDate) {
+      return { level: 'warn', text: `${EDI_EXTRA_TAG} 파일 짝 일치 (${label}), 입항일만 다름: EDI ${fmtDate(ediHeader.arrival)} / 엑셀 ${fmtDate(xlVoyage.arrival)} (입항일이 바뀐 경우면 정상)` };
+    }
+    return { level: 'ok', text: `${EDI_EXTRA_TAG} 파일 짝 일치: ${label} · 입항 ${fmtDate(xlVoyage.arrival)}` };
+  }
+
+  // ②~⑥ B/L 별 추가 검증. 돌려주는 값: { byBl: { B/L: [문구] }, notices: [안내] }
+  function ediExtraChecks(ediMap, excelMap, extra) {
+    const byBl = {};
+    const kinds = {}; // B/L 별 상태 이름 (규격 불일치 · 업체명 불일치 …)
+    const add = (bl, msg, kind) => {
+      (byBl[bl] = byBl[bl] || []).push(`${EDI_EXTRA_TAG} ${msg}`);
+      (kinds[bl] = kinds[bl] || new Set()).add(kind);
+    };
+    const notices = [];
+    const cntrMap = (extra && extra.cntrMap) || {};
+    const cols = (extra && extra.cols) || {};
+
+    // ② 컨테이너 규격 · ③ 업체명 · 품명 (양쪽에 다 있는 B/L)
+    const nameItems = [['송하인', 'EXTRA_Shipper', 'shipper'], ['수하인', 'EXTRA_Consignee', 'consignee'], ['통지처', 'EXTRA_Notify', 'notify']];
+    const missingCols = nameItems.filter(([, , k]) => !cols[k]).map(([n]) => `${n}상호`);
+    if (!cols.desc) missingCols.push('품명');
+    if (!cols.size) missingCols.push("컨테이너규격('CNTR_2' 시트)");
+    if (missingCols.length > 0) notices.push({ level: 'warn', text: `${EDI_EXTRA_TAG} 엑셀에서 ${missingCols.join(', ')} 열을 찾지 못해 그 항목은 비교하지 못했습니다.` });
+
+    Object.keys(ediMap).forEach(bl => {
+      const e = ediMap[bl];
+      const x = excelMap[bl];
+      if (!x) return;
+      if (cols.size) {
+        const xlSize = {};
+        (cntrMap[bl] || []).forEach(it => { if (it.size) xlSize[it.cntr] = it.size; });
+        (e.EXTRA_Cntrs || []).forEach(({ cntr, size }) => {
+          if (xlSize[cntr] && size && xlSize[cntr] !== size) add(bl, `컨테이너 규격 다름 (${cntr} EDI: ${size} / Excel: ${xlSize[cntr]})`, '규격 불일치');
+        });
+      }
+      nameItems.forEach(([name, ek, xk]) => {
+        if (cols[xk] && !ediSamePrefix(e[ek], x[`EXTRA_${xk}`])) add(bl, `${name} 다름 (EDI: ${e[ek] || '(없음)'} / Excel: ${x[`EXTRA_${xk}`] || '(없음)'})`, '업체명 불일치');
+      });
+      if (cols.desc) {
+        // 화물시스템과 같은 방식(줄마다 70자)으로 만든 EDI 품명의 앞부분이 엑셀 품명(최대 200자)이어야 합니다 (글자 · 숫자만 비교)
+        const edLines = ediDescLines(e.EXTRA_DescLines);
+        const ed = ediNormText(edLines.join(' ')), xd = ediNormText(x.EXTRA_desc);
+        if (!ed.startsWith(xd) || (!xd && ed)) add(bl, `품명 다름 (EDI: ${edLines.join(' ').trim().slice(0, 60) || '(없음)'} / Excel: ${String(x.EXTRA_desc || '').trim().slice(0, 60) || '(없음)'})`, '품명 불일치');
+      }
+    });
+
+    // ④ 컨테이너 번호 검증 숫자 (EDI · 엑셀). 수화물(E3000) 형식 검사는 기존 엑셀 내부오류가 합니다.
+    const badNo = {};
+    Object.keys(ediMap).forEach(bl => (ediMap[bl].EXTRA_Cntrs || []).forEach(({ cntr }) => { if (ediContainerCheckDigitOk(cntr) === false) (badNo[bl] = badNo[bl] || {})[cntr] = (badNo[bl][cntr] || []).concat('EDI'); }));
+    Object.keys(cntrMap).forEach(bl => (cntrMap[bl] || []).forEach(({ cntr }) => { if (ediContainerCheckDigitOk(cntr) === false) (badNo[bl] = badNo[bl] || {})[cntr] = (badNo[bl][cntr] || []).concat('Excel'); }));
+    Object.keys(badNo).forEach(bl => Object.keys(badNo[bl]).forEach(cntr => add(bl, `컨테이너 번호 검증 숫자 틀림 (${cntr}, ${badNo[bl][cntr].join(' · ')}) — 오타 의심`, '컨테이너 번호 오류')));
+
+    // ⑤ 수하인 사업자번호 (엑셀). 개인통관고유부호(P + 숫자 12자리)는 검사하지 않습니다.
+    if (cols.bizNo) {
+      Object.keys(excelMap).forEach(bl => {
+        const v = String(excelMap[bl].EXTRA_bizNo || '').trim();
+        if (/^P\d{12}$/i.test(v)) return;
+        if (!v) add(bl, '수하인 사업자번호 없음', '사업자번호 오류');
+        else if (v.replace(/\D/g, '').length !== 10) add(bl, `수하인 사업자번호 자리수 이상 (현재: ${v})`, '사업자번호 오류');
+        else if (!ediBizNoOk(v)) add(bl, `수하인 사업자번호 검증 숫자 틀림 (현재: ${v}) — 오타 의심`, '사업자번호 오류');
+      });
+    } else {
+      notices.push({ level: 'warn', text: `${EDI_EXTRA_TAG} 엑셀에서 수하인사업자번호 열을 찾지 못해 사업자번호 검사를 하지 못했습니다.` });
+    }
+
+    // ⑥ 같은 컨테이너가 여러 B/L 에 있을 때(파트 B/L · 콘솔) 씰 · 규격이 같아야 함
+    const sameCntr = (source, list) => {
+      const byCntr = {};
+      list.forEach(({ bl, cntr, seal, size }) => (byCntr[cntr] = byCntr[cntr] || []).push({ bl, seal, size }));
+      Object.keys(byCntr).forEach(cntr => {
+        const rows = byCntr[cntr];
+        const bls = [...new Set(rows.map(r => r.bl))];
+        if (bls.length < 2) return;
+        if (new Set(rows.map(r => `${r.seal}|${r.size}`)).size < 2) return;
+        const detail = rows.map(r => `${r.bl.slice(-6)}: ${r.seal || '씰 없음'} / ${r.size || '규격 없음'}`).join(', ');
+        bls.forEach(bl => add(bl, `같은 컨테이너 ${cntr} 의 씰 · 규격이 B/L 마다 다름 (${source} ${detail})`, '씰 · 규격 불일치'));
+      });
+    };
+    sameCntr('EDI', [].concat(...Object.keys(ediMap).map(bl => (ediMap[bl].EXTRA_Cntrs || []).map(c => ({ bl, ...c })))));
+    sameCntr('Excel', [].concat(...Object.keys(cntrMap).map(bl => (cntrMap[bl] || []).map(c => ({ bl, cntr: c.cntr, seal: c.seal, size: c.size || '' })))));
+
+    // 상태 이름: 한 가지면 그 이름, 여러 가지면 '불일치'
+    const status = {};
+    Object.keys(kinds).forEach(bl => { status[bl] = kinds[bl].size === 1 ? [...kinds[bl]][0] : '불일치'; });
+    return { byBl, status, notices };
   }
 
   function cleanVal(val) {
@@ -6376,9 +6571,11 @@
       df_cntr2.forEach(row => {
         let blKey = '';
         let cntrKey = '';
+        let sizeKey = ''; // [추가검증] 컨테이너 규격
         for (const k of Object.keys(row)) {
           if (matchColName(k, blCandidates)) blKey = k;
           if (matchColName(k, ['컨테이너번호', 'CNTR NO', 'CONTAINER NO', 'CNTR_NO', 'CONTAINER_NO'])) cntrKey = k;
+          if (matchColName(k, ['컨테이너규격', 'CNTR SIZE', 'CNTR_SIZE', 'CONTAINER SIZE'])) sizeKey = k;
         }
         if (blKey && cntrKey) {
           const bl = cleanVal(row[blKey]);
@@ -6388,7 +6585,8 @@
             if (!blCntrListMap[bl].some(item => item.cntr === cntr)) {
               blCntrListMap[bl].push({
                 cntr: cntr,
-                seal: sealMap[cntr] || ''
+                seal: sealMap[cntr] || '',
+                size: sizeKey ? cleanVal(row[sizeKey]) : ''
               });
             }
           }
@@ -6408,6 +6606,7 @@
     }
 
     const excelSub = [];
+    const extraCols = excelExtraColumns(df_excel.length > 0 ? Object.keys(df_excel[0]) : []);
     df_excel.forEach(row => {
       let blVal = '';
       let pkgVal = 0.0;
@@ -6429,7 +6628,8 @@
           'EXCEL_Weight': weightVal,
           'EXCEL_Measure': measureVal,
           'EXCEL_Container_NO': cntrInfo.EXCEL_Container_NO || '',
-          'EXCEL_Seal_NO': cntrInfo.EXCEL_Seal_NO || ''
+          'EXCEL_Seal_NO': cntrInfo.EXCEL_Seal_NO || '',
+          ...excelExtraFields(row, extraCols)
         });
       }
     });
@@ -6437,8 +6637,44 @@
     return {
       targetSheetName, excelSub, df_cntr2, blCntrListMap,
       hasCntrSheet: workbook.SheetNames.includes('CNTR_2'),
-      hasSealSheet: workbook.SheetNames.includes('BL+CNTR')
+      hasSealSheet: workbook.SheetNames.includes('BL+CNTR'),
+      // [추가검증] 엑셀에서 찾은 열 · '운항' 시트
+      extraCols: { ...extraCols, size: Object.values(blCntrListMap).some(list => list.some(it => it.size)) },
+      voyageInfo: excelVoyageInfo(workbook)
     };
+  }
+
+  // [추가검증] 엑셀 B/L 행에서 업체명 · 품명 · 수하인 사업자번호 열 찾기 (없는 열은 비교하지 않음)
+  function excelExtraColumns(headers) {
+    const find = cands => headers.find(k => matchColName(k, cands)) || '';
+    const desc = ['품명1', '품명2', '품명3', '품명4'].map(n => headers.find(k => matchColName(k, [n]))).filter(Boolean);
+    return {
+      shipper: find(['송하인상호', 'SHIPPER NAME']),
+      consignee: find(['수하인상호', 'CONSIGNEE NAME']),
+      notify: find(['통지처상호', 'NOTIFY NAME']),
+      bizNo: find(['수하인사업자번호']),
+      desc: desc.length > 0 ? desc : (find(['품명', 'DESCRIPTION']) ? [find(['품명', 'DESCRIPTION'])] : null)
+    };
+  }
+
+  function excelExtraFields(row, cols) {
+    const v = k => (k ? cleanVal(row[k]) : '');
+    return {
+      EXTRA_shipper: v(cols.shipper),
+      EXTRA_consignee: v(cols.consignee),
+      EXTRA_notify: v(cols.notify),
+      EXTRA_bizNo: v(cols.bizNo),
+      EXTRA_desc: cols.desc ? cols.desc.map(k => v(k)).join(' ') : ''
+    };
+  }
+
+  // [추가검증] '운항' 시트: 항차 · 선박명 · 호출부호 · 입항일자 (없으면 null)
+  function excelVoyageInfo(workbook) {
+    if (!workbook.SheetNames.includes('운항')) return null;
+    const row = XLSX.utils.sheet_to_json(workbook.Sheets['운항'], { defval: '', raw: false })[0];
+    if (!row) return null;
+    const get = cands => { const k = Object.keys(row).find(c => matchColName(c, cands)); return k ? cleanVal(row[k]) : ''; };
+    return { voyage: get(['항차']), vessel: get(['선박명']), callSign: get(['호출부호']), arrival: get(['입항일자']) };
   }
 
   // 5. 엑셀 내부 무결성 검사 (M-BL 시트의 B/L 번호 · MSN · BL_TYPE, 수화물 B/L 컨테이너 · 씰번호)
@@ -6642,6 +6878,14 @@
         g_discrepancies = [];
         g_validationResults = [];
 
+        // [추가검증] 파일 짝 · 규격 · 업체명 · 품명 · 번호 검증 숫자 · 같은 컨테이너 (기존 비교와 별도로 계산해 뒤에 붙임)
+        const extraCheck = ediExtraChecks(ediMap, excelMap, g_ediExcelExtra);
+        renderEdiInternalCheckNotice([
+          ...((g_ediExcelExtra && g_ediExcelExtra.notices) || []),
+          ediVoyagePairNotice(g_ediData.header, g_ediExcelExtra && g_ediExcelExtra.voyage),
+          ...extraCheck.notices
+        ]);
+
     allBls.forEach(blNo => {
       const ediRow = ediMap[blNo];
       const excelRow = excelMap[blNo];
@@ -6717,13 +6961,21 @@
         statusBadgeText = '정상 (엑셀 전용)';
       }
 
+      // [추가검증] 기존 결과 뒤에 붙입니다. 기존 검증에 걸린 것이 없는 B/L 만 추가검증 내용으로 상태를 정합니다 (규격 불일치 · 품명 불일치 …).
+      const extraDiffs = extraCheck.byBl[blNo] || [];
+      if (extraDiffs.length > 0 && !hasError) {
+        statusBadgeText = extraCheck.status[blNo] || '불일치';
+        statusBadgeClass = 'edi-badge-danger';
+      }
+      const allDiffs = diffs.concat(extraDiffs);
+
       const resultItem = {
         'B/L NO': blNo,
         'statusText': statusBadgeText,
         'statusClass': statusBadgeClass,
         'note': note,
-        '불일치 항목 내역': diffs.join('  |  '),
-        'diffList': diffs,
+        '불일치 항목 내역': allDiffs.join('  |  '),
+        'diffList': allDiffs,
         'diffKeys': diffKeys || [],
         'EDI_PKG': ediRow ? ediRow['PKG'] : '',
         'EXCEL_PKG': excelRow ? excelRow['EXCEL_PKG'] : '',
@@ -6735,15 +6987,16 @@
         'EXCEL_Container_NO': excelRow ? excelRow['EXCEL_Container_NO'] : '',
         'EDI_Seal_NO': ediRow ? ediRow['Seal_NO'] : '',
         'EXCEL_Seal_NO': excelRow ? excelRow['EXCEL_Seal_NO'] : '',
-        'hasError': hasError,
-        'hasInternalError': hasInternal
+        'hasError': hasError || extraDiffs.length > 0,
+        'hasInternalError': hasInternal,
+        'hasExtraError': extraDiffs.length > 0
       };
 
       g_validationResults.push(resultItem);
-      if (hasError) {
+      if (resultItem.hasError) {
         g_discrepancies.push({
           'B/L NO': blNo,
-          '불일치 항목 내역': diffs.join('  |  ')
+          '불일치 항목 내역': allDiffs.join('  |  ')
         });
       }
     });
@@ -6784,6 +7037,9 @@
     const diffCount = g_discrepancies.length;
     const matchCount = total - diffCount;
     const internalCount = g_validationResults.filter(r => r.hasInternalError).length;
+    const extraCount = g_validationResults.filter(r => r.hasExtraError).length;
+    const fExtra = document.getElementById('filterCountExtra');
+    if (fExtra) fExtra.textContent = extraCount;
 
     const fAll = document.getElementById('filterCountAll');
     const fDiff = document.getElementById('filterCountDiff');
@@ -6806,6 +7062,7 @@
       if (g_currentFilter === 'diff' && !item.hasError) return false;
       if (g_currentFilter === 'match' && item.hasError) return false;
       if (g_currentFilter === 'internal' && !item.hasInternalError) return false;
+      if (g_currentFilter === 'extra' && !item.hasExtraError) return false;
 
       if (g_searchKeyword) {
         const bl = (item['B/L NO'] || '').toLowerCase();
@@ -6838,7 +7095,10 @@
       if (row.diffList && row.diffList.length > 0) {
         diffHtml = row.diffList.map(d => {
           const isInternal = d.startsWith('[엑셀내부오류]');
-          return `<span class="edi-diff-item ${isInternal ? 'internal' : ''}">${d}</span>`;
+          const isExtra = d.startsWith(EDI_EXTRA_TAG);
+          // 추가검증 문구에는 업체명 · 품명이 들어가므로 HTML 글자를 바꿔 넣습니다
+          const text = isExtra ? d.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])) : d;
+          return `<span class="edi-diff-item ${isInternal ? 'internal' : ''}">${text}</span>`;
         }).join('');
       } else if (row.note) {
         diffHtml = `<span style="color: #10b981; font-weight: 500;">✓ ${row.note}</span>`;
