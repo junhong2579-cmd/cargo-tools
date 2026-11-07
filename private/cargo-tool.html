@@ -2049,6 +2049,46 @@
       border: 1px solid #633e3e;
     }
 
+    /* 프리타임 검색 · 반출기한 · 반납기한 카드 (무채색 · 강조는 초과 빨강, 예외 테두리 표식만) */
+    #result.ft-result { margin-top: 15px; font-size: 14px; font-weight: normal; text-align: left; line-height: 1.5; color: #333; }
+    .ft-notice { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .ft-hint { font-size: 12px; color: #888; font-weight: normal; margin-top: 8px; }
+    .ft-card { border: 1px solid #e5e5e5; border-radius: 8px; padding: 14px 16px; background: #fff; margin-bottom: 10px; }
+    .ft-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .ft-bl { font-weight: 700; font-size: 15px; color: #222; }
+    .ft-meta { font-size: 13px; color: #666; }
+    .ft-extra { color: #2f5d8a; background: #e8f0f8; border-radius: 4px; padding: 1px 6px; font-weight: 700; }
+    .dark-mode .ft-extra { color: #a9c8e8; background: #26384a; }
+    .ft-sub { font-size: 12px; color: #999; margin: 2px 0 12px; }
+    .ft-grid { display: grid; grid-template-columns: 64px 1fr; gap: 8px 12px; align-items: center; }
+    .ft-grid > .ft-key { font-size: 13px; color: #888; }
+    .ft-grid input.ft-date { width: 112px; padding: 4px 8px; font-size: 13px; margin: 0; font-variant-numeric: tabular-nums; }
+    .ft-grid input.ft-date.ft-invalid { border-color: #c62828; }
+    .ft-datebox { position: relative; display: inline-flex; align-items: center; vertical-align: middle; }
+    .ft-grid .ft-datebox input.ft-date { padding-right: 28px; }
+    .ft-datebox button.ft-cal, .ft-datebox button.ft-cal:hover, .ft-datebox button.ft-cal:active { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0; margin: 0; border: 0; border-radius: 4px; background: transparent; box-shadow: none; color: #777; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+    .ft-datebox button.ft-cal:hover { color: #222; background: #f0f0f0; }
+    .ft-datebox .ft-picker { position: absolute; left: 0; bottom: 0; width: 100%; height: 0; padding: 0; margin: 0; border: 0; opacity: 0; pointer-events: none; }
+    .dark-mode .ft-datebox button.ft-cal { color: #aaa; }
+    .dark-mode .ft-datebox button.ft-cal:hover { color: #eee; background: #333; }
+    .ft-val b { font-weight: 600; color: #222; }
+    .ft-wd { font-size: 13px; color: #333; margin-left: 6px; }
+    .ft-src, .ft-muted { font-size: 12px; color: #aaa; }
+    .ft-src { margin-left: 8px; }
+    .ft-tag { font-size: 12px; margin-left: 8px; color: #888; white-space: nowrap; }
+    .ft-tag.warn, .ft-tag.bad { color: #c62828; }
+    .ft-tag.ex { color: #222; border: 1px solid #999; border-radius: 4px; padding: 0 5px; font-weight: 600; cursor: help; }
+    .ft-notes { margin-top: 10px; font-size: 12px; color: #999; }
+    .ft-notes:empty { display: none; }
+    .ft-notes .bad { color: #c62828; }
+    .dark-mode #result.ft-result { color: #ddd; }
+    .dark-mode .ft-card { background: #242424; border-color: #3a3a3a; }
+    .dark-mode .ft-bl, .dark-mode .ft-val b, .dark-mode .ft-tag.ex { color: #eee; }
+    .dark-mode .ft-wd { color: #ddd; }
+    .dark-mode .ft-meta { color: #aaa; }
+    .dark-mode .ft-tag.ex { border-color: #777; }
+    .dark-mode .ft-tag.warn, .dark-mode .ft-tag.bad, .dark-mode .ft-notes .bad { color: #e57373; }
+
     /* ⭐ 대량 검색 스타일 추가 ⭐ */
     .search-input-wrapper {
       display: flex;
@@ -4542,7 +4582,7 @@
         <div class="search-input-wrapper">
           <input type="text" id="searchInput" placeholder="컨테이너 번호를 입력하세요" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
           <textarea id="bulkSearchInput" placeholder="여러 개의 컨테이너 번호를 입력하세요 (한 줄에 하나)" autocomplete="off" spellcheck="false" style="display: none;"></textarea>
-          <input type="text" id="freeTimeSearchInput" placeholder="비엘 번호를 입력하세요 (4자 이상 검색)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="display: none;" />
+          <input type="text" id="freeTimeSearchInput" placeholder="비엘 번호를 입력하세요 (예: 1177E1709)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="display: none;" />
 
           <button id="toggleFreeTimeBtn" class="icon-btn" title="프리타임 검색 토글">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -8233,7 +8273,7 @@
       toggleFreeTimeBtn.style.color = "#3949ab";
       toggleFreeTimeBtn.style.backgroundColor = "#e8eaf6";
       freeTimeSearchInput.focus();
-      RESULT_EL.textContent = "🔎 비엘 번호를 4자 이상 입력하면 해당되는 프리타임이 나타납니다.";
+      RESULT_EL.textContent = "🔎 항차가 들어간 비엘 번호(예: 1177E1709)를 입력하면 반출기한 · 반납기한을 계산합니다.";
 
       // 대량 검색 및 필터 숨기기
       toggleBulkBtn.style.display = "none";
@@ -8293,12 +8333,288 @@
     RESULT_EL.style.fontWeight = "";
   });
 
-  freeTimeSearchInput.addEventListener("input", function () {
-    const input = this.value.trim().toUpperCase();
+  // ⭐ 프리타임 검색: 반출기한 · 반납기한 계산 (2026-11-07 사용자 확정)
+  // - 항차가 들어간 번호(예: 1177E1709)면 계산 카드, 아니면 예전처럼 FREE TIME 시트(추가 프리타임) 목록 검색
+  // - 입항일 = 운임 데이터(freight_records.io_date), 없으면 직접 입력
+  // - 기본 프리타임: 일반 7+3, 냉동(B/L 번호에 E12) 2+2. FREE TIME 시트 값이 기본과 같으면 기본으로 봄
+  // - 기본 프리타임만 예외: 토요일 입항 DEM +1일, 반납기한이 일요일이면 월요일 반납 시 비용 없음
+  //   (화요일 반납부터는 반납기한을 일요일로 보고 초과 계산). 추가 프리타임은 예외 없음
+  // - 입항일 · 반출일 포함, 주말 · 공휴일 모두 셈 (공휴일 연장 없음)
+  const FT_BASE = { normal: { dem: 7, det: 3 }, reefer: { dem: 2, det: 2 } };
+  const FT_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+  const FT_KEY_RE = /\d{3,5}E\d{4}[A-Z]?/;
+
+  function ftDayNum(ymd) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || "");
+    return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000) : null;
+  }
+  function ftYmd(n) { return new Date(n * 86400000).toISOString().slice(0, 10); }
+  // 날짜칸 값(20261105 또는 2026-11-05) → 날짜, 없는 날짜(20260231 등)나 8자리가 아니면 null
+  function ftInputDay(v) {
+    const d = String(v || "").replace(/\D/g, "");
+    if (d.length !== 8) return null;
+    const ymd = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+    const n = ftDayNum(ymd);
+    return n !== null && ftYmd(n) === ymd ? n : null;
+  }
+  function ftWeekday(n) { return new Date(n * 86400000).getUTCDay(); }
+  function ftLabel(n) { return `${ftYmd(n)} (${FT_WEEKDAYS[ftWeekday(n)]})`; }
+  function ftToday() {
+    const d = new Date();
+    return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+  }
+  function ftEsc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  // 운임 데이터 입항일(엑셀 문자열 10/27/26 · 2026-10-27) → 'YYYY-MM-DD'
+  function ftIoDateToYmd(s) {
+    const p = String(s || "").trim().split(/[\/\-\.\s]+/).map(x => parseInt(x, 10));
+    if (p.length < 3 || p.slice(0, 3).some(isNaN)) return "";
+    let y, mo, d;
+    if (p[0] >= 1900) [y, mo, d] = p; else { [mo, d, y] = p; if (y < 100) y += 2000; }
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+    return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+  // B/L 끝부분(항차E번호[파트 영문]) — 운임 데이터 · FREE TIME 시트 B/L 을 같은 건으로 맞출 때 씀
+  function ftKey(bl) {
+    const m = String(bl || "").toUpperCase().match(new RegExp(FT_KEY_RE.source + "$"));
+    return m ? m[0] : "";
+  }
+
+  // 적용할 프리타임: 시트 값이 기본과 다를 때만 추가 프리타임
+  function freeTimeRule(bl, sheetItem) {
+    const reefer = /E12/.test(bl);
+    const base = reefer ? FT_BASE.reefer : FT_BASE.normal;
+    if (sheetItem) {
+      const dem = parseInt(sheetItem.dem, 10), det = parseInt(sheetItem.det, 10);
+      if (isNaN(dem) || isNaN(det)) return { reefer, extra: true, invalid: true, raw: `${sheetItem.dem || "?"}+${sheetItem.det || "?"}` };
+      if (dem !== base.dem || det !== base.det) return { reefer, extra: true, dem, det };
+    }
+    return { reefer, extra: false, dem: base.dem, det: base.det };
+  }
+
+  // 날짜는 ftDayNum 값(없으면 null)
+  function freeTimeCalc(rule, arrival, release) {
+    const r = {};
+    if (rule.invalid) return r;
+    if (arrival !== null) {
+      r.satPlus = !rule.extra && ftWeekday(arrival) === 6;
+      r.dem = rule.dem + (r.satPlus ? 1 : 0);
+      r.demEnd = arrival + r.dem - 1;
+    }
+    if (release !== null) {
+      r.detEnd = release + rule.det - 1;
+      r.mondayFree = !rule.extra && ftWeekday(r.detEnd) === 0;
+      if (arrival !== null) {
+        r.demOver = Math.max(0, release - r.demEnd);
+        r.early = release < arrival;
+      }
+    }
+    return r;
+  }
+
+  // 반납일 기준 DET 초과 일수 (월요일 무료는 월요일 반납일 때만, 화요일부터는 일요일 기준)
+  function freeTimeDetOver(calc, returnDay) {
+    if (calc.mondayFree && returnDay === calc.detEnd + 1) return 0;
+    return Math.max(0, returnDay - calc.detEnd);
+  }
+
+  // 오늘 기준 남은 날 표시
+  function ftDueTag(end, today, mondayFree) {
+    const diff = end - today;
+    if (mondayFree && diff === -1) return { text: "오늘(월) 반납 시 비용 없음", cls: "ok" };
+    if (diff > 0) return { text: `D-${diff}`, cls: "" };
+    if (diff === 0) return { text: "오늘까지", cls: "warn" };
+    return { text: `${mondayFree ? freeTimeDetOver({ mondayFree, detEnd: end }, today) : -diff}일 지남`, cls: "bad" };
+  }
+  function ftTagHtml(t) { return `<span class="ft-tag ${t.cls}">${t.text}</span>`; }
+
+  function freeTimeUpdateCard(card, rule) {
+    const demEl = card.querySelector(".ft-dem"), detEl = card.querySelector(".ft-det"), notesEl = card.querySelector(".ft-notes");
+    const arrival = ftInputDay(card.querySelector(".ft-arrival").value);
+    const release = ftInputDay(card.querySelector(".ft-release").value);
+    const today = ftToday();
+    const notes = [];
+    card.querySelector(".ft-arrival-wd").textContent = arrival === null ? "" : FT_WEEKDAYS[ftWeekday(arrival)];
+    card.querySelector(".ft-release-wd").textContent = release === null ? "" : FT_WEEKDAYS[ftWeekday(release)];
+
+    if (rule.invalid) {
+      demEl.innerHTML = detEl.innerHTML = `<span class="ft-muted">FREE TIME 시트 값(${ftEsc(rule.raw)})을 확인해 주세요</span>`;
+      notesEl.innerHTML = "";
+      return;
+    }
+    const c = freeTimeCalc(rule, arrival, release);
+
+    if (arrival === null) {
+      demEl.innerHTML = `<span class="ft-muted">입항일을 입력하면 계산됩니다</span>`;
+    } else {
+      let tag;
+      if (release === null) tag = ftDueTag(c.demEnd, today, false);
+      else if (c.demOver > 0) tag = { text: `반출기한 ${c.demOver}일 초과`, cls: "bad" };
+      else tag = { text: "기한 내 반출", cls: "ok" };
+      const ex = c.satPlus ? `<span class="ft-tag ex" title="토요일 입항 · DEM 1일 추가 (${rule.dem} → ${c.dem}일)">토+1</span>` : "";
+      demEl.innerHTML = `<b>${ftLabel(c.demEnd)}</b>${ex}${ftTagHtml(tag)}`;
+    }
+
+    if (release === null) {
+      detEl.innerHTML = `<span class="ft-muted">반출일을 입력하면 계산됩니다</span>`;
+    } else {
+      const ex = c.mondayFree ? `<span class="ft-tag ex" title="일요일 CY 휴무 · ${ftLabel(c.detEnd + 1)} 반납 시 비용 없음 (화요일 반납부터는 일요일 기준으로 초과 계산)">월 반납 시 +1</span>` : "";
+      detEl.innerHTML = `<b>${ftLabel(c.detEnd)}</b>${ex}${ftTagHtml(ftDueTag(c.detEnd, today, c.mondayFree))}`;
+      if (c.early) notes.push(`<span class="bad">반출일이 입항일보다 빠릅니다</span>`);
+    }
+    if (rule.extra) notes.push("추가 프리타임 · 토요일 입항 · 일요일 반납 예외 없음");
+    notesEl.innerHTML = notes.map(n => `<div>${n}</div>`).join("");
+  }
+
+  function freeTimeRenderCards(items, notice) {
+    RESULT_EL.className = "ft-result";
+    RESULT_EL.style.textAlign = "";
+    RESULT_EL.style.whiteSpace = "";
+    RESULT_EL.style.fontSize = "";
+    RESULT_EL.style.fontWeight = "";
+    RESULT_EL.innerHTML = (notice ? `<div class="ft-notice">${notice}</div>` : "") + items.map(it => {
+      const r = it.rule;
+      const ft = r.invalid ? r.raw : `${r.dem}+${r.det}`;
+      return `<div class="ft-card">
+        <div class="ft-head">
+          <span class="ft-bl">${ftEsc(it.bl)}</span>
+          <span class="ft-meta">${r.reefer ? "냉동 · " : ""}${r.extra ? `<span class="ft-extra">추가 ${ftEsc(ft)}</span>` : `기본 ${ftEsc(ft)}`}</span>
+        </div>
+        <div class="ft-sub">${[
+          `${ftEsc(it.voyage)} 항차`,
+          it.fromDb ? "" : (it.voyageDate || ""),
+          ftEsc(it.consignee),
+          it.fromDb ? "운임 데이터" : "운임 데이터 없음 · 직접 입력",
+        ].filter(Boolean).join(" · ")}</div>
+        <div class="ft-grid">
+          <span class="ft-key">입항일</span>
+          <span class="ft-val"><span class="ft-datebox"><input type="text" class="ft-date ft-arrival" inputmode="numeric" autocomplete="off" placeholder="YYYYMMDD" value="${it.ioDate}" /><button type="button" class="ft-cal" tabindex="-1" title="달력에서 선택"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button><input type="date" class="ft-picker" tabindex="-1" aria-hidden="true" /></span><span class="ft-wd ft-arrival-wd"></span></span>
+          <span class="ft-key">반출기한</span><span class="ft-val ft-dem"></span>
+          <span class="ft-key">반출일</span>
+          <span class="ft-val"><span class="ft-datebox"><input type="text" class="ft-date ft-release" inputmode="numeric" autocomplete="off" placeholder="YYYYMMDD" /><button type="button" class="ft-cal" tabindex="-1" title="달력에서 선택"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></button><input type="date" class="ft-picker" tabindex="-1" aria-hidden="true" /></span><span class="ft-wd ft-release-wd"></span></span>
+          <span class="ft-key">반납기한</span><span class="ft-val ft-det"></span>
+        </div>
+        <div class="ft-notes"></div>
+      </div>`;
+    }).join("");
+    RESULT_EL.querySelectorAll(".ft-card").forEach((card, i) => {
+      const update = () => freeTimeUpdateCard(card, items[i].rule);
+      // 날짜칸: 포커스 → 숫자 8자리(20261105), 엔터 · 바깥 클릭 → 2026-11-05
+      card.querySelectorAll(".ft-date").forEach(el => {
+        el.addEventListener("focus", () => {
+          el.value = el.value.replace(/\D/g, "");
+          el.classList.remove("ft-invalid");
+        });
+        enableSmartSelectOnFocus(el); // 클릭해서 들어오면 전체 선택 → 바로 새 날짜 입력
+        // 달력 아이콘: 브라우저 달력으로 고르기 (숫자 입력과 같이 씀)
+        const box = el.closest(".ft-datebox"), picker = box.querySelector(".ft-picker");
+        box.querySelector(".ft-cal").addEventListener("click", () => {
+          const n = ftInputDay(el.value);
+          picker.value = n === null ? "" : ftYmd(n);
+          try { picker.showPicker(); } catch (e) { picker.focus(); picker.click(); }
+        });
+        picker.addEventListener("change", () => {
+          if (!picker.value) return;
+          el.value = picker.value;
+          el.classList.remove("ft-invalid");
+          update();
+        });
+        el.addEventListener("input", () => {
+          const digits = el.value.replace(/\D/g, "").slice(0, 8);
+          if (el.value !== digits) el.value = digits;
+          update();
+        });
+        el.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } });
+        el.addEventListener("blur", () => {
+          const n = ftInputDay(el.value);
+          if (n !== null) el.value = ftYmd(n);
+          el.classList.toggle("ft-invalid", el.value !== "" && n === null);
+          update();
+        });
+      });
+      update();
+    });
+  }
+
+  let ftSearchSeq = 0, ftSearchTimer = null;
+
+  // 항차(예: 1179E)의 입항일 = 운임 데이터에서 그 항차 B/L 들의 입항일 중 가장 많은 날짜
+  async function ftVoyageArrival(voyage) {
+    try {
+      const { data, error } = await supabaseClient
+        .from("freight_records")
+        .select("bl_no, io_date")
+        .ilike("bl_no", `%${voyage}%`)
+        .limit(200);
+      if (error || !data) return "";
+      const count = {};
+      data.forEach(r => {
+        if (!ftKey(r.bl_no).startsWith(voyage)) return;
+        const d = ftIoDateToYmd(r.io_date);
+        if (d) count[d] = (count[d] || 0) + 1;
+      });
+      return Object.keys(count).sort((a, b) => count[b] - count[a])[0] || "";
+    } catch (e) { return ""; }
+  }
+
+  async function freeTimeLookup(key, input, seq) {
+    const endRe = new RegExp(key + (/[A-Z]$/.test(key) ? "$" : "[A-Z]?$"));
+    let rows = [], dbFailed = !supabaseClient;
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from("freight_records")
+          .select("bl_no, io_date, consignee")
+          .ilike("bl_no", `%${key}%`)
+          .limit(20);
+        if (error) dbFailed = true; else rows = data || [];
+      } catch (e) { dbFailed = true; }
+    }
+    if (seq !== ftSearchSeq || freeTimeSearchInput.style.display === "none") return;
+
+    const found = new Map(); // B/L 끝부분 → 카드
+    rows.forEach(r => {
+      const bl = String(r.bl_no || "").trim().toUpperCase();
+      const k = ftKey(bl);
+      if (k && endRe.test(k)) found.set(k, { bl, ioDate: ftIoDateToYmd(r.io_date), consignee: String(r.consignee || "").trim(), fromDb: true });
+    });
+    freeTimeList.forEach(it => {
+      const k = ftKey(it.bl);
+      if (k && endRe.test(k) && !found.has(k)) found.set(k, { bl: it.bl, ioDate: "", consignee: "", fromDb: false });
+    });
+    if (!found.size) found.set(key, { bl: ftKey(input) === key ? input : key, ioDate: "", consignee: "", fromDb: false });
+
+    const items = [...found.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([k, it]) => {
+      const sheetItem = freeTimeList.find(s => ftKey(s.bl) === k);
+      return { ...it, voyage: k.match(/^\d+E/)[0], rule: freeTimeRule(it.bl, sheetItem) };
+    });
+
+    // 운임 데이터에 없는 B/L: 같은 항차 다른 B/L 의 입항일(가장 많은 날짜)을 참고로 표시만 함 (입항일 칸은 직접 입력)
+    if (!dbFailed) {
+      const voyages = [...new Set(items.filter(it => !it.fromDb).map(it => it.voyage))];
+      for (const v of voyages) {
+        const d = await ftVoyageArrival(v);
+        if (seq !== ftSearchSeq || freeTimeSearchInput.style.display === "none") return;
+        items.forEach(it => { if (!it.fromDb && it.voyage === v && d) it.voyageDate = d; });
+      }
+    }
+    const notices = [];
+    if (dbFailed) notices.push("운임 데이터를 불러오지 못했습니다. 입항일을 직접 입력해 주세요.");
+    if (freeTimeList.length === 0) notices.push("FREE TIME 시트가 로드되지 않아 기본 프리타임으로 계산합니다.");
+    freeTimeRenderCards(items, notices.join("<br>"));
+  }
+
+  // 예전 방식: FREE TIME 시트(추가 프리타임)에서 부분 검색
+  function freeTimeSheetSearch(input) {
+    const hint = `<div class="ft-hint">항차가 들어간 번호(예: 1177E1709)를 입력하면 반출기한 · 반납기한을 계산합니다.</div>`;
     const digitsCount = (input.match(/\d/g) || []).length;
+    RESULT_EL.style.textAlign = "";
+    RESULT_EL.style.whiteSpace = "";
+    RESULT_EL.style.fontSize = "";
 
     if (digitsCount < 4) {
-      RESULT_EL.textContent = "🔎 숫자가 4개 이상 포함되도록 비엘 번호를 입력해주세요. (예: 1197, 1129E)";
+      RESULT_EL.innerHTML = `🔎 숫자가 4개 이상 포함되도록 비엘 번호를 입력해주세요. (예: 1197, 1129E)${hint}`;
       RESULT_EL.className = "";
       return;
     }
@@ -8314,17 +8630,27 @@
     if (matches.length > 0) {
       let resultsHtml = `<div style="font-weight: bold; margin-bottom: 8px; color: #1e88e5;">총 ${matches.length}건이 검색되었습니다.</div>`;
       matches.forEach(match => {
-        resultsHtml += `✅ <span style="font-weight:bold; color:#2e7d32;">${match.bl}</span> - ${match.dem || '0'}+${match.det || '0'}<br>`;
+        resultsHtml += `✅ <span style="font-weight:bold; color:#2e7d32;">${ftEsc(match.bl)}</span> - ${ftEsc(match.dem || '0')}+${ftEsc(match.det || '0')}<br>`;
       });
-      RESULT_EL.innerHTML = resultsHtml;
+      RESULT_EL.innerHTML = resultsHtml + hint;
       RESULT_EL.className = "found";
       RESULT_EL.style.textAlign = "left";
-      RESULT_EL.style.whiteSpace = "pre-wrap";
       RESULT_EL.style.fontSize = "15px";
     } else {
-      RESULT_EL.textContent = `❌ "${input}"이(가) 포함된 비엘을 찾을 수 없습니다.`;
+      RESULT_EL.innerHTML = `❌ "${ftEsc(input)}"이(가) 포함된 비엘을 찾을 수 없습니다.${hint}`;
       RESULT_EL.className = "not-found";
     }
+  }
+
+  freeTimeSearchInput.addEventListener("input", function () {
+    const input = this.value.trim().toUpperCase().replace(/\s+/g, "");
+    clearTimeout(ftSearchTimer);
+    const seq = ++ftSearchSeq;
+    const m = FT_KEY_RE.exec(input);
+    if (!m) { freeTimeSheetSearch(input); return; }
+    RESULT_EL.className = "";
+    RESULT_EL.textContent = "🔎 조회 중...";
+    ftSearchTimer = setTimeout(() => freeTimeLookup(m[0], input, seq), 250);
   });
 
   bulkSearchInput.addEventListener("input", function () {
