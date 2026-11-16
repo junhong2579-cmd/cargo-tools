@@ -4,13 +4,14 @@
 <head>
   <meta charset="UTF-8" />
   <title>화물 업무 도구</title>
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <!-- SheetJS 0.20.3 고정 (예전 xlsx-latest 와 같은 파일, 대시보드와 같이 씀. 바꾸면 운임 저장 형식이 달라질 수 있음) -->
+  <script src="/dash/vendor/xlsx.full.min.js"></script>
   <!-- pdf.js 로드 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
   <meta name="robots" content="noindex, nofollow">
   <!-- Supabase JS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0"></script>
 
   <style>
     /* ========== 인증 관련 스타일 (Auth Modal & Header) ========== */
