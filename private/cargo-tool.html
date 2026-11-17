@@ -13346,7 +13346,23 @@
   }
 
   // 1. 헤더 자동 보정 및 중복 컬럼 유니크 처리 (파이썬 load_excel_with_auto_header 이식)
+  // 화면 복사(머리글 없음) 붙여넣기용 열 순서. 화물시스템 열 순서가 바뀌면 여기에 새 목록을 넣고 FC_PASTE_LAYOUTS 맨 앞에 둡니다.
+  // 2026-11-17 화물시스템 변경: '입금증여부' 추가, USD·원화발생금액(C) → Collect TTL 뒤, FRT C → CRS($) C 뒤 (80칸)
   const FC_BASE_HEADERS = [
+    "VSL", "VOYAGE", "MRN No", "I/O Date", "MSN", "B/L NO", "PART", "SR (SURRENDER)", "AN", "Cargo", "Owner",
+    "B/T (B/L Type)", "L/F (Live Fish)", "T/S", "Consignee Code", "Consignee", "Notify", "Actual Shipper",
+    "REMARK", "Consignee", "20'", "40'", "45'", "AR (ARRANGE)", "PC(PAYMENT CHECK)", "입금증여부",
+    "D/O (D/O Type)", "ITEM", "Collect TTL", "USD발생금액(C)", "원화발생금액(C)", "THC", "A/Shipper Code",
+    "O'BL (O'B/L Issue Count)", "D/O NO", "TAX", "Issue Date", "CRS($) C", "FRT(＄) C (COLLECT)", "PKG",
+    "Unit", "Weight", "Unit", "Measure", "F/T (Freight Type)", "FRT(＄) P (PREPAID)", "BAF(＄) P (PREPAID)",
+    "BAF(＄) C (COLLECT)", "CAF", "EBS($) P", "EBS($) C", "DOC", "WFG", "CFS", "CCF", "EXT($)", "EXT(\\)",
+    "Prepaid TTL", "배정구분", "배정코드", "배정장소 명", "하선구분", "하선코드", "하선장소 명", "DESCRIPTION", "Insert by",
+    "Update by", "Delete by", "SHIPPER", "TSF", "LSS($) P", "LSS($) C", "적용환율", "CRS($) P", "PSS($) P",
+    "PSS($) C", "PSC", "USD발생금액(P)", "원화발생금액(P)", "ESC"
+  ];
+
+  // 2026-11-17 이전 열 순서 (79칸). 예전에 복사해 둔 자료도 읽을 수 있게 남겨 둡니다.
+  const FC_BASE_HEADERS_OLD = [
     "VSL", "VOYAGE", "MRN No", "I/O Date", "MSN", "B/L NO", "PART", "SR (SURRENDER)", "AN",
     "Cargo", "Owner", "B/T (B/L Type)", "L/F (Live Fish)", "T/S", "Consignee Code", "Consignee",
     "Notify", "Actual Shipper", "REMARK", "Consignee", "20'", "40'", "45'", "AR (ARRANGE)",
@@ -13376,6 +13392,42 @@
     return newCols;
   }
 
+  // 머리글 없는 붙여넣기의 열 순서 후보 (새 순서 먼저)
+  const FC_PASTE_LAYOUTS = [
+    { label: '2026-11-17 이후 (입금증여부 포함 80칸)', headers: FC_BASE_HEADERS },
+    { label: '2026-11-17 이전 (79칸)', headers: FC_BASE_HEADERS_OLD }
+  ];
+  // 숫자여야 하는 칸 · B/L 번호 · 입항일이 그 자리에 맞게 들어 있는지로 열 순서를 확인합니다.
+  // (순서가 어긋나면 이 칸들에 ITEM · Unit(GT, KGS) 같은 글자가 들어와 걸러집니다)
+  const FC_PASTE_NUM_COLS = ["20'", "40'", "45'", "Collect TTL", "THC", "CRS($) C", "FRT(＄) C (COLLECT)",
+    "BAF(＄) C (COLLECT)", "CAF", "DOC", "WFG", "CCF", "TSF", "PSC", "ESC", "Prepaid TTL"];
+  function fcPasteLayoutFitRate(rows, headers, offset) {
+    const pos = name => offset + headers.indexOf(name);
+    const cell = (r, name) => String(r[pos(name)] ?? '').trim();
+    let ok = 0;
+    rows.forEach(r => {
+      const bl = cell(r, 'B/L NO');
+      const date = cell(r, 'I/O Date');
+      const numsOk = FC_PASTE_NUM_COLS.every(n => { const v = cell(r, n); return v === '' || /^-?[\d,]*\.?\d+$/.test(v); });
+      if (/^[A-Z0-9]{6,}$/i.test(bl) && /^\d{1,4}[\/.-]\d{1,2}[\/.-]\d{1,4}/.test(date) && numsOk) ok++;
+    });
+    return rows.length ? ok / rows.length : 0;
+  }
+  function fcPickPasteLayout(rawRows, offset) {
+    const rows = rawRows.filter(r => r && r.some(c => String(c || '').trim() !== '')).slice(0, 300);
+    const width = Math.max(0, ...rows.map(r => r.length)) - offset;
+    const fits = FC_PASTE_LAYOUTS
+      .map(l => ({ ...l, rate: fcPasteLayoutFitRate(rows, l.headers, offset) }))
+      .filter(l => l.rate >= 0.9);
+    const picked = fits.find(l => l.headers.length === width) || fits[0];
+    if (!picked) {
+      throw new Error(`복사한 내용의 열 순서를 알아볼 수 없습니다 (${width}칸). 화물시스템 열 순서가 바뀌었을 수 있습니다. `
+        + '화물시스템에서 엑셀로 내려받아(머리글 포함) 올리면 열 이름으로 검증됩니다.');
+    }
+    console.info(`[운임 체크] 붙여넣기 열 순서: ${picked.label}, ${width}칸, 맞는 행 ${(picked.rate * 100).toFixed(0)}%`);
+    return picked;
+  }
+
   // 2차원 배열(rawRows)을 받아 헤더 자동인식 및 B/L 데이터 객체 배열로 변환하는 공통 파서
   function fcParseRawRows(rawRows) {
     if (!rawRows || rawRows.length === 0) return [];
@@ -13397,11 +13449,10 @@
       finalHeaders = fcMakeUniqueColumns(firstRow);
       dataRows = rawRows.slice(1);
     } else {
-      const baseHeaders = fcMakeUniqueColumns(FC_BASE_HEADERS);
-      let headersToApply = baseHeaders;
-      if (firstRow[0] === "" || firstRow[0] === "nan" || firstRow[0] === undefined) {
-        headersToApply = ["Dummy_A", ...baseHeaders];
-      }
+      const hasDummy = firstRow[0] === "" || firstRow[0] === "nan" || firstRow[0] === undefined;
+      const layout = fcPickPasteLayout(rawRows, hasDummy ? 1 : 0);
+      const baseHeaders = fcMakeUniqueColumns(layout.headers);
+      const headersToApply = hasDummy ? ["Dummy_A", ...baseHeaders] : baseHeaders;
       const maxColCount = Math.max(...rawRows.map(r => r.length));
       const newCols = [];
       for (let i = 0; i < maxColCount; i++) {
